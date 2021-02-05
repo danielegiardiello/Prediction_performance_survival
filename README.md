@@ -1,4 +1,4 @@
-# Assessing predicition performance of survival models
+# Assessing prediction performance of survival models
 The following repository illustrates how to develop and validate a risk prediction models with survival outcome.
 Different guidelines are available according to the different level of statistical education, experience and interests of the user according to the [STRATOS](https://www.stratos-initiative.org/) initiative.
 
