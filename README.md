@@ -12,6 +12,6 @@ The repository (will) contain the following code:
 
 + 03_predsurv_extended a more extensive illustration of [01_predsurv_simplified](https://github.com/danielegiardiello/Prediction_performance_survival/blob/main/01_predsurv_simplified.md) for users with more advanced statistical knowledge (work in progress);
 
-Data, external functions and figures are available in the corresponding subfolder.
+Data, external functions and figures are available in the corresponding subfolders.
 A general SAS code will be also available.  
 
