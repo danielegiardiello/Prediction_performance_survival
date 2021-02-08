@@ -1,6 +1,34 @@
 Performance assessment of survival prediction models - simplified code
 ================
 
+-   [Goals](#goals)
+    -   [Install/load packages and import
+        data](#install-load-packages-and-import-data)
+    -   [Descriptive statistics](#descriptive-statistics)
+-   [Goal 1: develop a risk prediction model with a time-to-event
+    outcome](#goal-1--develop-a-risk-prediction-model-with-a-time-to-event-outcome)
+    -   [1.1 Preliminary investigation: survival and censoring curves in
+        the development and validation
+        data](#11-preliminary-investigation--survival-and-censoring-curves-in-the-development-and-validation-data)
+    -   [1.2 Secondary investigation: check non-linearity of continuous
+        predictors](#12-secondary-investigation--check-non-linearity-of-continuous-predictors)
+    -   [1.3 Model development: first check - the proportional hazard
+        (PH)
+        assumption](#13-model-development--first-check---the-proportional-hazard--ph--assumption)
+    -   [1.4 Model development: fit the risk prediction
+        models](#14-model-development--fit-the-risk-prediction-models)
+-   [Goal 2: Assessing performance in survival prediction
+    models](#goal-2--assessing-performance-in-survival-prediction-models)
+    -   [2.1 Overall performance
+        measures](#21-overall-performance-measures)
+    -   [2.2 Discrimination measures](#22-discrimination-measures)
+    -   [2.3 Calibration](#23-calibration)
+    -   [2.3.1 Observed/Expected ratio](#231-observed-expected-ratio)
+    -   [2.3.2 Calibration plot using restricted cubic
+        splines](#232-calibration-plot-using-restricted-cubic-splines)
+-   [Goal 3: Clinical utility](#goal-3--clinical-utility)
+-   [References](#references)
+
 ## Goals
 
 In this document, we assume that individual data of the development and
@@ -1756,7 +1784,7 @@ The models PGR tend to slightly underpredict the risk of mortality in
 the validation data (OE: 1.11, 95%CI: 0.99-1.25 without PGR; OE: 1.08
 95%CI: 0.96-1.21).
 
-#### 2.3.2 Calibration plot using restricted cubic splines
+### 2.3.2 Calibration plot using restricted cubic splines
 
 Calibration plots of the external validation data with and without PGR
 are calculated and shown using restricted cubic splines.  
