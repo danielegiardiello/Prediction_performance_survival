@@ -10,7 +10,7 @@ The repository (will) contain the following code:
 
 + [02_presurv](https://github.com/danielegiardiello/Prediction_performance_survival/blob/main/02_predsurv.md) illustrates how to validate a risk prediction model with survival outcomes when model equation of a developed risk prediction model is available and validation data are available (work in progress, not available yet). The RMardown source code (.Rmd) is [here](https://github.com/danielegiardiello/Prediction_performance_survival/blob/main/02_predsurv.Rmd).
 
-+ 03_predsurv_extended a more extensive illustration of [01_predsurv_simplified](https://github.com/danielegiardiello/Prediction_performance_survival/blob/main/01_predsurv_simplified.md) for users with more advanced statistical knowledge (work in progress);
++ 03_predsurv_extended a more extensive illustration of [01_predsurv_simplified](https://github.com/danielegiardiello/Prediction_performance_survival/blob/main/01_predsurv_simplified.md) for users with more advanced statistical knowledge (work in progress, not available yet);
 
 R/Rstudio and packages version information used to generate the documentation and code are available [here](https://github.com/danielegiardiello/Prediction_performance_survival/blob/main/sessionInfo.md)
 
