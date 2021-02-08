@@ -1089,8 +1089,7 @@ where *NB*<sub>model</sub> is the net benefit of the prediction model,
     R Vignette:
     <https://cran.r-project.org/web/packages/riskRegression/vignettes/IPA.html#fn.1>  
 
--   Discrimination measures   References:  
-    <https://www.jstor.org/stable/27639883>  
+-   Discrimination measures   <https://www.jstor.org/stable/27639883>  
     <https://onlinelibrary.wiley.com/doi/10.1002/sim.5958>  
 
 -   Calibration  
