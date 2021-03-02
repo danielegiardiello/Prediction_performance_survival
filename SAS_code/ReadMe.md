@@ -1,4 +1,4 @@
-The corresponding SAS code are provided here and created by [David McLernon](https://twitter.com/davemclernon?lang=en):
+The corresponding SAS code are provided here created by [David McLernon](https://twitter.com/davemclernon?lang=en):
 
 + [01_model_development_internal_validation](https://github.com/danielegiardiello/Prediction_performance_survival/blob/main/SAS_code/01_model_development_internal_validation.sas) develops the prediction model and provides the corresponding internal bootstrap optimism-corrected validation;
 
