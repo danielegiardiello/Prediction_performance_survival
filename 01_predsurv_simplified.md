@@ -70,11 +70,11 @@ library(boot)
 library(tidyverse)
 library(rsample)
 library(webshot)
-webshot::install_phantomjs()
+# webshot::install_phantomjs()
 
 
-rdata<-readRDS('C:\\Users\\Utente\\Documents\\Prediction_survival\\Data\\rdata.rds')
-vdata<-readRDS('C:\\Users\\Utente\\Documents\\Prediction_survival\\Data\\vdata.rds')
+rdata<-readRDS('C:\\Users\\danie\\Documents\\GitHub\\Prediction_performance_survival\\Data\\rdata.rds')
+vdata<-readRDS('C:\\Users\\danie\\Documents\\GitHub\\Prediction_performance_survival\\Data\\vdata.rds')
 ```
 
 We loaded the development (rdata) and the validation data (vdata) from
@@ -580,194 +580,98 @@ s5 <- cph(Surv(ryear, status) ~ csize + cnode + cgrade,
 print(s5)
 ```
 
-<!--html_preserve-->
-
-<div align="center">
-
-<strong>Cox Proportional Hazards Model</strong>
-
-</div>
-
-<pre>
+ <strong>Cox Proportional Hazards Model</strong>
+ 
+ <pre>
  cph(formula = Surv(ryear, status) ~ csize + cnode + cgrade, data = edata1, 
      x = T, y = T, surv = T)
  </pre>
-<table class="gmisc_table" style="border-collapse: collapse; margin-top: 1em; margin-bottom: 1em;">
+ 
+ <table class='gmisc_table' style='border-collapse: collapse; margin-top: 1em; margin-bottom: 1em;' >
 <thead>
 <tr>
-<th style="border-bottom: 1px solid grey; border-top: 2px solid grey; border-left: 1px solid black; border-right: 1px solid black; text-align: center;">
-</th>
-<th style="border-bottom: 1px solid grey; border-top: 2px solid grey; border-right: 1px solid black; text-align: center;">
-Model Tests
-</th>
-<th style="border-bottom: 1px solid grey; border-top: 2px solid grey; border-right: 1px solid black; text-align: center;">
-Discrimination<br>Indexes
-</th>
+<th style='font-weight: 900; border-bottom: 1px solid grey; border-top: 2px solid grey; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'></th>
+<th style='font-weight: 900; border-bottom: 1px solid grey; border-top: 2px solid grey; border-right: 1px solid black; text-align: center;'>Model Tests</th>
+<th style='font-weight: 900; border-bottom: 1px solid grey; border-top: 2px solid grey; border-right: 1px solid black; text-align: center;'>Discrimination<br>Indexes</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td style="min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;">
-Obs 2982
-</td>
-<td style="min-width: 9em; border-right: 1px solid black; text-align: center;">
-LR χ<sup>2</sup> 465.78
-</td>
-<td style="min-width: 9em; border-right: 1px solid black; text-align: center;">
-<i>R</i><sup>2</sup> 0.145
-</td>
+<td style='min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'>Obs 2982</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'>LR χ<sup>2</sup> 465.78</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>R</i><sup>2</sup> 0.145</td>
 </tr>
 <tr>
-<td style="min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;">
-Events 1181
-</td>
-<td style="min-width: 9em; border-right: 1px solid black; text-align: center;">
-d.f. 5
-</td>
-<td style="min-width: 9em; border-right: 1px solid black; text-align: center;">
-<i>D</i><sub>xy</sub> 0.356
-</td>
+<td style='min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'>Events 1181</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'>d.f. 5</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>D</i><sub>xy</sub> 0.356</td>
 </tr>
 <tr>
-<td style="min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;">
-Center 0.9167
-</td>
-<td style="min-width: 9em; border-right: 1px solid black; text-align: center;">
-Pr(&gt;χ<sup>2</sup>) 0.0000
-</td>
-<td style="min-width: 9em; border-right: 1px solid black; text-align: center;">
-<i>g</i> 0.702
-</td>
+<td style='min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'>Center 0.9167</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'>Pr(>χ<sup>2</sup>) 0.0000</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>g</i> 0.702</td>
 </tr>
 <tr>
-<td style="min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;">
-</td>
-<td style="min-width: 9em; border-right: 1px solid black; text-align: center;">
-Score χ<sup>2</sup> 533.49
-</td>
-<td style="min-width: 9em; border-right: 1px solid black; text-align: center;">
-<i>g</i><sub>r</sub> 2.017
-</td>
+<td style='min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'></td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'>Score χ<sup>2</sup> 533.49</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>g</i><sub>r</sub> 2.017</td>
 </tr>
 <tr>
-<td style="min-width: 9em; border-bottom: 2px solid grey; border-left: 1px solid black; border-right: 1px solid black; text-align: center;">
-</td>
-<td style="min-width: 9em; border-bottom: 2px solid grey; border-right: 1px solid black; text-align: center;">
-Pr(&gt;χ<sup>2</sup>) 0.0000
-</td>
-<td style="min-width: 9em; border-bottom: 2px solid grey; border-right: 1px solid black; text-align: center;">
-</td>
+<td style='min-width: 9em; border-bottom: 2px solid grey; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'></td>
+<td style='min-width: 9em; border-bottom: 2px solid grey; border-right: 1px solid black; text-align: center;'>Pr(>χ<sup>2</sup>) 0.0000</td>
+<td style='min-width: 9em; border-bottom: 2px solid grey; border-right: 1px solid black; text-align: center;'></td>
 </tr>
 </tbody>
 </table>
-<table class="gmisc_table" style="border-collapse: collapse; margin-top: 1em; margin-bottom: 1em;">
+
+ 
+ <table class='gmisc_table' style='border-collapse: collapse; margin-top: 1em; margin-bottom: 1em;' >
 <thead>
-<tr>
-<th style="font-weight: 900; border-bottom: 1px solid grey; border-top: 2px solid grey; text-align: center;">
-</th>
-<th style="border-bottom: 1px solid grey; border-top: 2px solid grey; text-align: right;">
-β
-</th>
-<th style="border-bottom: 1px solid grey; border-top: 2px solid grey; text-align: right;">
-S.E.
-</th>
-<th style="border-bottom: 1px solid grey; border-top: 2px solid grey; text-align: right;">
-Wald <i>Z</i>
-</th>
-<th style="border-bottom: 1px solid grey; border-top: 2px solid grey; text-align: right;">
-Pr(&gt;\|<i>Z</i>\|)
-</th>
+<tr><th style='border-bottom: 1px solid grey; font-weight: 900; border-top: 2px solid grey; min-width: 7em; text-align: center;'></th>
+<th style='font-weight: 900; border-bottom: 1px solid grey; border-top: 2px solid grey; text-align: right;'>β</th>
+<th style='font-weight: 900; border-bottom: 1px solid grey; border-top: 2px solid grey; text-align: right;'>S.E.</th>
+<th style='font-weight: 900; border-bottom: 1px solid grey; border-top: 2px solid grey; text-align: right;'>Wald <i>Z</i></th>
+<th style='font-weight: 900; border-bottom: 1px solid grey; border-top: 2px solid grey; text-align: right;'>Pr(>|<i>Z</i>|)</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td style="text-align: left;">
-csize=21-50
-</td>
-<td style="min-width: 7em; text-align: right;">
- 0.3943
-</td>
-<td style="min-width: 7em; text-align: right;">
- 0.0676
-</td>
-<td style="min-width: 7em; text-align: right;">
-5.83
-</td>
-<td style="min-width: 7em; text-align: right;">
-&lt;0.0001
-</td>
+<td style='min-width: 7em; text-align: left;'>csize=21-50</td>
+<td style='min-width: 7em; text-align: right;'> 0.3943</td>
+<td style='min-width: 7em; text-align: right;'> 0.0676</td>
+<td style='min-width: 7em; text-align: right;'> 5.83</td>
+<td style='min-width: 7em; text-align: right;'><0.0001</td>
 </tr>
 <tr>
-<td style="text-align: left;">
-csize=&gt;50
-</td>
-<td style="min-width: 7em; text-align: right;">
- 0.6230
-</td>
-<td style="min-width: 7em; text-align: right;">
- 0.0956
-</td>
-<td style="min-width: 7em; text-align: right;">
-6.52
-</td>
-<td style="min-width: 7em; text-align: right;">
-&lt;0.0001
-</td>
+<td style='min-width: 7em; text-align: left;'>csize=>50</td>
+<td style='min-width: 7em; text-align: right;'> 0.6230</td>
+<td style='min-width: 7em; text-align: right;'> 0.0956</td>
+<td style='min-width: 7em; text-align: right;'> 6.52</td>
+<td style='min-width: 7em; text-align: right;'><0.0001</td>
 </tr>
 <tr>
-<td style="text-align: left;">
-cnode=1-3
-</td>
-<td style="min-width: 7em; text-align: right;">
- 0.3613
-</td>
-<td style="min-width: 7em; text-align: right;">
- 0.0788
-</td>
-<td style="min-width: 7em; text-align: right;">
-4.59
-</td>
-<td style="min-width: 7em; text-align: right;">
-&lt;0.0001
-</td>
+<td style='min-width: 7em; text-align: left;'>cnode=1-3</td>
+<td style='min-width: 7em; text-align: right;'> 0.3613</td>
+<td style='min-width: 7em; text-align: right;'> 0.0788</td>
+<td style='min-width: 7em; text-align: right;'> 4.59</td>
+<td style='min-width: 7em; text-align: right;'><0.0001</td>
 </tr>
 <tr>
-<td style="text-align: left;">
-cnode=4+
-</td>
-<td style="min-width: 7em; text-align: right;">
- 1.0897
-</td>
-<td style="min-width: 7em; text-align: right;">
- 0.0730
-</td>
-<td style="min-width: 7em; text-align: right;">
-14.92
-</td>
-<td style="min-width: 7em; text-align: right;">
-&lt;0.0001
-</td>
+<td style='min-width: 7em; text-align: left;'>cnode=4+</td>
+<td style='min-width: 7em; text-align: right;'> 1.0897</td>
+<td style='min-width: 7em; text-align: right;'> 0.0730</td>
+<td style='min-width: 7em; text-align: right;'>14.92</td>
+<td style='min-width: 7em; text-align: right;'><0.0001</td>
 </tr>
 <tr>
-<td style="border-bottom: 2px solid grey; text-align: left;">
-cgrade=3+
-</td>
-<td style="min-width: 7em; border-bottom: 2px solid grey; text-align: right;">
- 0.4145
-</td>
-<td style="min-width: 7em; border-bottom: 2px solid grey; text-align: right;">
- 0.0750
-</td>
-<td style="min-width: 7em; border-bottom: 2px solid grey; text-align: right;">
-5.53
-</td>
-<td style="min-width: 7em; border-bottom: 2px solid grey; text-align: right;">
-&lt;0.0001
-</td>
+<td style='min-width: 7em; border-bottom: 2px solid grey; text-align: left;'>cgrade=3+</td>
+<td style='min-width: 7em; border-bottom: 2px solid grey; text-align: right;'> 0.4145</td>
+<td style='min-width: 7em; border-bottom: 2px solid grey; text-align: right;'> 0.0750</td>
+<td style='min-width: 7em; border-bottom: 2px solid grey; text-align: right;'> 5.53</td>
+<td style='min-width: 7em; border-bottom: 2px solid grey; text-align: right;'><0.0001</td>
 </tr>
 </tbody>
 </table>
-<!--/html_preserve-->
 
 ``` r
 options(prType="html")
@@ -776,228 +680,112 @@ s6<-cph(Surv(ryear, status) ~ csize + cnode + cgrade + rcs(pgr2, c(0,41,486)),
 print(s6)
 ```
 
-<!--html_preserve-->
-
-<div align="center">
-
-<strong>Cox Proportional Hazards Model</strong>
-
-</div>
-
-<pre>
+ <strong>Cox Proportional Hazards Model</strong>
+ 
+ <pre>
  cph(formula = Surv(ryear, status) ~ csize + cnode + cgrade + 
      rcs(pgr2, c(0, 41, 486)), data = edata1, x = T, y = T, surv = T)
  </pre>
-<table class="gmisc_table" style="border-collapse: collapse; margin-top: 1em; margin-bottom: 1em;">
+ 
+ <table class='gmisc_table' style='border-collapse: collapse; margin-top: 1em; margin-bottom: 1em;' >
 <thead>
 <tr>
-<th style="border-bottom: 1px solid grey; border-top: 2px solid grey; border-left: 1px solid black; border-right: 1px solid black; text-align: center;">
-</th>
-<th style="border-bottom: 1px solid grey; border-top: 2px solid grey; border-right: 1px solid black; text-align: center;">
-Model Tests
-</th>
-<th style="border-bottom: 1px solid grey; border-top: 2px solid grey; border-right: 1px solid black; text-align: center;">
-Discrimination<br>Indexes
-</th>
+<th style='font-weight: 900; border-bottom: 1px solid grey; border-top: 2px solid grey; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'></th>
+<th style='font-weight: 900; border-bottom: 1px solid grey; border-top: 2px solid grey; border-right: 1px solid black; text-align: center;'>Model Tests</th>
+<th style='font-weight: 900; border-bottom: 1px solid grey; border-top: 2px solid grey; border-right: 1px solid black; text-align: center;'>Discrimination<br>Indexes</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td style="min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;">
-Obs 2982
-</td>
-<td style="min-width: 9em; border-right: 1px solid black; text-align: center;">
-LR χ<sup>2</sup> 504.93
-</td>
-<td style="min-width: 9em; border-right: 1px solid black; text-align: center;">
-<i>R</i><sup>2</sup> 0.156
-</td>
+<td style='min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'>Obs 2982</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'>LR χ<sup>2</sup> 504.93</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>R</i><sup>2</sup> 0.156</td>
 </tr>
 <tr>
-<td style="min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;">
-Events 1181
-</td>
-<td style="min-width: 9em; border-right: 1px solid black; text-align: center;">
-d.f. 7
-</td>
-<td style="min-width: 9em; border-right: 1px solid black; text-align: center;">
-<i>D</i><sub>xy</sub> 0.374
-</td>
+<td style='min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'>Events 1181</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'>d.f. 7</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>D</i><sub>xy</sub> 0.374</td>
 </tr>
 <tr>
-<td style="min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;">
-Center 0.6584
-</td>
-<td style="min-width: 9em; border-right: 1px solid black; text-align: center;">
-Pr(&gt;χ<sup>2</sup>) 0.0000
-</td>
-<td style="min-width: 9em; border-right: 1px solid black; text-align: center;">
-<i>g</i> 0.751
-</td>
+<td style='min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'>Center 0.6584</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'>Pr(>χ<sup>2</sup>) 0.0000</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>g</i> 0.751</td>
 </tr>
 <tr>
-<td style="min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;">
-</td>
-<td style="min-width: 9em; border-right: 1px solid black; text-align: center;">
-Score χ<sup>2</sup> 569.09
-</td>
-<td style="min-width: 9em; border-right: 1px solid black; text-align: center;">
-<i>g</i><sub>r</sub> 2.119
-</td>
+<td style='min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'></td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'>Score χ<sup>2</sup> 569.09</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>g</i><sub>r</sub> 2.119</td>
 </tr>
 <tr>
-<td style="min-width: 9em; border-bottom: 2px solid grey; border-left: 1px solid black; border-right: 1px solid black; text-align: center;">
-</td>
-<td style="min-width: 9em; border-bottom: 2px solid grey; border-right: 1px solid black; text-align: center;">
-Pr(&gt;χ<sup>2</sup>) 0.0000
-</td>
-<td style="min-width: 9em; border-bottom: 2px solid grey; border-right: 1px solid black; text-align: center;">
-</td>
+<td style='min-width: 9em; border-bottom: 2px solid grey; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'></td>
+<td style='min-width: 9em; border-bottom: 2px solid grey; border-right: 1px solid black; text-align: center;'>Pr(>χ<sup>2</sup>) 0.0000</td>
+<td style='min-width: 9em; border-bottom: 2px solid grey; border-right: 1px solid black; text-align: center;'></td>
 </tr>
 </tbody>
 </table>
-<table class="gmisc_table" style="border-collapse: collapse; margin-top: 1em; margin-bottom: 1em;">
+
+ 
+ <table class='gmisc_table' style='border-collapse: collapse; margin-top: 1em; margin-bottom: 1em;' >
 <thead>
-<tr>
-<th style="font-weight: 900; border-bottom: 1px solid grey; border-top: 2px solid grey; text-align: center;">
-</th>
-<th style="border-bottom: 1px solid grey; border-top: 2px solid grey; text-align: right;">
-β
-</th>
-<th style="border-bottom: 1px solid grey; border-top: 2px solid grey; text-align: right;">
-S.E.
-</th>
-<th style="border-bottom: 1px solid grey; border-top: 2px solid grey; text-align: right;">
-Wald <i>Z</i>
-</th>
-<th style="border-bottom: 1px solid grey; border-top: 2px solid grey; text-align: right;">
-Pr(&gt;\|<i>Z</i>\|)
-</th>
+<tr><th style='border-bottom: 1px solid grey; font-weight: 900; border-top: 2px solid grey; min-width: 7em; text-align: center;'></th>
+<th style='font-weight: 900; border-bottom: 1px solid grey; border-top: 2px solid grey; text-align: right;'>β</th>
+<th style='font-weight: 900; border-bottom: 1px solid grey; border-top: 2px solid grey; text-align: right;'>S.E.</th>
+<th style='font-weight: 900; border-bottom: 1px solid grey; border-top: 2px solid grey; text-align: right;'>Wald <i>Z</i></th>
+<th style='font-weight: 900; border-bottom: 1px solid grey; border-top: 2px solid grey; text-align: right;'>Pr(>|<i>Z</i>|)</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td style="text-align: left;">
-csize=21-50
-</td>
-<td style="min-width: 7em; text-align: right;">
-  0.3695
-</td>
-<td style="min-width: 7em; text-align: right;">
- 0.0677
-</td>
-<td style="min-width: 7em; text-align: right;">
-5.46
-</td>
-<td style="min-width: 7em; text-align: right;">
-&lt;0.0001
-</td>
+<td style='min-width: 7em; text-align: left;'>csize=21-50</td>
+<td style='min-width: 7em; text-align: right;'>  0.3695</td>
+<td style='min-width: 7em; text-align: right;'> 0.0677</td>
+<td style='min-width: 7em; text-align: right;'> 5.46</td>
+<td style='min-width: 7em; text-align: right;'><0.0001</td>
 </tr>
 <tr>
-<td style="text-align: left;">
-csize=&gt;50
-</td>
-<td style="min-width: 7em; text-align: right;">
-  0.5983
-</td>
-<td style="min-width: 7em; text-align: right;">
- 0.0955
-</td>
-<td style="min-width: 7em; text-align: right;">
-6.26
-</td>
-<td style="min-width: 7em; text-align: right;">
-&lt;0.0001
-</td>
+<td style='min-width: 7em; text-align: left;'>csize=>50</td>
+<td style='min-width: 7em; text-align: right;'>  0.5983</td>
+<td style='min-width: 7em; text-align: right;'> 0.0955</td>
+<td style='min-width: 7em; text-align: right;'> 6.26</td>
+<td style='min-width: 7em; text-align: right;'><0.0001</td>
 </tr>
 <tr>
-<td style="text-align: left;">
-cnode=1-3
-</td>
-<td style="min-width: 7em; text-align: right;">
-  0.3856
-</td>
-<td style="min-width: 7em; text-align: right;">
- 0.0788
-</td>
-<td style="min-width: 7em; text-align: right;">
-4.89
-</td>
-<td style="min-width: 7em; text-align: right;">
-&lt;0.0001
-</td>
+<td style='min-width: 7em; text-align: left;'>cnode=1-3</td>
+<td style='min-width: 7em; text-align: right;'>  0.3856</td>
+<td style='min-width: 7em; text-align: right;'> 0.0788</td>
+<td style='min-width: 7em; text-align: right;'> 4.89</td>
+<td style='min-width: 7em; text-align: right;'><0.0001</td>
 </tr>
 <tr>
-<td style="text-align: left;">
-cnode=4+
-</td>
-<td style="min-width: 7em; text-align: right;">
-  1.0856
-</td>
-<td style="min-width: 7em; text-align: right;">
- 0.0729
-</td>
-<td style="min-width: 7em; text-align: right;">
-14.88
-</td>
-<td style="min-width: 7em; text-align: right;">
-&lt;0.0001
-</td>
+<td style='min-width: 7em; text-align: left;'>cnode=4+</td>
+<td style='min-width: 7em; text-align: right;'>  1.0856</td>
+<td style='min-width: 7em; text-align: right;'> 0.0729</td>
+<td style='min-width: 7em; text-align: right;'>14.88</td>
+<td style='min-width: 7em; text-align: right;'><0.0001</td>
 </tr>
 <tr>
-<td style="text-align: left;">
-cgrade=3+
-</td>
-<td style="min-width: 7em; text-align: right;">
-  0.3491
-</td>
-<td style="min-width: 7em; text-align: right;">
- 0.0758
-</td>
-<td style="min-width: 7em; text-align: right;">
-4.60
-</td>
-<td style="min-width: 7em; text-align: right;">
-&lt;0.0001
-</td>
+<td style='min-width: 7em; text-align: left;'>cgrade=3+</td>
+<td style='min-width: 7em; text-align: right;'>  0.3491</td>
+<td style='min-width: 7em; text-align: right;'> 0.0758</td>
+<td style='min-width: 7em; text-align: right;'> 4.60</td>
+<td style='min-width: 7em; text-align: right;'><0.0001</td>
 </tr>
 <tr>
-<td style="text-align: left;">
-pgr2
-</td>
-<td style="min-width: 7em; text-align: right;">
- -0.0033
-</td>
-<td style="min-width: 7em; text-align: right;">
- 0.0006
-</td>
-<td style="min-width: 7em; text-align: right;">
--5.47
-</td>
-<td style="min-width: 7em; text-align: right;">
-&lt;0.0001
-</td>
+<td style='min-width: 7em; text-align: left;'>pgr2</td>
+<td style='min-width: 7em; text-align: right;'> -0.0033</td>
+<td style='min-width: 7em; text-align: right;'> 0.0006</td>
+<td style='min-width: 7em; text-align: right;'>-5.47</td>
+<td style='min-width: 7em; text-align: right;'><0.0001</td>
 </tr>
 <tr>
-<td style="border-bottom: 2px solid grey; text-align: left;">
-pgr2’
-</td>
-<td style="min-width: 7em; border-bottom: 2px solid grey; text-align: right;">
-  0.0143
-</td>
-<td style="min-width: 7em; border-bottom: 2px solid grey; text-align: right;">
- 0.0030
-</td>
-<td style="min-width: 7em; border-bottom: 2px solid grey; text-align: right;">
-4.78
-</td>
-<td style="min-width: 7em; border-bottom: 2px solid grey; text-align: right;">
-&lt;0.0001
-</td>
+<td style='min-width: 7em; border-bottom: 2px solid grey; text-align: left;'>pgr2'</td>
+<td style='min-width: 7em; border-bottom: 2px solid grey; text-align: right;'>  0.0143</td>
+<td style='min-width: 7em; border-bottom: 2px solid grey; text-align: right;'> 0.0030</td>
+<td style='min-width: 7em; border-bottom: 2px solid grey; text-align: right;'> 4.78</td>
+<td style='min-width: 7em; border-bottom: 2px solid grey; text-align: right;'><0.0001</td>
 </tr>
 </tbody>
 </table>
-<!--/html_preserve-->
 
 ``` r
 options(datadist=NULL)
@@ -1169,9 +957,9 @@ kable(res_ov) %>%
 <table class="table table-striped" style="margin-left: auto; margin-right: auto;">
 <thead>
 <tr>
-<th style="border-bottom:hidden" colspan="1">
+<th style="empty-cells: hide;border-bottom:hidden;" colspan="1">
 </th>
-<th style="border-bottom:hidden; padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="3">
+<th style="border-bottom:hidden;padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="3">
 
 <div style="border-bottom: 1px solid #ddd; padding-bottom: 5px; ">
 
@@ -1180,7 +968,7 @@ Apparent
 </div>
 
 </th>
-<th style="border-bottom:hidden; padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="3">
+<th style="border-bottom:hidden;padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="3">
 
 <div style="border-bottom: 1px solid #ddd; padding-bottom: 5px; ">
 
@@ -1189,7 +977,7 @@ Apparent + PGR
 </div>
 
 </th>
-<th style="border-bottom:hidden; padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="3">
+<th style="border-bottom:hidden;padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="3">
 
 <div style="border-bottom: 1px solid #ddd; padding-bottom: 5px; ">
 
@@ -1198,7 +986,7 @@ External
 </div>
 
 </th>
-<th style="border-bottom:hidden; padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="3">
+<th style="border-bottom:hidden;padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="3">
 
 <div style="border-bottom: 1px solid #ddd; padding-bottom: 5px; ">
 
@@ -1431,9 +1219,9 @@ kable(res_discr) %>%
 <table class="table table-striped" style="margin-left: auto; margin-right: auto;">
 <thead>
 <tr>
-<th style="border-bottom:hidden" colspan="1">
+<th style="empty-cells: hide;border-bottom:hidden;" colspan="1">
 </th>
-<th style="border-bottom:hidden; padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="3">
+<th style="border-bottom:hidden;padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="3">
 
 <div style="border-bottom: 1px solid #ddd; padding-bottom: 5px; ">
 
@@ -1442,7 +1230,7 @@ Apparent
 </div>
 
 </th>
-<th style="border-bottom:hidden; padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="3">
+<th style="border-bottom:hidden;padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="3">
 
 <div style="border-bottom: 1px solid #ddd; padding-bottom: 5px; ">
 
@@ -1451,7 +1239,7 @@ Apparent + PGR
 </div>
 
 </th>
-<th style="border-bottom:hidden; padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="3">
+<th style="border-bottom:hidden;padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="3">
 
 <div style="border-bottom: 1px solid #ddd; padding-bottom: 5px; ">
 
@@ -1460,7 +1248,7 @@ External
 </div>
 
 </th>
-<th style="border-bottom:hidden; padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="3">
+<th style="border-bottom:hidden;padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="3">
 
 <div style="border-bottom: 1px solid #ddd; padding-bottom: 5px; ">
 
@@ -1630,9 +1418,9 @@ OE.ratio.t<-function(tfup,event,pred.risk,thorizon,alpha=.05)
 }
 
 OE.rdata<-round(OE.ratio.t(rdata$ryear,event=rdata$status,pred.risk=1-edata1$predsurv5,thorizon = 5),2)
-OE.rdata1b<-round(OE.ratio.t(rdata$ryear,event=rdata$status,pred.risk=1-edata1$predsurv5,thorizon = 5),2)
+OE.rdata1b<-round(OE.ratio.t(rdata$ryear,event=rdata$status,pred.risk=1-edata1$predsurv5_1b,thorizon = 5),2)
 
-OE.vdata<-round(OE.ratio.t(vdata$ryear,event=vdata$status,pred.risk=1-evdata1$predsurv5_1b,thorizon = 5),2)
+OE.vdata<-round(OE.ratio.t(vdata$ryear,event=vdata$status,pred.risk=1-evdata1$predsurv5,thorizon = 5),2)
 OE.vdata1b<-round(OE.ratio.t(vdata$ryear,event=vdata$status,pred.risk=1-evdata1$predsurv5_1b,thorizon = 5),2)
 
 
@@ -1655,9 +1443,9 @@ kable(res_OE) %>%
 <table class="table table-striped" style="margin-left: auto; margin-right: auto;">
 <thead>
 <tr>
-<th style="border-bottom:hidden" colspan="1">
+<th style="empty-cells: hide;border-bottom:hidden;" colspan="1">
 </th>
-<th style="border-bottom:hidden; padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="3">
+<th style="border-bottom:hidden;padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="3">
 
 <div style="border-bottom: 1px solid #ddd; padding-bottom: 5px; ">
 
@@ -1666,7 +1454,7 @@ Apparent
 </div>
 
 </th>
-<th style="border-bottom:hidden; padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="3">
+<th style="border-bottom:hidden;padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="3">
 
 <div style="border-bottom: 1px solid #ddd; padding-bottom: 5px; ">
 
@@ -1675,7 +1463,7 @@ Apparent + PGR
 </div>
 
 </th>
-<th style="border-bottom:hidden; padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="3">
+<th style="border-bottom:hidden;padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="3">
 
 <div style="border-bottom: 1px solid #ddd; padding-bottom: 5px; ">
 
@@ -1684,7 +1472,7 @@ External
 </div>
 
 </th>
-<th style="border-bottom:hidden; padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="3">
+<th style="border-bottom:hidden;padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="3">
 
 <div style="border-bottom: 1px solid #ddd; padding-bottom: 5px; ">
 
@@ -1750,15 +1538,6 @@ O/E ratio
 1.04
 </td>
 <td style="text-align:right;">
-1.11
-</td>
-<td style="text-align:right;">
-0.99
-</td>
-<td style="text-align:right;">
-1.25
-</td>
-<td style="text-align:right;">
 0.99
 </td>
 <td style="text-align:right;">
@@ -1766,6 +1545,15 @@ O/E ratio
 </td>
 <td style="text-align:right;">
 1.04
+</td>
+<td style="text-align:right;">
+1.11
+</td>
+<td style="text-align:right;">
+0.99
+</td>
+<td style="text-align:right;">
+1.25
 </td>
 <td style="text-align:right;">
 1.08
