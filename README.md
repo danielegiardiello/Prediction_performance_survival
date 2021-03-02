@@ -17,6 +17,6 @@ R/Rstudio and packages version information used to generate the documentation an
 
 Data, external functions and figures are available in the corresponding subfolders.  
 
-SAS code are available [here](https://github.com/danielegiardiello/Prediction_performance_survival/tree/main/SAS_code).
+SAS code is available [here](https://github.com/danielegiardiello/Prediction_performance_survival/tree/main/SAS_code).
 
 
