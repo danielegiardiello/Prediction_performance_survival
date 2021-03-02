@@ -16,7 +16,6 @@ The RMarkdown source code (.Rmd) is [here](https://github.com/danielegiardiello/
 R/Rstudio and packages version information used to generate the documentation and code are available [here](https://github.com/danielegiardiello/Prediction_performance_survival/blob/main/sessionInfo.md).
 
 Data, external functions and figures are available in the corresponding subfolders.
-A general SAS code will be also available.  
-
+SAS code are available [here](https://github.com/danielegiardiello/Prediction_performance_survival/tree/main/SAS_code).
 
 
