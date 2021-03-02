@@ -1630,9 +1630,9 @@ OE.ratio.t<-function(tfup,event,pred.risk,thorizon,alpha=.05)
 }
 
 OE.rdata<-round(OE.ratio.t(rdata$ryear,event=rdata$status,pred.risk=1-edata1$predsurv5,thorizon = 5),2)
-OE.rdata1b<-round(OE.ratio.t(vdata$ryear,event=vdata$status,pred.risk=1-evdata1$predsurv5,thorizon = 5),2)
+OE.rdata1b<-round(OE.ratio.t(rdata$ryear,event=rdata$status,pred.risk=1-edata1$predsurv5,thorizon = 5),2)
 
-OE.vdata<-round(OE.ratio.t(rdata$ryear,event=rdata$status,pred.risk=1-edata1$predsurv5_1b,thorizon = 5),2)
+OE.vdata<-round(OE.ratio.t(vdata$ryear,event=vdata$status,pred.risk=1-evdata1$predsurv5_1b,thorizon = 5),2)
 OE.vdata1b<-round(OE.ratio.t(vdata$ryear,event=vdata$status,pred.risk=1-evdata1$predsurv5_1b,thorizon = 5),2)
 
 
