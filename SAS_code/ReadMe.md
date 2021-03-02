@@ -8,7 +8,7 @@ The corresponding SAS code are provided here created by [David McLernon](https:/
 
 + [04_external_validation_when_model_estimates_and_baseline_survival_available](https://github.com/danielegiardiello/Prediction_performance_survival/blob/main/SAS_code/04_external_validation_when_model_estimates_and_baseline_survival_available.sas) provided the SAS code to externally validated the prediction model in a new data when only the model equation of the prediction model is provided.
 
-NOTE: SAS code requires some external macros:
+NOTE -  SAS code requires some external macros:
 + [RCSPLINE macro](https://github.com/danielegiardiello/Prediction_performance_survival/blob/main/Functions/RCSPLINE%20macro.sas) to calculate restricted cubic splines;
 
 + [stdca](https://github.com/danielegiardiello/Prediction_performance_survival/blob/main/Functions/stdca.sas) to calculate net benefit and decision curves.
