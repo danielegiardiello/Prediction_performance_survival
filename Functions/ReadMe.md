@@ -2,7 +2,7 @@ Functions useful to calculate some performance measures of a survival model and 
 
 The R/SAS functions are:
 
-+ internal_cv.r calculates the bootstrap optimism-corrected internal validation;
++ internal_cv.R calculates the bootstrap optimism-corrected internal validation;
 
 + stdca.r calculates the net benefit and the corresponding decision curves as proposed by [Vickers et al](https://www.mskcc.org/departments/epidemiology-biostatistics/biostatistics/decision-curve-analysis). The corresponding SAS function is stdca.sas.
 
