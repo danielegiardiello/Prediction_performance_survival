@@ -1,20 +1,7 @@
-library(rms)
-library(survival)
-library(pec)
-library(tidyverse)
-library(timeROC)
-library(riskRegression)
-
-
-set.seed(1234)
-db<-SimSurv(25)
-
-# db$id<-1:1000
-names(db)<-tolower(names(db))
-db <- db %>% select(time,event,x1,x2) %>% rename(tevent=time)
-names(db)
-
-
+# 04th March 2021
+# Goal: function to calculate optimism-corrected bootstrap internal validation of 
+# Area under the Curve, Brier Score and Scaled Brier.
+# Author: Daniele Giardiello
 bootstrap_cv<-function(db,B=10,
                        time,
                        status,
