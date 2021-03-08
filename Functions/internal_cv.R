@@ -5,16 +5,6 @@ library(tidyverse)
 library(timeROC)
 library(riskRegression)
 
-
-set.seed(1234)
-db<-SimSurv(25)
-
-# db$id<-1:1000
-names(db)<-tolower(names(db))
-db <- db %>% select(time,event,x1,x2) %>% rename(tevent=time)
-names(db)
-
-
 bootstrap_cv<-function(db,B=10,
                        time,
                        status,
@@ -123,6 +113,6 @@ bootstrap_cv<-function(db,B=10,
   IPA_corrected<-b$IPA_app[1]-mean(b$IPA_diff)
   res<-c(AUC_corrected,Brier_corrected,IPA_corrected)
   names(res)<-c('AUC corrected','Brier corrected','IPA corrected')
-  return(b)
+  return(res)
   
 }
