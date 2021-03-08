@@ -1,7 +1,17 @@
+<<<<<<< HEAD
 # 04th March 2021
 # Goal: function to calculate optimism-corrected bootstrap internal validation of 
 # Area under the Curve, Brier Score and Scaled Brier.
 # Author: Daniele Giardiello
+=======
+library(rms)
+library(survival)
+library(pec)
+library(tidyverse)
+library(timeROC)
+library(riskRegression)
+
+>>>>>>> c22687ca0592f597e4ccbb49396ab78ff6cd648d
 bootstrap_cv<-function(db,B=10,
                        time,
                        status,
@@ -110,6 +120,6 @@ bootstrap_cv<-function(db,B=10,
   IPA_corrected<-b$IPA_app[1]-mean(b$IPA_diff)
   res<-c(AUC_corrected,Brier_corrected,IPA_corrected)
   names(res)<-c('AUC corrected','Brier corrected','IPA corrected')
-  return(b)
+  return(res)
   
 }
