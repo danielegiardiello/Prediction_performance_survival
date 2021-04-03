@@ -27,7 +27,7 @@ The goals are:
 3. To assess the potential clinical utility of a risk prediction model with time-to-event outcome;  
 
 
-### Install/load packages and import data
+### Load packages and import data
 We following libraries are needed to achieve the following goals, if you have not them installed, please use
 install.packages('') (e.g. install.packages('survival')) or use the user-friendly approach if you are using RStudio.
 
@@ -119,11 +119,11 @@ gtsummary::tbl_summary(
 ```
 
 
-## Goal 1: develop a risk prediction model with a time-to-event outcome
+## Goal 1 - Develop a risk prediction model with a time to event outcome
 Prediction models are useful to provide the estimated probability of a specific outcome using personal information.
 In many studies, especially in medicine, the main outcome under assessment is the time to an event of interest defined generally as survival time. Prognostic models for survival end points, such as recurrence or progression of disease, need to account for drop out during follow-up. Patients who have not experienced the event of interest are censored observations. Cox regression analysis is the most popular statistical model to deal with such data in oncology and other medical research.  
 
-### 1.1 Preliminary investigation: survival and censoring curves in the development and validation data
+### 1.1 Preliminary investigation - survival and censoring curves in the development and validation data
 First, we draw the survival and the censoring curves of the development and validation data
 ```{r, surv, fig.align='center'}
 # Development set
@@ -153,7 +153,7 @@ The 5-year survival was 59% (95% CI: 58-61%).
 A number of 686 patients were selected to externally validate the risk prediction model.The median survival in the validation data was 4 years. The median survival was 5 years while the 5-year survival was 49% (95% CI: 45-54%).
 
 
-### 1.2 Secondary investigation: check non-linearity of continuous predictors
+### 1.2 Secondary investigation - check non-linearity of continuous predictors
 The potential non-linear relation between continuous predictors (i.e. progesterone level) and the outcome should be investigated before developing a risk prediction model. Non-linearity of continuous predictors can be checked using splines.  
 Physically, a spline is a flexible wood or metal strip, which is passed through a set of fixed points (knots) in order to approximate a curve. The most common computational approximation to this is a cubic smoothing spline which is cubic between the knot points, and constrained to be linear beyond the two end knots. 
 For the restricted cubic spline using rms::rcs() R package::function(), the position of the knots are defined at 10<sup>th</sup>,50<sup>th</sup> and 90<sup>th</sup> quantile of the continuous predictor distribution. For more details see Frank Harrell's book 'Regression Model Strategies' on page 27 (second edition).  
@@ -192,7 +192,7 @@ vdata$pgr3 <- rcs3_pgr
 rm(rcs3_pgr)
 ```
 
-### 1.3 Model development: first check - the proportional hazard (PH) assumption
+### 1.3 Model development - first check - the proportional hazard (PH) assumption
 We now examine the fits in a more careful way by checking the proportionality of the hazards of the Cox regression model.
 Firstly, we fit the first prediction model in the development data using size, node, grade. Then, we check the PH assumption.
 
@@ -259,7 +259,7 @@ Possible alternatives to address the violation of proportional hazards are:
 
 If we ignored the non-proportional hazards entirely, the prediction performance of the model may lead to increase bias in estimating the risk especially in terms of calibration performances.
 
-### 1.4 Model development: fit the risk prediction models
+### 1.4 Model development - fit the risk prediction models
 We develop the risk prediction model in the development data considering the first 5-year follow-up to minimize the violation of proportional hazard including size, nodel and grade. The second model also includes the progesterone level modelled using a 3-knot restricted cubic spline.  
 We also administratively censored the validation data at 5 years.
 
@@ -306,7 +306,7 @@ options(datadist = NULL)
 The coefficients of the models indicated that higher size, higher number of positive lymph nodes and higher grade is more associate with poorer prognosis. The association of the progesterone biomarker and the outcome is non-linear as investigated previously.
 
 
-## Goal 2: Assessing performance in survival prediction models
+## Goal 2 - Assessing performance in survival prediction models
 The performance of a risk prediction models may be evaluated through:  
   
   + discrimination:  the ability of the model to identify patients with and without the outcome and it requires the coefficients (or the log of the hazard ratios) of the developed risk prediction model to be evaluated.   
@@ -573,7 +573,7 @@ The observed probabilities estimated by the Kaplan-Meier curves (in case of surv
 
 Other calibration measures are proposed in the literature. More details are provided in the references at the end of the document. 
 
-### 2.3.1 Observed/Expected ratio
+### 2.3.1 Observed Expected ratio
 
 We calculate the observed/ expected ratio (OE) at 5 years in the development and validation data.
 In the development data the OE should be (close to) 1.  
@@ -712,7 +712,7 @@ the observed probabilities of recurrence.
 The additional information of PGR improved the overall calibration, especially for the highest values, as shown in the two calibration plots above.
 
 
-## Goal 3: Clinical utility
+## Goal 3 - Clinical utility
 Discrimination and calibration measures are essential to assess the prediction performance but insufficient to evaluate the potential clinical utility of a risk prediction model for decision making. When new markers are available, clinical utility assessment evaluates whether the extended model helps to improve decision making.  
 Clinical utility is measured by the net benefit that includes the number of true positives and the number of false positives. For example, in time-to-event models, the true positives reflect the benefit of being event free for a given time horizon using additional interventions such as additional treatments, personalized follow-up or additional surgeries. The false positives represent the harms of unnecessary interventions.   
 Generally, in medicine, clinicians accepts to treat a certain number of patients for which interventions are unnecessary to be event free for a given time horizon. So, false negatives (the harm of not being event free for a given time horizon) are more important than false positives (the harm of unnecessary interventions). Thus, net benefit is the number of true positives classifications minus the false positives classifications weighted by a factor related to the harm of not preventing the event versus unnecessary interventions. The weighting is derived from the threshold probability to death (one minus survival probability) using a defined time horizon (for example 5 years since diagnosis). For example, a threshold of 10% implies that additional interventions for 10 patients of whom one would have experience the event in 5 years if untreated is acceptable (thus treating 9 unnecessary patients). This strategy is compared with the strategies of treat all and treat none patients. If overtreatment is harmful, a higher threshold should be used.  

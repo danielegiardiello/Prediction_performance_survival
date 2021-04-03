@@ -2,31 +2,30 @@ Performance assessment of survival prediction models - simplified code
 ================
 
 -   [Goals](#goals)
-    -   [Install/load packages and import
-        data](#installload-packages-and-import-data)
+    -   [Load packages and import data](#load-packages-and-import-data)
     -   [Descriptive statistics](#descriptive-statistics)
--   [Goal 1: develop a risk prediction model with a time-to-event
-    outcome](#goal-1-develop-a-risk-prediction-model-with-a-time-to-event-outcome)
-    -   [1.1 Preliminary investigation: survival and censoring curves in
-        the development and validation
-        data](#preliminary-investigation-survival-and-censoring-curves-in-the-development-and-validation-data)
-    -   [1.2 Secondary investigation: check non-linearity of continuous
-        predictors](#secondary-investigation-check-non-linearity-of-continuous-predictors)
-    -   [1.3 Model development: first check - the proportional hazard
+-   [Goal 1 - Develop a risk prediction model with a time to event
+    outcome](#goal-1---develop-a-risk-prediction-model-with-a-time-to-event-outcome)
+    -   [1.1 Preliminary investigation - survival and censoring curves
+        in the development and validation
+        data](#preliminary-investigation---survival-and-censoring-curves-in-the-development-and-validation-data)
+    -   [1.2 Secondary investigation - check non-linearity of continuous
+        predictors](#secondary-investigation---check-non-linearity-of-continuous-predictors)
+    -   [1.3 Model development - first check - the proportional hazard
         (PH)
-        assumption](#model-development-first-check---the-proportional-hazard-ph-assumption)
-    -   [1.4 Model development: fit the risk prediction
-        models](#model-development-fit-the-risk-prediction-models)
--   [Goal 2: Assessing performance in survival prediction
-    models](#goal-2-assessing-performance-in-survival-prediction-models)
+        assumption](#model-development---first-check---the-proportional-hazard-ph-assumption)
+    -   [1.4 Model development - fit the risk prediction
+        models](#model-development---fit-the-risk-prediction-models)
+-   [Goal 2 - Assessing performance in survival prediction
+    models](#goal-2---assessing-performance-in-survival-prediction-models)
     -   [2.1 Overall performance
         measures](#overall-performance-measures)
     -   [2.2 Discrimination measures](#discrimination-measures)
     -   [2.3 Calibration](#calibration)
-    -   [2.3.1 Observed/Expected ratio](#observedexpected-ratio)
+    -   [2.3.1 Observed Expected ratio](#observed-expected-ratio)
     -   [2.3.2 Calibration plot using restricted cubic
         splines](#calibration-plot-using-restricted-cubic-splines)
--   [Goal 3: Clinical utility](#goal-3-clinical-utility)
+-   [Goal 3 - Clinical utility](#goal-3---clinical-utility)
 -   [References](#references)
 -   [Reproducibility ticket](#reproducibility-ticket)
 
@@ -45,7 +44,7 @@ outcome;
 3. To assess the potential clinical utility of a risk prediction model
 with time-to-event outcome;
 
-### Install/load packages and import data
+### Load packages and import data
 
 We following libraries are needed to achieve the following goals, if you
 have not them installed, please use install.packages(’‘)
@@ -298,7 +297,7 @@ Median (Range)
 </tbody>
 </table>
 
-## Goal 1: develop a risk prediction model with a time-to-event outcome
+## Goal 1 - Develop a risk prediction model with a time to event outcome
 
 Prediction models are useful to provide the estimated probability of a
 specific outcome using personal information. In many studies, especially
@@ -310,7 +309,7 @@ experienced the event of interest are censored observations. Cox
 regression analysis is the most popular statistical model to deal with
 such data in oncology and other medical research.
 
-### 1.1 Preliminary investigation: survival and censoring curves in the development and validation data
+### 1.1 Preliminary investigation - survival and censoring curves in the development and validation data
 
 First, we draw the survival and the censoring curves of the development
 and validation data
@@ -351,7 +350,7 @@ validate the risk prediction model.The median survival in the validation
 data was 4 years. The median survival was 5 years while the 5-year
 survival was 49% (95% CI: 45-54%).
 
-### 1.2 Secondary investigation: check non-linearity of continuous predictors
+### 1.2 Secondary investigation - check non-linearity of continuous predictors
 
 The potential non-linear relation between continuous predictors
 (i.e. progesterone level) and the outcome should be investigated before
@@ -409,7 +408,7 @@ vdata$pgr3 <- rcs3_pgr
 rm(rcs3_pgr)
 ```
 
-### 1.3 Model development: first check - the proportional hazard (PH) assumption
+### 1.3 Model development - first check - the proportional hazard (PH) assumption
 
 We now examine the fits in a more careful way by checking the
 proportionality of the hazards of the Cox regression model. Firstly, we
@@ -726,7 +725,7 @@ If we ignored the non-proportional hazards entirely, the prediction
 performance of the model may lead to increase bias in estimating the
 risk especially in terms of calibration performances.
 
-### 1.4 Model development: fit the risk prediction models
+### 1.4 Model development - fit the risk prediction models
 
 We develop the risk prediction model in the development data considering
 the first 5-year follow-up to minimize the violation of proportional
@@ -982,7 +981,7 @@ of positive lymph nodes and higher grade is more associate with poorer
 prognosis. The association of the progesterone biomarker and the outcome
 is non-linear as investigated previously.
 
-## Goal 2: Assessing performance in survival prediction models
+## Goal 2 - Assessing performance in survival prediction models
 
 The performance of a risk prediction models may be evaluated through:
 
@@ -1513,7 +1512,7 @@ Calibration is measured by:
 Other calibration measures are proposed in the literature. More details
 are provided in the references at the end of the document.
 
-### 2.3.1 Observed/Expected ratio
+### 2.3.1 Observed Expected ratio
 
 We calculate the observed/ expected ratio (OE) at 5 years in the
 development and validation data. In the development data the OE should
@@ -1780,7 +1779,7 @@ The additional information of PGR improved the overall calibration,
 especially for the highest values, as shown in the two calibration plots
 above.
 
-## Goal 3: Clinical utility
+## Goal 3 - Clinical utility
 
 Discrimination and calibration measures are essential to assess the
 prediction performance but insufficient to evaluate the potential
