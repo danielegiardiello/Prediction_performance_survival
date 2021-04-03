@@ -2,36 +2,36 @@ Performance assessment of survival prediction models - extended code
 ================
 
 -   [Goals](#goals)
-    -   [Install/load packages and import
-        data](#install-load-packages-and-import-data)
+    -   [Load packages and import data](#load-packages-and-import-data)
     -   [Descriptive statistics](#descriptive-statistics)
--   [Goal 1: develop a risk prediction model with a time-to-event
-    outcome](#goal-1--develop-a-risk-prediction-model-with-a-time-to-event-outcome)
-    -   [1.1 Preliminary investigation: survival and censoring curves in
-        the development and validation
-        data](#11-preliminary-investigation--survival-and-censoring-curves-in-the-development-and-validation-data)
-    -   [1.2 Secondary investigation: check non-linearity of continuous
-        predictors](#12-secondary-investigation--check-non-linearity-of-continuous-predictors)
-    -   [1.3 Model development: first check - the proportional hazard
+-   [Goal 1 - Develop a risk prediction model with a time-to-event
+    outcome](#goal-1---develop-a-risk-prediction-model-with-a-time-to-event-outcome)
+    -   [1.1 Preliminary investigation - survival and censoring curves
+        in the development and validation
+        data](#preliminary-investigation---survival-and-censoring-curves-in-the-development-and-validation-data)
+    -   [1.2 Secondary investigation - check non-linearity of continuous
+        predictors](#secondary-investigation---check-non-linearity-of-continuous-predictors)
+    -   [1.3 Model development - first check - the proportional hazard
         (PH)
-        assumption](#13-model-development--first-check---the-proportional-hazard--ph--assumption)
-    -   [1.4 Model development: fit the risk prediction
-        models](#14-model-development--fit-the-risk-prediction-models)
--   [Goal 2: Assessing performance in survival prediction
-    models](#goal-2--assessing-performance-in-survival-prediction-models)
+        assumption](#model-development---first-check---the-proportional-hazard-ph-assumption)
+    -   [1.4 Model development - fit the risk prediction
+        models](#model-development---fit-the-risk-prediction-models)
+-   [Goal 2 - Assessing performance in survival prediction
+    models](#goal-2---assessing-performance-in-survival-prediction-models)
     -   [2.1 Overall performance
-        measures](#21-overall-performance-measures)
-    -   [2.2 Discrimination measures](#22-discrimination-measures)
-    -   [2.3 Calibration](#23-calibration)
+        measures](#overall-performance-measures)
+    -   [2.2 Discrimination measures](#discrimination-measures)
+    -   [2.3 Calibration](#calibration)
         -   [2.3.1 Calibration-in-the-large and calibration
-            slope](#231-calibration-in-the-large-and-calibration-slope)
+            slope](#calibration-in-the-large-and-calibration-slope)
         -   [2.3.2 Calibration plot using restricted cubic
-            splines](#232-calibration-plot-using-restricted-cubic-splines)
+            splines](#calibration-plot-using-restricted-cubic-splines)
         -   [2.3.3 Other calibration metrics: ICI, E50,E90 and Emax
             based on restricted cubic
-            splines](#233-other-calibration-metrics--ici--e50-e90-and-emax-based-on-restricted-cubic-splines)
--   [Goal 3: Clinical utility](#goal-3--clinical-utility)
+            splines](#other-calibration-metrics-ici-e50e90-and-emax-based-on-restricted-cubic-splines)
+-   [Goal 3 - Clinical utility](#goal-3---clinical-utility)
 -   [References](#references)
+-   [Reproducibility ticket](#reproducibility-ticket)
 
 ## Goals
 
@@ -51,7 +51,7 @@ The extended code basically evaluates the prediction performance at a
 fixed time horizon (e.g. 5 years) and also for the entire follow-up
 time.
 
-### Install/load packages and import data
+### Load packages and import data
 
 We following libraries are needed to achieve the following goals, if you
 have not them installed, please use install.packages(’‘)
@@ -59,29 +59,37 @@ have not them installed, please use install.packages(’‘)
 you are using RStudio.
 
 ``` r
-# Libraries needed
-library(survival)
-library(rms)
-library(sqldf)
-library(pec)
-library(riskRegression)
-library(survAUC)
-library(survivalROC)
-library(timeROC)
-library(plotrix)
-library(splines)
-library(knitr)
-library(table1)
-library(kableExtra)
-library(boot)
-library(tidyverse)
-library(rsample)
-library(webshot)
-webshot::install_phantomjs()
+# Use pacman to check whether packages are installed, if not load
+if (!require("pacman")) install.packages("pacman")
+library(pacman)
+
+pacman::p_load(
+  rio,
+  survival,
+  rms,
+  mstate,
+  sqldf,
+  pec,
+  riskRegression,
+  survAUC,
+  survivalROC,
+  timeROC,
+  plotrix,
+  splines,
+  knitr,
+  table1,
+  kableExtra,
+  gtsummary,
+  boot,
+  tidyverse,
+  rsample,
+  gridExtra,
+  webshot
+)
 
 
-rdata<-readRDS('C:\\Users\\danie\\Documents\\Predsurv\\Data\\rdata.rds')
-vdata<-readRDS('C:\\Users\\danie\\Documents\\Predsurv\\Data\\vdata.rds')
+rdata <- readRDS(here::here("Data/rdata.rds"))
+vdata <- readRDS(here::here("Data/vdata.rds"))
 ```
 
 We loaded the development (rdata) and the validation data (vdata) from
@@ -101,36 +109,229 @@ Study data (validation data).
 ### Descriptive statistics
 
 ``` r
-rdata$id<-rdata$pid
-rsel<-rdata[,c('id', 'csize', 'cnode', 'cgrade', 'age', 'pgr')]
-vsel<-vdata[,c('id', 'csize', 'cnode', 'cgrade', 'age', 'pgr')]
-rsel$dt<-1
-vsel$dt<-2
-cdata<-rbind(rsel,vsel)
-cdata$dt<-factor(cdata$dt,levels=c(1,2),
-                 labels=c('Development dataset', 'Validation dataset'))
+rdata$id <- rdata$pid
+rsel <- rdata[, c("id", "csize", "cnode", "cgrade", "age", "pgr")]
+vsel <- vdata[, c("id", "csize", "cnode", "cgrade", "age", "pgr")]
+rsel$dt <- 1
+vsel$dt <- 2
+cdata <- rbind(rsel, vsel)
+cdata$dt <- factor(cdata$dt,
+  levels = c(1, 2),
+  labels = c("Development dataset", "Validation dataset")
+)
 
-label(cdata$csize)<-'Size'
-label(cdata$cnode)<-'Number of nodes'
-label(cdata$cgrade)<-'Grade of tumor'
-label(cdata$age)<-'Age'
-label(cdata$pgr)<-'PGR'
-label(cdata$dt)<-'Dataset'
+label(cdata$csize) <- "Size"
+label(cdata$cnode) <- "Number of nodes"
+label(cdata$cgrade) <- "Grade of tumor"
+label(cdata$age) <- "Age"
+label(cdata$pgr) <- "PGR"
+label(cdata$dt) <- "Dataset"
 
-units(cdata$csize)<-'mm'
-units(cdata$age)<-'years'
-units(cdata$pgr)<-'ng/mL'
+units(cdata$csize) <- "mm"
+units(cdata$age) <- "years"
+units(cdata$pgr) <- "ng/mL"
 
 
-options(prType='html')
-tab1<-table1(~ csize + cnode + cgrade + age+ pgr| dt, data=cdata, overall=FALSE, topclass="Rtable1-zebra")
-# print(tab1)
-rm(rsel,vsel,cdata)
+options(prType = "html")
+tab1 <- table1(~ csize + cnode + cgrade + age + pgr | dt, data = cdata, overall = FALSE, topclass = "Rtable1-zebra")
 ```
 
-<img src="03_predsurv_extended_files/figure-gfm/tab1.png" style="display: block; margin: auto;" />
+<table class="table table-striped" style="margin-left: auto; margin-right: auto;">
+<thead>
+<tr>
+<th style="text-align:left;">
+Characteristic
+</th>
+<th style="text-align:left;">
+Development dataset, N = 2,982
+</th>
+<th style="text-align:left;">
+Validation dataset, N = 686
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+Size (cm)
+</td>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left; padding-left:  2em;" indentlevel="1">
+&lt;=20
+</td>
+<td style="text-align:left;">
+1,387 (47%)
+</td>
+<td style="text-align:left;">
+180 (26%)
+</td>
+</tr>
+<tr>
+<td style="text-align:left; padding-left:  2em;" indentlevel="1">
+21-50
+</td>
+<td style="text-align:left;">
+1,291 (43%)
+</td>
+<td style="text-align:left;">
+453 (66%)
+</td>
+</tr>
+<tr>
+<td style="text-align:left; padding-left:  2em;" indentlevel="1">
+&gt;50
+</td>
+<td style="text-align:left;">
+304 (10%)
+</td>
+<td style="text-align:left;">
+53 (7.7%)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Number of nodes
+</td>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left; padding-left:  2em;" indentlevel="1">
+0
+</td>
+<td style="text-align:left;">
+1,436 (48%)
+</td>
+<td style="text-align:left;">
+0 (0%)
+</td>
+</tr>
+<tr>
+<td style="text-align:left; padding-left:  2em;" indentlevel="1">
+1-3
+</td>
+<td style="text-align:left;">
+764 (26%)
+</td>
+<td style="text-align:left;">
+376 (55%)
+</td>
+</tr>
+<tr>
+<td style="text-align:left; padding-left:  2em;" indentlevel="1">
+4+
+</td>
+<td style="text-align:left;">
+782 (26%)
+</td>
+<td style="text-align:left;">
+310 (45%)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Grade of tumor
+</td>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left; padding-left:  2em;" indentlevel="1">
+1-2
+</td>
+<td style="text-align:left;">
+794 (27%)
+</td>
+<td style="text-align:left;">
+525 (77%)
+</td>
+</tr>
+<tr>
+<td style="text-align:left; padding-left:  2em;" indentlevel="1">
+3+
+</td>
+<td style="text-align:left;">
+2,188 (73%)
+</td>
+<td style="text-align:left;">
+161 (23%)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Age (years)
+</td>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left; padding-left:  2em;" indentlevel="1">
+Mean (SD)
+</td>
+<td style="text-align:left;">
+55 (13)
+</td>
+<td style="text-align:left;">
+53 (10)
+</td>
+</tr>
+<tr>
+<td style="text-align:left; padding-left:  2em;" indentlevel="1">
+Median (Range)
+</td>
+<td style="text-align:left;">
+54 (24, 90)
+</td>
+<td style="text-align:left;">
+53 (21, 80)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+PGR (ng/mL)
+</td>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left; padding-left:  2em;" indentlevel="1">
+Mean (SD)
+</td>
+<td style="text-align:left;">
+162 (291)
+</td>
+<td style="text-align:left;">
+110 (202)
+</td>
+</tr>
+<tr>
+<td style="text-align:left; padding-left:  2em;" indentlevel="1">
+Median (Range)
+</td>
+<td style="text-align:left;">
+41 (0, 5,004)
+</td>
+<td style="text-align:left;">
+32 (0, 2,380)
+</td>
+</tr>
+</tbody>
+</table>
 
-## Goal 1: develop a risk prediction model with a time-to-event outcome
+## Goal 1 - Develop a risk prediction model with a time-to-event outcome
 
 Prediction models are useful to provide the estimated probability of a
 specific outcome using personal information. In many studies, especially
@@ -142,38 +343,38 @@ experienced the event of interest are censored observations. Cox
 regression analysis is the most popular statistical model to deal with
 such data in oncology and other medical research.
 
-### 1.1 Preliminary investigation: survival and censoring curves in the development and validation data
+### 1.1 Preliminary investigation - survival and censoring curves in the development and validation data
 
 First, we draw the survival and the censoring curves of the development
 and validation data
 
 ``` r
 # Development set
-sfit1 <- survfit(Surv(ryear, status==1) ~1, data=rdata) # survival
-sfit2 <- survfit(Surv(ryear, status==0) ~1, rdata)      # censoring
+sfit1 <- survfit(Surv(ryear, status == 1) ~ 1, data = rdata) # survival
+sfit2 <- survfit(Surv(ryear, status == 0) ~ 1, rdata) # censoring
 
-par(xaxs='i',yaxs='i',las=1)
-plot(sfit1, conf.int=FALSE, lwd=2, xlab="Years",bty='n')
-lines(sfit2, conf.int=FALSE, col=2, lwd=2)
-legend(11, .9, c("Death", "Censoring"), col=1:2, lwd=2, bty='n')
-title('Development set')
+par(xaxs = "i", yaxs = "i", las = 1)
+plot(sfit1, conf.int = FALSE, lwd = 2, xlab = "Years", bty = "n")
+lines(sfit2, conf.int = FALSE, col = 2, lwd = 2)
+legend(11, .9, c("Death", "Censoring"), col = 1:2, lwd = 2, bty = "n")
+title("Development set")
 ```
 
-<img src="03_predsurv_extended_files/figure-gfm/surv-1.png" style="display: block; margin: auto;" />
+<img src="imgs/03_predsurv_extended/surv-1.png" width="672" style="display: block; margin: auto;" />
 
 ``` r
-# Validation set 
-sfit3 <- survfit(Surv(ryear, status==1) ~1, data=vdata) # survival
-sfit4 <- survfit(Surv(ryear, status==0) ~1, vdata)      # censoring
+# Validation set
+sfit3 <- survfit(Surv(ryear, status == 1) ~ 1, data = vdata) # survival
+sfit4 <- survfit(Surv(ryear, status == 0) ~ 1, vdata) # censoring
 
-par(xaxs='i',yaxs='i',las=1)
-plot(sfit3, conf.int=FALSE, lwd=2, xlab="Years",bty='n',xlim=c(0,8))
-lines(sfit4, conf.int=FALSE, col=2, lwd=2)
-legend('bottomleft', c("Death", "Censoring"), col=1:2, lwd=2, bty='n')
-title('Validation set')
+par(xaxs = "i", yaxs = "i", las = 1)
+plot(sfit3, conf.int = FALSE, lwd = 2, xlab = "Years", bty = "n", xlim = c(0, 8))
+lines(sfit4, conf.int = FALSE, col = 2, lwd = 2)
+legend("bottomleft", c("Death", "Censoring"), col = 1:2, lwd = 2, bty = "n")
+title("Validation set")
 ```
 
-<img src="03_predsurv_extended_files/figure-gfm/surv-2.png" style="display: block; margin: auto;" />
+<img src="imgs/03_predsurv_extended/surv-2.png" width="672" style="display: block; margin: auto;" />
 A number of 2982 patients were included to develop the risk prediction
 model for survival with a median follow-up of 9 years. The median
 survival in the development data was 8 years with the corresponding 95%
@@ -183,7 +384,7 @@ validate the risk prediction model.The median survival in the validation
 data was 4 years. The median survival was 5 years while the 5-year
 survival was 49% (95% CI: 45-54%).
 
-### 1.2 Secondary investigation: check non-linearity of continuous predictors
+### 1.2 Secondary investigation - check non-linearity of continuous predictors
 
 The potential non-linear relation between continuous predictors
 (i.e. progesterone level) and the outcome should be investigated before
@@ -205,20 +406,20 @@ level to the 90<sup>th</sup> percentile.
 
 ``` r
 # Winzorise PGR to the 99th percentile to deal with very large influential values;
-p99 <- quantile(rdata$pgr, probs=.99)
+p99 <- quantile(rdata$pgr, probs = .99)
 rdata$pgr2 <- pmin(rdata$pgr, p99)
 vdata$pgr2 <- pmin(vdata$pgr, p99)
 
-dd<-datadist(rdata)
-options(datadist='dd')
-fit_pgr<-cph(Surv(ryear,status)~rcs(pgr2),data=rdata,x=T,y=T,surv=T)
+dd <- datadist(rdata)
+options(datadist = "dd")
+fit_pgr <- cph(Surv(ryear, status) ~ rcs(pgr2), data = rdata, x = T, y = T, surv = T)
 plot(Predict(fit_pgr))
 ```
 
-<img src="03_predsurv_extended_files/figure-gfm/ff-1.png" style="display: block; margin: auto;" />
+<img src="imgs/03_predsurv_extended/ff-1.png" width="672" style="display: block; margin: auto;" />
 
 ``` r
-options(datadist=NULL)
+options(datadist = NULL)
 ```
 
 We should model the progesterone level using a three-knot restricted
@@ -227,21 +428,21 @@ cubic spline. We save the spline in the development and validation data.
 ``` r
 # Save in the date the restricted cubic spline term using rms::rcspline.eval() package
 # Development set
-rcs3_pgr<-rcspline.eval(rdata$pgr2, knots=c(0,41,486))
-attr(rcs3_pgr,'dim')<-NULL
-attr(rcs3_pgr,'knots')<-NULL
-rdata$pgr3<-rcs3_pgr
+rcs3_pgr <- rcspline.eval(rdata$pgr2, knots = c(0, 41, 486))
+attr(rcs3_pgr, "dim") <- NULL
+attr(rcs3_pgr, "knots") <- NULL
+rdata$pgr3 <- rcs3_pgr
 rm(rcs3_pgr)
 
 # Validation set
-rcs3_pgr<-rcspline.eval(vdata$pgr2, knots=c(0,41,486))
-attr(rcs3_pgr,'dim')<-NULL
-attr(rcs3_pgr,'knots')<-NULL
-vdata$pgr3<-rcs3_pgr
+rcs3_pgr <- rcspline.eval(vdata$pgr2, knots = c(0, 41, 486))
+attr(rcs3_pgr, "dim") <- NULL
+attr(rcs3_pgr, "knots") <- NULL
+vdata$pgr3 <- rcs3_pgr
 rm(rcs3_pgr)
 ```
 
-### 1.3 Model development: first check - the proportional hazard (PH) assumption
+### 1.3 Model development - first check - the proportional hazard (PH) assumption
 
 We now examine the fits in a more careful way by checking the
 proportionality of the hazards of the Cox regression model. Firstly, we
@@ -249,14 +450,14 @@ fit the first prediction model in the development data using size, node,
 grade. Then, we check the PH assumption.
 
 ``` r
-dd<-datadist(rdata)
-options(datadist='dd')
-options(prType="html")
-fit1_cph<-cph(Surv(ryear, status) ~ csize + cnode + cgrade, rdata,x=T,y=T,surv=T)
+dd <- datadist(rdata)
+options(datadist = "dd")
+options(prType = "html")
+fit1_cph <- cph(Surv(ryear, status) ~ csize + cnode + cgrade, rdata, x = T, y = T, surv = T)
 
 
-zp1 <- cox.zph(fit1_cph, transform='identity')
-kable(round(zp1$table,3)) %>% kable_styling('striped',position = 'center')
+zp1 <- cox.zph(fit1_cph, transform = "identity")
+kable(round(zp1$table, 3)) %>% kable_styling("striped", position = "center")
 ```
 
 <table class="table table-striped" style="margin-left: auto; margin-right: auto;">
@@ -336,18 +537,18 @@ GLOBAL
 </table>
 
 ``` r
-oldpar <- par(mfrow=c(2,2), mar=c(5,5,1,1))
+oldpar <- par(mfrow = c(2, 2), mar = c(5, 5, 1, 1))
 for (i in 1:3) {
-    plot(zp1[i], resid=F)
-    abline(0,0, lty=3)
-}   
+  plot(zp1[i], resid = F)
+  abline(0, 0, lty = 3)
+}
 par(oldpar)
 ```
 
-<img src="03_predsurv_extended_files/figure-gfm/ph-1.png" style="display: block; margin: auto;" />
+<img src="imgs/03_predsurv_extended/ph-1.png" width="672" style="display: block; margin: auto;" />
 
 ``` r
-options(datadist=NULL)
+options(datadist = NULL)
 ```
 
 The statistical tests show strong evidence of non-proportionality. Since
@@ -359,17 +560,19 @@ years, fitting a separate model to each.
 
 ``` r
 # Development
-edata <- survSplit(Surv(ryear, status) ~ ., data=rdata, cut=c(5,10),
-                   episode="epoch")
+edata <- survSplit(Surv(ryear, status) ~ .,
+  data = rdata, cut = c(5, 10),
+  episode = "epoch"
+)
 efit1 <- cph(Surv(ryear, status) ~ csize + cnode + cgrade,
-               data= edata[edata$epoch==1,], x=T, y=T, surv=T)
+  data = edata[edata$epoch == 1, ], x = T, y = T, surv = T
+)
 efit2 <- cph(Surv(ryear, status) ~ csize + cnode + cgrade,
-               data= edata[edata$epoch==2,], x=T, y=T, surv=T)
+  data = edata[edata$epoch == 2, ], x = T, y = T, surv = T
+)
 efit3 <- cph(Surv(ryear, status) ~ csize + cnode + cgrade,
-               data= edata[edata$epoch==3,], x=T, y=T, surv=T)
-res_efit<-round(rbind(e1= coef(efit1), e2=coef(efit2),e3= coef(efit3)), 2)
-rownames(res_efit)<-c('Epoch 1: 0-5 years','Epoch 2: 5-10 years','Epoch 3: >10 years')
-kable(res_efit) %>% kable_styling('striped',position = "center")
+  data = edata[edata$epoch == 3, ], x = T, y = T, surv = T
+)
 ```
 
 <table class="table table-striped" style="margin-left: auto; margin-right: auto;">
@@ -457,15 +660,6 @@ Epoch 3: &gt;10 years
 </tr>
 </tbody>
 </table>
-
-``` r
-options(prType='html')
-tt1<-table(edata$epoch, edata$status, dnn=c('Epoch','Status'))
-rownames(tt1)<-c('Epoch 1: 0-5 years','Epoch 2: 5-10 years','Epoch 3: >10 years')
-kable(tt1,col.names = c('Censored','Event'), 
-      row.names = TRUE) %>% kable_styling('striped', position ='center') 
-```
-
 <table class="table table-striped" style="margin-left: auto; margin-right: auto;">
 <thead>
 <tr>
@@ -551,7 +745,7 @@ If we ignored the non-proportional hazards entirely, the prediction
 performance of the model may lead to increase bias in estimating the
 risk especially in terms of calibration performances.
 
-### 1.4 Model development: fit the risk prediction models
+### 1.4 Model development - fit the risk prediction models
 
 We develop the risk prediction model in the development data considering
 the first 5-year follow-up to minimize the violation of proportional
@@ -562,18 +756,20 @@ We also administratively censored the validation data at 5 years.
 
 ``` r
 # Consider the first 5-year epoch in the development set
-edata1<-edata[edata$epoch==1,]
+edata1 <- edata[edata$epoch == 1, ]
 # Refit the model
 efit1 <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade,
-               data= edata1, x=T, y=T)
+  data = edata1, x = T, y = T
+)
 # Additional marker
 efit1b <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade + pgr2 + pgr3,
-               data= edata1, x=T, y=T)
+  data = edata1, x = T, y = T
+)
 
 
 # Validation
-evdata<-survSplit(Surv(ryear,status)~.,data=vdata,cut=5,episode='epoch')
-evdata1<-evdata[evdata$epoch==1,]
+evdata <- survSplit(Surv(ryear, status) ~ ., data = vdata, cut = 5, episode = "epoch")
+evdata1 <- evdata[evdata$epoch == 1, ]
 ```
 
 Below the results of the models:
@@ -581,11 +777,12 @@ Below the results of the models:
 -   Classical model:
 
 ``` r
-dd<-datadist(edata1)
-options(datadist='dd')
-options(prType="html")
+dd <- datadist(edata1)
+options(datadist = "dd")
+options(prType = "html")
 s5 <- cph(Surv(ryear, status) ~ csize + cnode + cgrade,
-               data= edata1, x=T, y=T,surv=T)
+  data = edata1, x = T, y = T, surv = T
+)
 print(s5)
 ```
 
@@ -685,9 +882,10 @@ print(s5)
 -   Extended model:
 
 ``` r
-options(prType="html")
-s6<-cph(Surv(ryear, status) ~ csize + cnode + cgrade + rcs(pgr2, c(0,41,486)),
-               data= edata1, x=T, y=T,surv=T)
+options(prType = "html")
+s6 <- cph(Surv(ryear, status) ~ csize + cnode + cgrade + rcs(pgr2, c(0, 41, 486)),
+  data = edata1, x = T, y = T, surv = T
+)
 print(s6)
 ```
 
@@ -799,7 +997,7 @@ print(s6)
 </table>
 
 ``` r
-options(datadist=NULL)
+options(datadist = NULL)
 ```
 
 The coefficients of the models indicated that higher size, higher number
@@ -807,7 +1005,7 @@ of positive lymph nodes and higher grade is more associate with poorer
 prognosis. The association of the progesterone biomarker and the outcome
 is non-linear as investigated previously.
 
-## Goal 2: Assessing performance in survival prediction models
+## Goal 2 - Assessing performance in survival prediction models
 
 The performance of a risk prediction models may be evaluated through:
 
@@ -858,20 +1056,20 @@ calculate percentile bootstrap confidence intervals needed for some
 performance measures.
 
 ``` r
-edata1$lp<-predict(efit1) # linear predictor
-edata1$predsurv5<-predictSurvProb(efit1,newdata=edata1,times=5) # predicted survival
-edata1$lp_1b<-predict(efit1b)
-edata1$predsurv5_1b<-predictSurvProb(efit1b,newdata=edata1,times=5)
+edata1$lp <- predict(efit1) # linear predictor
+edata1$predsurv5 <- predictSurvProb(efit1, newdata = edata1, times = 5) # predicted survival
+edata1$lp_1b <- predict(efit1b)
+edata1$predsurv5_1b <- predictSurvProb(efit1b, newdata = edata1, times = 5)
 
 
-evdata1$lp_1b<-predict(efit1b,newdata=evdata1)
-evdata1$predsurv5<-predictSurvProb(efit1,newdata=evdata1,times=5)
-evdata1$lp_1b<-predict(efit1b,newdata=evdata1)
-evdata1$predsurv5_1b<-predictSurvProb(efit1b,newdata=evdata1,times=5)
+evdata1$lp_1b <- predict(efit1b, newdata = evdata1)
+evdata1$predsurv5 <- predictSurvProb(efit1, newdata = evdata1, times = 5)
+evdata1$lp_1b <- predict(efit1b, newdata = evdata1)
+evdata1$predsurv5_1b <- predictSurvProb(efit1b, newdata = evdata1, times = 5)
 
 set.seed(20200416)
-eboot<-bootstraps(edata1,times=10)
-vboot<-bootstraps(evdata1,times=10)
+eboot <- bootstraps(edata1, times = 10)
+vboot <- bootstraps(evdata1, times = 10)
 # NOTE: B=10 otherwise the computation time will be too long
 ```
 
@@ -880,155 +1078,122 @@ score, and IPA and the corresponding confidence intervals.
 
 ``` r
 # Development set (apparent Brier and IPA) without pgr
-score_rdata1<-
-  Score(list("Cox development"=efit1),
-      formula=Surv(ryear,status)~1,data=edata1,conf.int=TRUE,times=4.95,
-      cens.model = 'km', metrics='brier',
-      summary='ipa') 
+score_rdata1 <-
+  Score(list("Cox development" = efit1),
+    formula = Surv(ryear, status) ~ 1, data = edata1, conf.int = TRUE, times = 4.95,
+    cens.model = "km", metrics = "brier",
+    summary = "ipa"
+  )
 
 # Validation set without pgr
-score_vdata1<-
-  Score(list("Cox development"=efit1),
-      formula=Surv(ryear,status)~1,data=evdata1,conf.int=TRUE,times=4.95,
-      cens.model = 'km', metrics='brier',
-      summary='ipa') 
+score_vdata1 <-
+  Score(list("Cox development" = efit1),
+    formula = Surv(ryear, status) ~ 1, data = evdata1, conf.int = TRUE, times = 4.95,
+    cens.model = "km", metrics = "brier",
+    summary = "ipa"
+  )
 
 # Development set (apparent Brier and IPA) with pgr
-score_rdata1b<-
-  Score(list("Cox development"=efit1b),
-      formula=Surv(ryear,status)~1,data=edata1,conf.int=TRUE,times=4.95,
-      cens.model = 'km', metrics='brier',
-      summary='ipa') 
+score_rdata1b <-
+  Score(list("Cox development" = efit1b),
+    formula = Surv(ryear, status) ~ 1, data = edata1, conf.int = TRUE, times = 4.95,
+    cens.model = "km", metrics = "brier",
+    summary = "ipa"
+  )
 
 # Validation set with pgr
-score_vdata1b<-
-  Score(list("Cox development"=efit1b),
-      formula=Surv(ryear,status)~1,data=evdata1,conf.int=TRUE,times=4.95,
-      cens.model = 'km', metrics='brier',
-      summary='ipa') 
+score_vdata1b <-
+  Score(list("Cox development" = efit1b),
+    formula = Surv(ryear, status) ~ 1, data = evdata1, conf.int = TRUE, times = 4.95,
+    cens.model = "km", metrics = "brier",
+    summary = "ipa"
+  )
 
 # Royston and R2 in development data without pgr
-r2_rdata1<-Rsq(lp=edata1$lp,time=edata1$ryear,
-               status=edata1$status)
+r2_rdata1 <- Rsq(
+  lp = edata1$lp, time = edata1$ryear,
+  status = edata1$status
+)
 # Royston and R2 in validation data without pgr
-r2_vdata1<-Rsq(lp=evdata1$lp,time=evdata1$ryear,
-               status=evdata1$status)
+r2_vdata1 <- Rsq(
+  lp = evdata1$lp, time = evdata1$ryear,
+  status = evdata1$status
+)
 # Royston and R2 in development data with pgr
-r2_rdata1b<-Rsq(lp=edata1$lp_1b,time=edata1$ryear,
-               status=edata1$status)
+r2_rdata1b <- Rsq(
+  lp = edata1$lp_1b, time = edata1$ryear,
+  status = edata1$status
+)
 # Royston and R2 in validation data with pgr
-r2_vdata1b<-Rsq(lp=evdata1$lp_1b,time=evdata1$ryear,
-               status=evdata1$status)
+r2_vdata1b <- Rsq(
+  lp = evdata1$lp_1b, time = evdata1$ryear,
+  status = evdata1$status
+)
 
 # Calcuate the Royston D and R2 non-parametric confidence intervals using bootstrap percentile
-Rsq_boot<-function(split) {
-  Rsq(lp=analysis(split)$lp,
-      time=analysis(split)$ryear,
-      status=analysis(split)$status,ties=TRUE)
+Rsq_boot <- function(split) {
+  Rsq(
+    lp = analysis(split)$lp,
+    time = analysis(split)$ryear,
+    status = analysis(split)$status, ties = TRUE
+  )
 }
 
-Rsq_boot_1b<-function(split) {
-  Rsq(lp=analysis(split)$lp_1b,
-      time=analysis(split)$ryear,
-      status=analysis(split)$status,ties=TRUE)
+Rsq_boot_1b <- function(split) {
+  Rsq(
+    lp = analysis(split)$lp_1b,
+    time = analysis(split)$ryear,
+    status = analysis(split)$status, ties = TRUE
+  )
 }
 
 
 # Development data
-eboot <- eboot %>% mutate(r1=map(splits,Rsq_boot),
-                       r1b=map(splits,Rsq_boot_1b),
-                       D1=map_dbl(r1,'D'),
-                       R21=map_dbl(r1b,'R2'),
-                       D1b=map_dbl(r1,'D'),
-                       R21b=map_dbl(r1b,'R2'))
+eboot <- eboot %>% mutate(
+  r1 = map(splits, Rsq_boot),
+  r1b = map(splits, Rsq_boot_1b),
+  D1 = map_dbl(r1, "D"),
+  R21 = map_dbl(r1b, "R2"),
+  D1b = map_dbl(r1, "D"),
+  R21b = map_dbl(r1b, "R2")
+)
 
 # Validation data
-vboot <- vboot %>% mutate(r1=map(splits,Rsq_boot),
-                       r1b=map(splits,Rsq_boot_1b),
-                       D1=map_dbl(r1,'D'),
-                       R21=map_dbl(r1,'R2'),
-                       D1b=map_dbl(r1b,'D'),
-                       R21b=map_dbl(r1b,'R2'))
+vboot <- vboot %>% mutate(
+  r1 = map(splits, Rsq_boot),
+  r1b = map(splits, Rsq_boot_1b),
+  D1 = map_dbl(r1, "D"),
+  R21 = map_dbl(r1, "R2"),
+  D1b = map_dbl(r1b, "D"),
+  R21b = map_dbl(r1b, "R2")
+)
 
 # IPA confidence intervals
 # NOTE: computational time is too long to compute them when the number of bootstrap replications is high
-score_boot_1<-function(split) {
-   Score(list("Cox development"=efit1),
-      formula=Surv(ryear,status)~1,data=analysis(split),conf.int=FALSE,times=4.95,
-       cens.model = 'km', metrics='brier',
-       summary='ipa')$Brier[[1]]$IPA[2] 
- }
- 
-score_boot_1b<-function(split) {
-   Score(list("Cox development"=efit1b),
-       formula=Surv(ryear,status)~1,data=analysis(split),conf.int=FALSE,times=4.95,
-       cens.model = 'km', metrics='brier',
-       summary='ipa')$Brier[[1]]$IPA[2] 
- }
-eboot <- eboot %>% mutate(IPA1=map_dbl(splits,score_boot_1),
-                          IPA1b=map_dbl(splits,score_boot_1b)) # Development dataset
+score_boot_1 <- function(split) {
+  Score(list("Cox development" = efit1),
+    formula = Surv(ryear, status) ~ 1, data = analysis(split), conf.int = FALSE, times = 4.95,
+    cens.model = "km", metrics = "brier",
+    summary = "ipa"
+  )$Brier[[1]]$IPA[2]
+}
 
-vboot <- vboot %>% mutate(IPA1=map_dbl(splits,score_boot_1),
-                          IPA1b=map_dbl(splits,score_boot_1b)) # Validation dataset
+score_boot_1b <- function(split) {
+  Score(list("Cox development" = efit1b),
+    formula = Surv(ryear, status) ~ 1, data = analysis(split), conf.int = FALSE, times = 4.95,
+    cens.model = "km", metrics = "brier",
+    summary = "ipa"
+  )$Brier[[1]]$IPA[2]
+}
+eboot <- eboot %>% mutate(
+  IPA1 = map_dbl(splits, score_boot_1),
+  IPA1b = map_dbl(splits, score_boot_1b)
+) # Development dataset
 
-# Table overall measures
-alpha<-.05
-k<-2 # number of digits
-res_ov<-matrix(unlist(c(score_rdata1$Brier$score$Brier[2], # Brier apparent validation 
-                 score_rdata1$Brier$score[2,6],
-                 score_rdata1$Brier$score[2,7],
-                 
-                 score_rdata1b$Brier$score$Brier[2], # Brier apparent validation with PGR
-                 score_rdata1b$Brier$score[2,6],
-                 score_rdata1b$Brier$score[2,7],
-                 
-                 score_vdata1$Brier$score$Brier[2], # Brier external validation
-                 score_vdata1$Brier$score[2,6],
-                 score_vdata1$Brier$score[2,7],
-                 
-                 score_vdata1b$Brier$score$Brier[2], # Brier external validation with PGR
-                 score_vdata1b$Brier$score[2,6],
-                 score_vdata1b$Brier$score[2,7],
-                 
-                 r2_rdata1['R2'],  # Royston apparent validation
-                 quantile(eboot$R21,probs=alpha/2),
-                 quantile(eboot$R21,probs=1-alpha/2),
-                
-                 r2_rdata1b['R2'],   # Royston apparent validation with PGR
-                 quantile(eboot$R21b,probs=alpha/2),
-                 quantile(eboot$R21b,probs=1-alpha/2),
-                
-                 r2_vdata1['R2'],  # Royston external validation 
-                 quantile(vboot$R21,probs=alpha/2),
-                 quantile(vboot$R21,probs=1-alpha/2),
-                
-                 r2_vdata1['R2'], # Royston external validation with PGR
-                 quantile(vboot$R21b,probs=alpha/2),
-                 quantile(vboot$R21b,probs=1-alpha/2),
-                
-                 score_rdata1$Brier$score$IPA[2],  # IPA apparent validation
-                 quantile(eboot$IPA1,probs=alpha/2),
-                 quantile(eboot$IPA1,probs=1-alpha/2),
-                 
-                 score_rdata1b$Brier$score$IPA[2], # IPA apparent validation with PGR
-                 quantile(eboot$IPA1b,probs=alpha/2),
-                 quantile(eboot$IPA1b,probs=1-alpha/2),
-                 
-                 score_vdata1$Brier$score$IPA[2],  # IPA external validation 
-                 quantile(vboot$IPA1,probs=alpha/2),
-                 quantile(vboot$IPA1,probs=1-alpha/2),
-                 
-                 score_vdata1b$Brier$score$IPA[2], # IPA external validation with PGR
-                 quantile(vboot$IPA1b,probs=alpha/2),
-                 quantile(vboot$IPA1b,probs=1-alpha/2))),
-                 
-               nrow=3,ncol=12, byrow=T, dimnames = list(c('Brier','R2','IPA'),
-                                                       rep(c('Estimate','Lower .95 ','Upper .95'),4)))
-
-res_ov<-round(res_ov,2) # Digits
-kable(res_ov) %>% 
-    kable_styling('striped', position ="center") %>%
-      add_header_above(c(' '=1,'Apparent'=3, 'Apparent + PGR'=3,'External'=3,'External + PGR'=3))
+vboot <- vboot %>% mutate(
+  IPA1 = map_dbl(splits, score_boot_1),
+  IPA1b = map_dbl(splits, score_boot_1b)
+) # Validation dataset
 ```
 
 <table class="table table-striped" style="margin-left: auto; margin-right: auto;">
@@ -1279,113 +1444,71 @@ RMarkdown associated source code.
 More details are in the paper and in the references.
 
 ``` r
-c_rdata1<-unlist(cindex(efit1)$AppCindex)
-c_vdata1<-unlist(cindex(efit1,data=evdata1)$AppCindex)
-c_rdata1b<-unlist(cindex(efit1b)$AppCindex)
-c_vdata1b<-unlist(cindex(efit1,data=evdata1)$AppCindex)
+c_rdata1 <- unlist(cindex(efit1)$AppCindex)
+c_vdata1 <- unlist(cindex(efit1, data = evdata1)$AppCindex)
+c_rdata1b <- unlist(cindex(efit1b)$AppCindex)
+c_vdata1b <- unlist(cindex(efit1, data = evdata1)$AppCindex)
 
-c_boot<-function(split) {
-  unlist(cindex(efit1,data=analysis(split))$AppCindex)
+c_boot <- function(split) {
+  unlist(cindex(efit1, data = analysis(split))$AppCindex)
 }
 
-c_boot_1b<-function(split) {
-  unlist(cindex(efit1b,data=analysis(split))$AppCindex)
+c_boot_1b <- function(split) {
+  unlist(cindex(efit1b, data = analysis(split))$AppCindex)
 }
 
 # cindex bootstrap
 # Development data
-eboot <- eboot %>% mutate(c1=map_dbl(splits,c_boot),
-                          c1b=map_dbl(splits,c_boot_1b))
+eboot <- eboot %>% mutate(
+  c1 = map_dbl(splits, c_boot),
+  c1b = map_dbl(splits, c_boot_1b)
+)
 
 # Validation data
-vboot <- vboot %>% mutate(c1=map_dbl(splits,c_boot),
-                          c1b=map_dbl(splits,c_boot_1b))
+vboot <- vboot %>% mutate(
+  c1 = map_dbl(splits, c_boot),
+  c1b = map_dbl(splits, c_boot_1b)
+)
 
 # Time-dependent AUC (in Table 3 called Uno's TD AUC at 5 years) ###
 # Uno's time-dependent Area Under the Curve
 # Apparent
-Uno_rdata1<-
-  timeROC(T=edata1$ryear, delta=edata1$status,
-        marker=predict(efit1,newdata=edata1),
-        cause=1,weighting='marginal',times=4.95,
-        iid=TRUE)
+Uno_rdata1 <-
+  timeROC(
+    T = edata1$ryear, delta = edata1$status,
+    marker = predict(efit1, newdata = edata1),
+    cause = 1, weighting = "marginal", times = 4.95,
+    iid = TRUE
+  )
 
 # External validation
-Uno_vdata1<-
-  timeROC(T=evdata1$ryear, delta=evdata1$status,
-        marker=predict(efit1,newdata=evdata1),
-        cause=1,weighting='marginal',times=4.95,
-        iid=TRUE)
+Uno_vdata1 <-
+  timeROC(
+    T = evdata1$ryear, delta = evdata1$status,
+    marker = predict(efit1, newdata = evdata1),
+    cause = 1, weighting = "marginal", times = 4.95,
+    iid = TRUE
+  )
 
 # Apparent with pgr
-Uno_rdata1b<-
-  timeROC(T=edata1$ryear, delta=edata1$status,
-        marker=predict(efit1b,newdata=edata1),
-        cause=1,weighting='marginal',times=4.95,
-        iid=TRUE)
+Uno_rdata1b <-
+  timeROC(
+    T = edata1$ryear, delta = edata1$status,
+    marker = predict(efit1b, newdata = edata1),
+    cause = 1, weighting = "marginal", times = 4.95,
+    iid = TRUE
+  )
 
 # External validation with pgr
-Uno_vdata1b<-
-  timeROC(T=evdata1$ryear, delta=evdata1$status,
-        marker=predict(efit1b,newdata=evdata1),
-        cause=1,weighting='marginal',times=4.95,
-        iid=TRUE)
+Uno_vdata1b <-
+  timeROC(
+    T = evdata1$ryear, delta = evdata1$status,
+    marker = predict(efit1b, newdata = evdata1),
+    cause = 1, weighting = "marginal", times = 4.95,
+    iid = TRUE
+  )
 # NOTE: if you have a lot of data n > 2000, standard error computation may be really long.
 # In that case, please use bootstrap percentile to calculate confidence intervals.
-
-# Save results
-alpha<-.05
-k<-2
-res_discr<-matrix(c(
-              c_rdata1,
-              quantile(eboot$c1,probs=alpha/2),
-              quantile(eboot$c1,probs=1-alpha/2),
-              
-              c_rdata1b,
-              quantile(eboot$c1b,probs=alpha/2),
-              quantile(eboot$c1b,probs=1-alpha/2),
-              
-              c_vdata1,
-              quantile(vboot$c1,probs=alpha/2),
-              quantile(vboot$c1,probs=1-alpha/2),
-              
-              c_vdata1b,
-              quantile(vboot$c1b,probs=alpha/2),
-              quantile(vboot$c1b,probs=1-alpha/2),
-  
-              Uno_rdata1$AUC['t=4.95'],
-              Uno_rdata1$AUC['t=4.95']-
-                qnorm(1-alpha/2)*Uno_rdata1$inference$vect_sd_1['t=4.95'],
-              Uno_rdata1$AUC['t=4.95']+
-                qnorm(1-alpha/2)*Uno_rdata1$inference$vect_sd_1['t=4.95'],
-              
-              Uno_rdata1b$AUC['t=4.95'],
-              Uno_rdata1b$AUC['t=4.95']-
-                qnorm(1-alpha/2)*Uno_rdata1b$inference$vect_sd_1['t=4.95'],
-              Uno_rdata1b$AUC['t=4.95']+
-                qnorm(1-alpha/2)*Uno_rdata1b$inference$vect_sd_1['t=4.95'],
-              
-              Uno_vdata1$AUC['t=4.95'],
-              Uno_vdata1$AUC['t=4.95']-
-                qnorm(1-alpha/2)*Uno_vdata1$inference$vect_sd_1['t=4.95'],
-              Uno_vdata1$AUC['t=4.95']+
-                qnorm(1-alpha/2)*Uno_vdata1$inference$vect_sd_1['t=4.95'],
-              
-              Uno_vdata1b$AUC['t=4.95'],
-              Uno_vdata1b$AUC['t=4.95']-
-                qnorm(1-alpha/2)*Uno_vdata1b$inference$vect_sd_1['t=4.95'],
-              Uno_vdata1b$AUC['t=4.95']+
-                qnorm(1-alpha/2)*Uno_vdata1b$inference$vect_sd_1['t=4.95']
-),
-                  
-    nrow=2,ncol=12, byrow=T, 
-    dimnames = list(c('Gerds C','Uno AUC'),
-                    rep(c('Estimate','Lower .95 ','Upper .95'),4)))
-
-res_discr<-round(res_discr,k)
-kable(res_discr) %>% 
-    kable_styling('striped', position ='center') %>% 
-    add_header_above(c(' '=1,'Apparent'=3, 'Apparent + PGR'=3,'External'=3,'External + PGR'=3))
 ```
 
 <table class="table table-striped" style="margin-left: auto; margin-right: auto;">
@@ -1580,7 +1703,7 @@ development data.
 #           iid=TRUE)
 # saveRDS(AUC_apparent_model1,file='AUC_apparent_model1.rds')
 
- # Apparent with PGR
+# Apparent with PGR
 # AUC_apparent_model1b<-
 #    timeROC(T=rdata$ryear, delta=rdata$status,
 #           marker=predict(efit1b,newdata=rdata),
@@ -1590,72 +1713,80 @@ development data.
 # saveRDS(AUC_apparent_model1b,file='AUC_apparent_model1b.rds')
 
 # Validation without PGR
-AUC_val_model1<-
-  timeROC(T=evdata1$ryear, delta=evdata1$status,
-          marker=predict(efit1,newdata=evdata1),
-          cause=1,weighting='marginal',
-          times=quantile(evdata1$ryear,probs=seq(0.02,0.82,0.02)),
-          iid=TRUE)
+AUC_val_model1 <-
+  timeROC(
+    T = evdata1$ryear, delta = evdata1$status,
+    marker = predict(efit1, newdata = evdata1),
+    cause = 1, weighting = "marginal",
+    times = quantile(evdata1$ryear, probs = seq(0.02, 0.82, 0.02)),
+    iid = TRUE
+  )
 
 # Validation with PGR
-AUC_val_model1b<-
-  timeROC(T=evdata1$ryear, delta=evdata1$status,
-          marker=predict(efit1b,newdata=evdata1),
-          cause=1,weighting='marginal',
-          times=quantile(evdata1$ryear,probs=seq(0.02,0.82,0.02)),
-          iid=TRUE)
+AUC_val_model1b <-
+  timeROC(
+    T = evdata1$ryear, delta = evdata1$status,
+    marker = predict(efit1b, newdata = evdata1),
+    cause = 1, weighting = "marginal",
+    times = quantile(evdata1$ryear, probs = seq(0.02, 0.82, 0.02)),
+    iid = TRUE
+  )
 
 # saveRDS(AUC_apparent_model2,file='AUC_apparent_model2.rds')
 
 # Calculate the confidence intervals
 # AUC_apparent_model1$lower<-AUC_apparent_model1$AUC-qnorm(0.975)*AUC_apparent_model1$inference$vect_sd_1
 # AUC_apparent_model1$upper<-AUC_apparent_model1$AUC+qnorm(0.975)*AUC_apparent_model1$inference$vect_sd_1
-# 
+#
 # AUC_apparent_model1b$lower<-AUC_apparent_model1b$AUC-qnorm(0.975)*AUC_apparent_model1b$inference$vect_sd_1
 # AUC_apparent_model1b$upper<-AUC_apparent_model1b$AUC+qnorm(0.975)*AUC_apparent_model1b$inference$vect_sd_1
 
-AUC_val_model1$lower<-AUC_val_model1$AUC-qnorm(0.975)*AUC_val_model1$inference$vect_sd_1
-AUC_val_model1$upper<-AUC_val_model1$AUC+qnorm(0.975)*AUC_val_model1$inference$vect_sd_1
+AUC_val_model1$lower <- AUC_val_model1$AUC - qnorm(0.975) * AUC_val_model1$inference$vect_sd_1
+AUC_val_model1$upper <- AUC_val_model1$AUC + qnorm(0.975) * AUC_val_model1$inference$vect_sd_1
 
-AUC_val_model1b$lower<-AUC_val_model1b$AUC-qnorm(0.975)*AUC_val_model1b$inference$vect_sd_1
-AUC_val_model1b$upper<-AUC_val_model1b$AUC+qnorm(0.975)*AUC_val_model1b$inference$vect_sd_1
+AUC_val_model1b$lower <- AUC_val_model1b$AUC - qnorm(0.975) * AUC_val_model1b$inference$vect_sd_1
+AUC_val_model1b$upper <- AUC_val_model1b$AUC + qnorm(0.975) * AUC_val_model1b$inference$vect_sd_1
 
 # par(las=1,xaxs='i',yaxs='i')
 # plot(AUC_apparent_model1$times,AUC_apparent_model1$AUC,type='l',bty='n',
 #      xlim=c(0,10),ylim=c(0,1),lwd=2,xlab='Time (years)',ylab='AUC',lty=2)
 # polygon(c(AUC_apparent_model1$times,rev(AUC_apparent_model1$times)),
 #         c(AUC_apparent_model1$lower,rev(AUC_apparent_model1$upper)),
-#         col = rgb(160,160,160,maxColorValue = 255,alpha=100), 
+#         col = rgb(160,160,160,maxColorValue = 255,alpha=100),
 #         border = FALSE)
 # lines(AUC_apparent_model1$times,AUC_apparent_model1$AUC,col='black',lwd=2, lty=2)
 # polygon(c(AUC_apparent_model1b$times,rev(AUC_apparent_model1b$times)),
 #         c(AUC_apparent_model1b$lower,rev(AUC_apparent_model1b$upper)),
-#         col = rgb(96,96,96,maxColorValue = 255,alpha=100), 
+#         col = rgb(96,96,96,maxColorValue = 255,alpha=100),
 #         border = FALSE)
 # lines(AUC_apparent_model1b$times,AUC_apparent_model1b$AUC,col='black',lwd=2,lty=1)
 # abline(h=0.5)
 # legend('bottomright',c('NPI','NPI + PGR'), lwd=2,lty=c(2,1),bty='n')
 # title('A Development data (n=2982)', adj=0)
 
-par(las=1,xaxs='i',yaxs='i')
-plot(AUC_val_model1$times,AUC_val_model1$AUC,type='l',bty='n',
-     xlim=c(0,5),ylim=c(0,1),lwd=2,xlab='Time (years)',ylab='AUC',lty=2)
-polygon(c(AUC_val_model1$times,rev(AUC_val_model1$times)),
-        c(AUC_val_model1$lower,rev(AUC_val_model1$upper)),
-        col = rgb(160,160,160,maxColorValue = 255,alpha=100), 
-        border = FALSE)
-lines(AUC_val_model1$times,AUC_val_model1$AUC,col='black',lwd=2,lty=2)
-polygon(c(AUC_val_model1b$times,rev(AUC_val_model1b$times)),
-        c(AUC_val_model1b$lower,rev(AUC_val_model1b$upper)),
-        col = rgb(96,96,96,maxColorValue = 255,alpha=100), 
-        border = FALSE)
-lines(AUC_val_model1b$times,AUC_val_model1b$AUC,col='black',lwd=2,lty=1)
-abline(h=0.5)
-legend('bottomright',c('Original model','Original model + PGR'), lwd=2,lty=c(2,1),bty='n')
-title('B External data (n=686)', adj=0)
+par(las = 1, xaxs = "i", yaxs = "i")
+plot(AUC_val_model1$times, AUC_val_model1$AUC,
+  type = "l", bty = "n",
+  xlim = c(0, 5), ylim = c(0, 1), lwd = 2, xlab = "Time (years)", ylab = "AUC", lty = 2
+)
+polygon(c(AUC_val_model1$times, rev(AUC_val_model1$times)),
+  c(AUC_val_model1$lower, rev(AUC_val_model1$upper)),
+  col = rgb(160, 160, 160, maxColorValue = 255, alpha = 100),
+  border = FALSE
+)
+lines(AUC_val_model1$times, AUC_val_model1$AUC, col = "black", lwd = 2, lty = 2)
+polygon(c(AUC_val_model1b$times, rev(AUC_val_model1b$times)),
+  c(AUC_val_model1b$lower, rev(AUC_val_model1b$upper)),
+  col = rgb(96, 96, 96, maxColorValue = 255, alpha = 100),
+  border = FALSE
+)
+lines(AUC_val_model1b$times, AUC_val_model1b$AUC, col = "black", lwd = 2, lty = 1)
+abline(h = 0.5)
+legend("bottomright", c("Original model", "Original model + PGR"), lwd = 2, lty = c(2, 1), bty = "n")
+title("B External data (n=686)", adj = 0)
 ```
 
-<img src="03_predsurv_extended_files/figure-gfm/plotAUC-1.png" style="display: block; margin: auto;" />
+<img src="imgs/03_predsurv_extended/plotAUC-1.png" width="672" style="display: block; margin: auto;" />
 
 The discrimination performance is higher in the extended model compared
 to the model without PGR over the entire follow-up.
@@ -1754,76 +1885,47 @@ risk by the model;
 
 ``` r
 # Apparent calibration measures (calibration in-the-large and calibration slope) without pgr
-p<-log(predict(efit1,newdata=edata1,type = 'expected')+.0000001)
-lp<-predict(efit1,newdata=edata1,type='lp')
-logbase<-p-lp
-rcfit1<-glm(status~offset(p),family=poisson,data=edata1) # calibration in-the-large
-rcfit2<-glm(status~lp+offset(logbase),family=poisson,data=edata1)
+p <- log(predict(efit1, newdata = edata1, type = "expected") + .0000001)
+lp <- predict(efit1, newdata = edata1, type = "lp")
+logbase <- p - lp
+rcfit1 <- glm(status ~ offset(p), family = poisson, data = edata1) # calibration in-the-large
+rcfit2 <- glm(status ~ lp + offset(logbase), family = poisson, data = edata1)
 # If we used the original data, the apparent internal validation may be also not perfect calibrated.
 
 
 # External validation without pgr
-p<-log(predict(efit1,newdata=evdata1,type = 'expected')+.0000001)
-lp<-predict(efit1,newdata=evdata1,type='lp')
-logbase<-p-lp
-vcfit1<-glm(status~offset(p),family=poisson,data=evdata1) # calibration in-the-large
-vcfit2<-glm(status~lp+offset(logbase),family=poisson,data=evdata1) 
+p <- log(predict(efit1, newdata = evdata1, type = "expected") + .0000001)
+lp <- predict(efit1, newdata = evdata1, type = "lp")
+logbase <- p - lp
+vcfit1 <- glm(status ~ offset(p), family = poisson, data = evdata1) # calibration in-the-large
+vcfit2 <- glm(status ~ lp + offset(logbase), family = poisson, data = evdata1)
 
 # Apparent calibration measures (calibration in-the-large and calibration slope) with pgr
-p<-log(predict(efit1b,newdata=edata1,type = 'expected')+.0000001)
-lp<-predict(efit1b,newdata=edata1, type='lp')
-logbase<-p-lp
-rcfit1b<-glm(status~offset(p),family=poisson,data=edata1) # calibration in-the-large
-rcfit2b<-glm(status~lp+offset(logbase),family=poisson,data=edata1)
+p <- log(predict(efit1b, newdata = edata1, type = "expected") + .0000001)
+lp <- predict(efit1b, newdata = edata1, type = "lp")
+logbase <- p - lp
+rcfit1b <- glm(status ~ offset(p), family = poisson, data = edata1) # calibration in-the-large
+rcfit2b <- glm(status ~ lp + offset(logbase), family = poisson, data = edata1)
 
 
 # External validation with pgr
-p<-log(predict(efit1b,newdata=evdata1,type = 'expected')+.0000001)
-lp<-predict(efit1b,newdata=vdata,type='lp')
-logbase<-p-lp
-vcfit1b<-glm(status~offset(p),family=poisson,data=evdata1) # calibration in-the-large
-vcfit2b<-glm(status~lp+offset(logbase),family=poisson,data=evdata1) 
+p <- log(predict(efit1b, newdata = evdata1, type = "expected") + .0000001)
+lp <- predict(efit1b, newdata = vdata, type = "lp")
+logbase <- p - lp
+vcfit1b <- glm(status ~ offset(p), family = poisson, data = evdata1) # calibration in-the-large
+vcfit2b <- glm(status ~ lp + offset(logbase), family = poisson, data = evdata1)
 
 # Results calibration in-the-large and slope
-res_cal<-matrix(c(rcfit1$coefficients, rcfit1b$coefficients, vcfit1$coefficients, vcfit1b$coefficients,
-                  rcfit2$coefficients['lp'], rcfit2b$coefficients['lp'], vcfit2$coefficients['lp'], vcfit2b$coefficients['lp']),
-                  nrow=2,ncol=4, byrow=T, 
-                  dimnames = list(c('Calibration in-the-large','Calibration slope'),
-                                  c('Apparent','Apparent + PGR','Validation','Validation + PGR')))
-
-res_cal<-matrix(c(rcfit1$coefficients, 
-                    confint(rcfit1), # Apparent - calibration in-the-large
-                    
-                    rcfit1b$coefficients,
-                    confint(rcfit1b), # Apparent + PGR - calibration in-the-large
-                    
-                    vcfit1$coefficients,
-                    confint(vcfit1), # External - calibration in-the-large
-                    
-                    vcfit1b$coefficients,
-                    confint(vcfit1b), # External + PGR - calibration in-the-large
-                    
-                    rcfit2$coefficients['lp'],
-                    confint(rcfit2)[2,], # Apparent - calibration slope
-                    
-                    rcfit2b$coefficients['lp'],
-                    confint(rcfit2b)[2,], # Apparent + PGR - calibration slope
-                     
-                    vcfit2$coefficients['lp'], 
-                    confint(vcfit2)[2,],  # External - calibration slope
-                    
-                    vcfit2b$coefficients['lp'],
-                    confint(vcfit2b)[2,]),# External + PGR - calibration slope
-                  
-                  nrow=2,ncol=12, byrow=T, 
-                  dimnames = list(c('Calibration in-the-large','Calibration slope'),
-                                  rep(c('Estimate','Lower .95 ','Upper .95'),4)))
-
-k<-2
-res_cal<-round(res_cal,k) # number of digits
-kable(res_cal) %>% 
-  kable_styling('striped', position='center') %>% 
-    add_header_above(c(' '=1,'Apparent'=3, 'Apparent + PGR'=3,'External'=3,'External + PGR'=3))
+res_cal <- matrix(c(
+  rcfit1$coefficients, rcfit1b$coefficients, vcfit1$coefficients, vcfit1b$coefficients,
+  rcfit2$coefficients["lp"], rcfit2b$coefficients["lp"], vcfit2$coefficients["lp"], vcfit2b$coefficients["lp"]
+),
+nrow = 2, ncol = 4, byrow = T,
+dimnames = list(
+  c("Calibration in-the-large", "Calibration slope"),
+  c("Apparent", "Apparent + PGR", "Validation", "Validation + PGR")
+)
+)
 ```
 
 <table class="table table-striped" style="margin-left: auto; margin-right: auto;">
@@ -2013,75 +2115,86 @@ about the method are given in the references below.
 
 ``` r
 ## External data without PGR
-evdata1$predmort5<-1-survest(s5,newdata=evdata1,times=5)$surv
+evdata1$predmort5 <- 1 - survest(s5, newdata = evdata1, times = 5)$surv
 # also the model (e.g. efit1) run using survival::coxph() may be used
 # and 1-pec::predictSurvProb() function can replace 1-rms::survest()
-evdata1$predmort5.cll<-log(-log(1-evdata1$predmort5))
+evdata1$predmort5.cll <- log(-log(1 - evdata1$predmort5))
 
 # Estimate
-vcalibrate.efit1<-cph(Surv(ryear,status)~rcs(predmort5.cll,3),x=T,y=T,
-                      data=evdata1,surv=T)  # better rms::cph?
-predict.grid<-seq(quantile(evdata1$predmort5,prob=0.01), quantile(evdata1$predmort5,prob=0.99),length=100)
-predict.grid.cll<-log(-log(1-predict.grid))
-predict.grid.df<-data.frame(predict.grid)
-predict.grid.cll.df<-data.frame(predict.grid.cll)
-names(predict.grid.df)<-'predmort5'
-names(predict.grid.cll.df)<-'predmort5.cll'
+vcalibrate.efit1 <- cph(Surv(ryear, status) ~ rcs(predmort5.cll, 3),
+  x = T, y = T,
+  data = evdata1, surv = T
+) # better rms::cph?
+predict.grid <- seq(quantile(evdata1$predmort5, prob = 0.01), quantile(evdata1$predmort5, prob = 0.99), length = 100)
+predict.grid.cll <- log(-log(1 - predict.grid))
+predict.grid.df <- data.frame(predict.grid)
+predict.grid.cll.df <- data.frame(predict.grid.cll)
+names(predict.grid.df) <- "predmort5"
+names(predict.grid.cll.df) <- "predmort5.cll"
 
 # Plot
-pred.vcalibrate.efit1<-1-survest(vcalibrate.efit1,newdata=predict.grid.cll.df,times=5)$surv
-pred.vcalibrate.efit1.upper<-1-survest(vcalibrate.efit1,newdata=predict.grid.cll.df,times=5)$lower
-pred.vcalibrate.efit1.lower<-1-survest(vcalibrate.efit1,newdata=predict.grid.cll.df,times=5)$upper
-par(xaxs='i',yaxs='i',las=1)
-plot(predict.grid,pred.vcalibrate.efit1,type='l',lty=1,xlim=c(0,1),
-     ylim=c(0,1), lwd=2,
-     xlab='Predicted probability',
-     ylab='Observed probability', bty='n')
-lines(predict.grid,pred.vcalibrate.efit1.lower,type='l',lty=2,lwd=2)
-lines(predict.grid,pred.vcalibrate.efit1.upper,type='l',lty=2,lwd=2)
-abline(0,1,lwd=2,lty=2,col='red')
-title('A External data without PGR', adj=0)
-par(new=T)
-plot(density(evdata1$predmort5),axes=F,xlab=NA,ylab=NA,
-     main="")
+pred.vcalibrate.efit1 <- 1 - survest(vcalibrate.efit1, newdata = predict.grid.cll.df, times = 5)$surv
+pred.vcalibrate.efit1.upper <- 1 - survest(vcalibrate.efit1, newdata = predict.grid.cll.df, times = 5)$lower
+pred.vcalibrate.efit1.lower <- 1 - survest(vcalibrate.efit1, newdata = predict.grid.cll.df, times = 5)$upper
+par(xaxs = "i", yaxs = "i", las = 1)
+plot(predict.grid, pred.vcalibrate.efit1,
+  type = "l", lty = 1, xlim = c(0, 1),
+  ylim = c(0, 1), lwd = 2,
+  xlab = "Predicted probability",
+  ylab = "Observed probability", bty = "n"
+)
+lines(predict.grid, pred.vcalibrate.efit1.lower, type = "l", lty = 2, lwd = 2)
+lines(predict.grid, pred.vcalibrate.efit1.upper, type = "l", lty = 2, lwd = 2)
+abline(0, 1, lwd = 2, lty = 2, col = "red")
+title("A External data without PGR", adj = 0)
+par(new = T)
+plot(density(evdata1$predmort5),
+  axes = F, xlab = NA, ylab = NA,
+  main = ""
+)
 ```
 
-<img src="03_predsurv_extended_files/figure-gfm/cal_rcs-1.png" style="display: block; margin: auto;" />
+<img src="imgs/03_predsurv_extended/cal_rcs-1.png" width="672" style="display: block; margin: auto;" />
 
 ``` r
 ## External data with PGR
-evdata1$predmort5<-1-survest(s6,newdata=evdata1,times=5)$surv
-evdata1$predmort5.cll<-log(-log(1-evdata1$predmort5))
+evdata1$predmort5 <- 1 - survest(s6, newdata = evdata1, times = 5)$surv
+evdata1$predmort5.cll <- log(-log(1 - evdata1$predmort5))
 
 # Estimate
-vcalibrate.efit1b<-cph(Surv(ryear,status)~rcs(predmort5.cll,3),
-                       x=T,y=T,data=evdata1,surv=T) 
-predict.grid<-seq(quantile(evdata1$predmort5,prob=0.01), quantile(evdata1$predmort5,prob=0.99),length=100)
-predict.grid.cll<-log(-log(1-predict.grid))
-predict.grid.df<-data.frame(predict.grid)
-predict.grid.cll.df<-data.frame(predict.grid.cll)
-names(predict.grid.df)<-'predmort5'
-names(predict.grid.cll.df)<-'predmort5.cll'
+vcalibrate.efit1b <- cph(Surv(ryear, status) ~ rcs(predmort5.cll, 3),
+  x = T, y = T, data = evdata1, surv = T
+)
+predict.grid <- seq(quantile(evdata1$predmort5, prob = 0.01), quantile(evdata1$predmort5, prob = 0.99), length = 100)
+predict.grid.cll <- log(-log(1 - predict.grid))
+predict.grid.df <- data.frame(predict.grid)
+predict.grid.cll.df <- data.frame(predict.grid.cll)
+names(predict.grid.df) <- "predmort5"
+names(predict.grid.cll.df) <- "predmort5.cll"
 
 # Plot
-pred.vcalibrate.efit1b<-1-survest(vcalibrate.efit1b,newdata=predict.grid.cll.df,times=5)$surv
-pred.vcalibrate.efit1b.lower<-1-survest(vcalibrate.efit1b,newdata=predict.grid.cll.df,times=5)$upper
-pred.vcalibrate.efit1b.upper<-1-survest(vcalibrate.efit1b,newdata=predict.grid.cll.df,times=5)$lower
-par(xaxs='i',yaxs='i',las=1)
-plot(predict.grid,pred.vcalibrate.efit1b,type='l',lty=1,xlim=c(0,1),
-     ylim=c(0,1), lwd=2,
-     xlab='Predicted probability of recurrence at 5 years',
-     ylab='Observed probability of recurrence at 5 years', bty='n')
-lines(predict.grid,pred.vcalibrate.efit1b.lower,type='l',lty=2,lwd=2)
-lines(predict.grid,pred.vcalibrate.efit1b.upper,type='l',lty=2,lwd=2)
-abline(0,1,lwd=2,lty=2,col='red')
-title('B External data with PGR', adj=0)
-par(new=T)
-plot(density(evdata1$predmort5),axes=F,xlab=NA,ylab=NA,
-     main="")
+pred.vcalibrate.efit1b <- 1 - survest(vcalibrate.efit1b, newdata = predict.grid.cll.df, times = 5)$surv
+pred.vcalibrate.efit1b.lower <- 1 - survest(vcalibrate.efit1b, newdata = predict.grid.cll.df, times = 5)$upper
+pred.vcalibrate.efit1b.upper <- 1 - survest(vcalibrate.efit1b, newdata = predict.grid.cll.df, times = 5)$lower
+par(xaxs = "i", yaxs = "i", las = 1)
+plot(predict.grid, pred.vcalibrate.efit1b,
+  type = "l", lty = 1, xlim = c(0, 1),
+  ylim = c(0, 1), lwd = 2,
+  xlab = "Predicted probability of recurrence at 5 years",
+  ylab = "Observed probability of recurrence at 5 years", bty = "n"
+)
+lines(predict.grid, pred.vcalibrate.efit1b.lower, type = "l", lty = 2, lwd = 2)
+lines(predict.grid, pred.vcalibrate.efit1b.upper, type = "l", lty = 2, lwd = 2)
+abline(0, 1, lwd = 2, lty = 2, col = "red")
+title("B External data with PGR", adj = 0)
+par(new = T)
+plot(density(evdata1$predmort5),
+  axes = F, xlab = NA, ylab = NA,
+  main = ""
+)
 ```
 
-<img src="03_predsurv_extended_files/figure-gfm/cal_rcs-2.png" style="display: block; margin: auto;" />
+<img src="imgs/03_predsurv_extended/cal_rcs-2.png" width="672" style="display: block; margin: auto;" />
 
 Both plots identified good calibration although probabilities of
 recurrence were slightly underestimated especially for the lowest and
@@ -2106,66 +2219,57 @@ outcome at time *t*.
 # Calibration metrics
 
 # Apparent
-edata1$predmort5<-1-predictSurvProb(efit1,newdata=edata1,times=5)
+edata1$predmort5 <- 1 - predictSurvProb(efit1, newdata = edata1, times = 5)
 # Here we used the model created with  survival::coxph() (e.g.efit1) but again 1-survest() using the model created with rms:cph() (e.g s5) can be used
-edata1$predmort5.cll<-log(-log(1-edata1$predmort5))
-rcalibrate.efit1<-coxph(Surv(ryear,status)~rcs(predmort5.cll,3),x=T,y=T,data=edata1)  # rms:cph() can be also used
-pred.rcalibrate.efit1<-1-predictSurvProb(rcalibrate.efit1,
-                                         newdata=edata1,times=5)
+edata1$predmort5.cll <- log(-log(1 - edata1$predmort5))
+rcalibrate.efit1 <- coxph(Surv(ryear, status) ~ rcs(predmort5.cll, 3), x = T, y = T, data = edata1) # rms:cph() can be also used
+pred.rcalibrate.efit1 <- 1 - predictSurvProb(rcalibrate.efit1,
+  newdata = edata1, times = 5
+)
 
-ICI.edata1.5yr<-mean(abs(edata1$predmort5 - pred.rcalibrate.efit1))
-E50.edata1.5yr<-median(abs(edata1$predmort5 - pred.rcalibrate.efit1))
-E90.edata1.5yr<-quantile(abs(edata1$predmort5 - pred.rcalibrate.efit1), probs=0.9)
-Emax.edata1.5yr<-max(abs(edata1$predmort5 - pred.rcalibrate.efit1))
+ICI.edata1.5yr <- mean(abs(edata1$predmort5 - pred.rcalibrate.efit1))
+E50.edata1.5yr <- median(abs(edata1$predmort5 - pred.rcalibrate.efit1))
+E90.edata1.5yr <- quantile(abs(edata1$predmort5 - pred.rcalibrate.efit1), probs = 0.9)
+Emax.edata1.5yr <- max(abs(edata1$predmort5 - pred.rcalibrate.efit1))
 
 # Apparent + PGR
-edata1$predmort5<-1-predictSurvProb(efit1b,newdata=edata1,times=5)
-edata1$predmort5.cll<-log(-log(1-edata1$predmort5))
-rcalibrate.efit1b<-coxph(Surv(ryear,status)~rcs(predmort5.cll,3),x=T,y=T,data=edata1)  # better rms::cph?
-pred.rcalibrate.efit1b<-1-predictSurvProb(rcalibrate.efit1b,
-                                         newdata=edata1,times=5)
+edata1$predmort5 <- 1 - predictSurvProb(efit1b, newdata = edata1, times = 5)
+edata1$predmort5.cll <- log(-log(1 - edata1$predmort5))
+rcalibrate.efit1b <- coxph(Surv(ryear, status) ~ rcs(predmort5.cll, 3), x = T, y = T, data = edata1) # better rms::cph?
+pred.rcalibrate.efit1b <- 1 - predictSurvProb(rcalibrate.efit1b,
+  newdata = edata1, times = 5
+)
 
-ICI.edata1b.5yr<-mean(abs(edata1$predmort5 - pred.rcalibrate.efit1b))
-E50.edata1b.5yr<-median(abs(edata1$predmort5 - pred.rcalibrate.efit1b))
-E90.edata1b.5yr<-quantile(abs(edata1$predmort5 - pred.rcalibrate.efit1b), probs=0.9)
-Emax.edata1b.5yr<-max(abs(edata1$predmort5 - pred.rcalibrate.efit1b))
+ICI.edata1b.5yr <- mean(abs(edata1$predmort5 - pred.rcalibrate.efit1b))
+E50.edata1b.5yr <- median(abs(edata1$predmort5 - pred.rcalibrate.efit1b))
+E90.edata1b.5yr <- quantile(abs(edata1$predmort5 - pred.rcalibrate.efit1b), probs = 0.9)
+Emax.edata1b.5yr <- max(abs(edata1$predmort5 - pred.rcalibrate.efit1b))
 
 # Validation
-evdata1$predmort5<-1-predictSurvProb(efit1,newdata=evdata1,times=5)
-evdata1$predmort5.cll<-log(-log(1-evdata1$predmort5))
-vcalibrate.efit1<-coxph(Surv(ryear,status)~rcs(predmort5.cll,3),x=T,y=T,data=evdata1)  # better rms::cph?
-pred.vcalibrate.efit1<-1-predictSurvProb(vcalibrate.efit1,
-                                         newdata=evdata1,times=5)
+evdata1$predmort5 <- 1 - predictSurvProb(efit1, newdata = evdata1, times = 5)
+evdata1$predmort5.cll <- log(-log(1 - evdata1$predmort5))
+vcalibrate.efit1 <- coxph(Surv(ryear, status) ~ rcs(predmort5.cll, 3), x = T, y = T, data = evdata1) # better rms::cph?
+pred.vcalibrate.efit1 <- 1 - predictSurvProb(vcalibrate.efit1,
+  newdata = evdata1, times = 5
+)
 
-ICI.evdata1.5yr<-mean(abs(evdata1$predmort5 - pred.vcalibrate.efit1))
-E50.evdata1.5yr<-median(abs(evdata1$predmort5 - pred.vcalibrate.efit1))
-E90.evdata1.5yr<-quantile(abs(evdata1$predmort5 - pred.vcalibrate.efit1), probs=0.9)
-Emax.evdata1.5yr<-max(abs(evdata1$predmort5 - pred.vcalibrate.efit1))
+ICI.evdata1.5yr <- mean(abs(evdata1$predmort5 - pred.vcalibrate.efit1))
+E50.evdata1.5yr <- median(abs(evdata1$predmort5 - pred.vcalibrate.efit1))
+E90.evdata1.5yr <- quantile(abs(evdata1$predmort5 - pred.vcalibrate.efit1), probs = 0.9)
+Emax.evdata1.5yr <- max(abs(evdata1$predmort5 - pred.vcalibrate.efit1))
 
 # Validation + PGR
-evdata1$predmort5<-1-predictSurvProb(efit1b,newdata=evdata1,times=5)
-evdata1$predmort5.cll<-log(-log(1-evdata1$predmort5))
-vcalibrate.efit1b<-coxph(Surv(ryear,status)~rcs(predmort5.cll,3),x=T,y=T,data=evdata1)  # better rms::cph?
-pred.vcalibrate.efit1b<-1-predictSurvProb(vcalibrate.efit1b,
-                                         newdata=evdata1,times=5)
+evdata1$predmort5 <- 1 - predictSurvProb(efit1b, newdata = evdata1, times = 5)
+evdata1$predmort5.cll <- log(-log(1 - evdata1$predmort5))
+vcalibrate.efit1b <- coxph(Surv(ryear, status) ~ rcs(predmort5.cll, 3), x = T, y = T, data = evdata1) # better rms::cph?
+pred.vcalibrate.efit1b <- 1 - predictSurvProb(vcalibrate.efit1b,
+  newdata = evdata1, times = 5
+)
 
-ICI.evdata1b.5yr<-mean(abs(evdata1$predmort5 - pred.vcalibrate.efit1b))
-E50.evdata1b.5yr<-median(abs(evdata1$predmort5 - pred.vcalibrate.efit1b))
-E90.evdata1b.5yr<-quantile(abs(evdata1$predmort5 - pred.vcalibrate.efit1b), probs=0.9)
-Emax.evdata1b.5yr<-max(abs(evdata1$predmort5 - pred.vcalibrate.efit1b))
-
-
-res_calmetrix<-matrix(c(ICI.edata1.5yr,ICI.edata1b.5yr,ICI.evdata1.5yr,ICI.evdata1b.5yr,
-                        E50.edata1.5yr,E50.edata1b.5yr,E50.evdata1.5yr,E50.evdata1b.5yr,
-                        E90.edata1.5yr,E90.edata1b.5yr,E90.evdata1.5yr,E90.evdata1b.5yr,
-                        Emax.edata1.5yr,Emax.edata1b.5yr,Emax.evdata1.5yr,Emax.evdata1b.5yr),
-                        byrow=T, ncol=4,nrow=4)
-colnames(res_calmetrix)<-c('Apparent','Apparent + PGR','External','External + PGR')
-rownames(res_calmetrix)<-c('ICI','E50','E90','Emax')
-
-k<-2
-res_calmetrix<-round(res_calmetrix,k) # number of digits
-kable(res_calmetrix) %>% kable_styling('striped', position = 'center')
+ICI.evdata1b.5yr <- mean(abs(evdata1$predmort5 - pred.vcalibrate.efit1b))
+E50.evdata1b.5yr <- median(abs(evdata1$predmort5 - pred.vcalibrate.efit1b))
+E90.evdata1b.5yr <- quantile(abs(evdata1$predmort5 - pred.vcalibrate.efit1b), probs = 0.9)
+Emax.evdata1b.5yr <- max(abs(evdata1$predmort5 - pred.vcalibrate.efit1b))
 ```
 
 <table class="table table-striped" style="margin-left: auto; margin-right: auto;">
@@ -2265,7 +2369,7 @@ the absolute difference between observed and predicted probabilities at
 predicted probabilities in the extreme values of the distribution (E90,
 Emax). This is also graphically confirmed by the calibration plots.
 
-## Goal 3: Clinical utility
+## Goal 3 - Clinical utility
 
 Discrimination and calibration measures are essential to assess the
 prediction performance but insufficient to evaluate the potential
@@ -2337,111 +2441,131 @@ However, poor discrimination and calibration lead to lower net benefit.
 # We could use the rms::survest() or pec::predictEventProb() to get the mortality at observed time
 # Development data
 # Predicted probability calculation
-edata1$mort5_efit1<-1-predictSurvProb(efit1,newdata=edata1,times=5)
+edata1$mort5_efit1 <- 1 - predictSurvProb(efit1, newdata = edata1, times = 5)
 
 # Extended model with PGR
 # Predicted probability calculation
-edata1$mort5_efit1b<-1-predictSurvProb(efit1b,newdata=edata1,times=5)
+edata1$mort5_efit1b <- 1 - predictSurvProb(efit1b, newdata = edata1, times = 5)
 
 # Run decision curve analysis
 
 # Development data
 # Model without PGR
-edata1<-as.data.frame(edata1)
-dca_rdata_1<-stdca(data=edata1,outcome="status",ttoutcome = "ryear",
-                    timepoint=5,predictors="mort5_efit1",xstop=1.0,
-                    ymin=-0.01, graph=FALSE)
+edata1 <- as.data.frame(edata1)
+dca_rdata_1 <- stdca(
+  data = edata1, outcome = "status", ttoutcome = "ryear",
+  timepoint = 5, predictors = "mort5_efit1", xstop = 1.0,
+  ymin = -0.01, graph = FALSE
+)
 ```
 
     ## [1] "mort5_efit1: No observations with risk greater than 81%, and therefore net benefit not calculable in this range."
 
 ``` r
 # Model with PGR
-dca_rdata_1b<-stdca(data=edata1,outcome='status',ttoutcome = "ryear",
-                     timepoint=5,predictors='mort5_efit1b',xstop=1.0,
-                     ymin=-0.01, graph=FALSE)
+dca_rdata_1b <- stdca(
+  data = edata1, outcome = "status", ttoutcome = "ryear",
+  timepoint = 5, predictors = "mort5_efit1b", xstop = 1.0,
+  ymin = -0.01, graph = FALSE
+)
 ```
 
     ## [1] "mort5_efit1b: No observations with risk greater than 86%, and therefore net benefit not calculable in this range."
 
 ``` r
 # Decision curves plot
-par(xaxs='i',yaxs='i',las=1)
+par(xaxs = "i", yaxs = "i", las = 1)
 plot(dca_rdata_1$net.benefit$threshold,
-     dca_rdata_1$net.benefit$mort5_efit1,type='l',lwd=2,lty=1,
-     xlab='Threshold probability in %', ylab='Net Benefit',
-     xlim=c(0,1),ylim=c(-0.10,0.45),bty='n',
-     cex.lab=1.2,cex.axis=1)
+  dca_rdata_1$net.benefit$mort5_efit1,
+  type = "l", lwd = 2, lty = 1,
+  xlab = "Threshold probability in %", ylab = "Net Benefit",
+  xlim = c(0, 1), ylim = c(-0.10, 0.45), bty = "n",
+  cex.lab = 1.2, cex.axis = 1
+)
 # legend('topright',c('Treat all','Treat none','Prediction model'),
 #        lwd=c(2,2,2),lty=c(1,1,2),col=c('darkgray','black','black'),bty='n')
-lines(dca_rdata_1$net.benefit$threshold,dca_rdata_1$net.benefit$none,type='l',lwd=2, lty=4)
-lines(dca_rdata_1$net.benefit$threshold,dca_rdata_1$net.benefit$all,type='l',lwd=2,col='darkgray')
-lines(dca_rdata_1b$net.benefit$threshold,dca_rdata_1b$net.benefit$mort5_efit1b,type='l',lwd=2,lty=5)
-legend('topright',
-       c('Treat All',
-         'Original model',
-         'Original model + PGR',
-         'Treat None'), lty=c(1,1,5,4),lwd=2,col=c('darkgray','black','black','black'),
-       bty='n')
-title("A Development data",adj=0,cex=1.5)
+lines(dca_rdata_1$net.benefit$threshold, dca_rdata_1$net.benefit$none, type = "l", lwd = 2, lty = 4)
+lines(dca_rdata_1$net.benefit$threshold, dca_rdata_1$net.benefit$all, type = "l", lwd = 2, col = "darkgray")
+lines(dca_rdata_1b$net.benefit$threshold, dca_rdata_1b$net.benefit$mort5_efit1b, type = "l", lwd = 2, lty = 5)
+legend("topright",
+  c(
+    "Treat All",
+    "Original model",
+    "Original model + PGR",
+    "Treat None"
+  ),
+  lty = c(1, 1, 5, 4), lwd = 2, col = c("darkgray", "black", "black", "black"),
+  bty = "n"
+)
+title("A Development data", adj = 0, cex = 1.5)
 ```
 
-<img src="03_predsurv_extended_files/figure-gfm/dca-1.png" style="display: block; margin: auto;" />
+<img src="imgs/03_predsurv_extended/dca-1.png" width="672" style="display: block; margin: auto;" />
 
 ``` r
 # External data
 # Validation data
 # Predicted probability calculation
-evdata1$mort5_model1<-1-predictSurvProb(efit1,newdata=evdata1,times=5)
+evdata1$mort5_model1 <- 1 - predictSurvProb(efit1, newdata = evdata1, times = 5)
 
 # Extended model with PGR
 # Predicted probability calculation
-evdata1$mort5_model1b<-1-predictSurvProb(efit1b,newdata=evdata1,times=5)
+evdata1$mort5_model1b <- 1 - predictSurvProb(efit1b, newdata = evdata1, times = 5)
 
 # Run decision curve analysis
 
 # Development data
 # Model without PGR
-evdata1<-as.data.frame(evdata1)
-dca_vdata_model1<-stdca(data=evdata1,outcome='status',ttoutcome = "ryear",
-                         timepoint=5,predictors='mort5_model1',xstop=1.0,
-                         ymin=-0.01, graph=FALSE)
+evdata1 <- as.data.frame(evdata1)
+dca_vdata_model1 <- stdca(
+  data = evdata1, outcome = "status", ttoutcome = "ryear",
+  timepoint = 5, predictors = "mort5_model1", xstop = 1.0,
+  ymin = -0.01, graph = FALSE
+)
 ```
 
     ## [1] "mort5_model1: No observations with risk greater than 81%, and therefore net benefit not calculable in this range."
 
 ``` r
 # Model with PGR
-dca_vdata_model1b<-stdca(data=evdata1,outcome='status',ttoutcome = "ryear",
-                          timepoint=5,predictors='mort5_model1b',xstop=1,
-                          ymin=-0.01, graph=FALSE)
+dca_vdata_model1b <- stdca(
+  data = evdata1, outcome = "status", ttoutcome = "ryear",
+  timepoint = 5, predictors = "mort5_model1b", xstop = 1,
+  ymin = -0.01, graph = FALSE
+)
 ```
 
     ## [1] "mort5_model1b: No observations with risk greater than 86%, and therefore net benefit not calculable in this range."
 
 ``` r
 # Decision curves plot
-par(xaxs='i',yaxs='i',las=1)
+par(xaxs = "i", yaxs = "i", las = 1)
 plot(dca_vdata_model1$net.benefit$threshold,
-     dca_vdata_model1$net.benefit$mort5_model1,type='l',lwd=2,lty=1,
-     xlab='Threshold probability in %', ylab='Net Benefit',
-     xlim=c(0,1),ylim=c(-0.10,0.60),bty='n',
-     cex.lab=1.2,cex.axis=1)
+  dca_vdata_model1$net.benefit$mort5_model1,
+  type = "l", lwd = 2, lty = 1,
+  xlab = "Threshold probability in %", ylab = "Net Benefit",
+  xlim = c(0, 1), ylim = c(-0.10, 0.60), bty = "n",
+  cex.lab = 1.2, cex.axis = 1
+)
 # legend('topright',c('Treat all','Treat none','Prediction model'),
 #        lwd=c(2,2,2),lty=c(1,1,2),col=c('darkgray','black','black'),bty='n')
-lines(dca_vdata_model1$net.benefit$threshold,dca_vdata_model1$net.benefit$none,type='l',lwd=2, lty=4)
-lines(dca_vdata_model1$net.benefit$threshold,dca_vdata_model1$net.benefit$all,type='l',lwd=2,col='darkgray')
-lines(dca_vdata_model1b$net.benefit$threshold,dca_vdata_model1b$net.benefit$mort5_model1b,type='l',lwd=2,lty=5)
-legend('topright',
-       c('Treat All',
-         'Original model',
-         'Original model + PGR',
-         'Treat None'), lty=c(1,1,5,4),lwd=2,col=c("darkgray","black","black","black"),
-       bty='n')
-title("B External data",adj=0,cex=1.5)
+lines(dca_vdata_model1$net.benefit$threshold, dca_vdata_model1$net.benefit$none, type = "l", lwd = 2, lty = 4)
+lines(dca_vdata_model1$net.benefit$threshold, dca_vdata_model1$net.benefit$all, type = "l", lwd = 2, col = "darkgray")
+lines(dca_vdata_model1b$net.benefit$threshold, dca_vdata_model1b$net.benefit$mort5_model1b, type = "l", lwd = 2, lty = 5)
+legend("topright",
+  c(
+    "Treat All",
+    "Original model",
+    "Original model + PGR",
+    "Treat None"
+  ),
+  lty = c(1, 1, 5, 4), lwd = 2, col = c("darkgray", "black", "black", "black"),
+  bty = "n"
+)
+title("B External data", adj = 0, cex = 1.5)
 ```
 
-<img src="03_predsurv_extended_files/figure-gfm/dca-2.png" style="display: block; margin: auto;" />
+<img src="imgs/03_predsurv_extended/dca-2.png" width="672" style="display: block; margin: auto;" />
 
 Based on previous research we used a range of thresholds from 14% to 23%
 for adjuvant chemotherapy. If we choose a threshold of 20% the model had
@@ -2491,3 +2615,165 @@ where *NB*<sub>model</sub> is the net benefit of the prediction model,
 -   Other useful references  
     <https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6728752/>  
     <https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7100774/>  
+
+## Reproducibility ticket
+
+``` r
+sessioninfo::session_info()
+```
+
+    ## - Session info ---------------------------------------------------------------
+    ##  setting  value                       
+    ##  version  R version 4.0.3 (2020-10-10)
+    ##  os       Windows 10 x64              
+    ##  system   x86_64, mingw32             
+    ##  ui       RTerm                       
+    ##  language (EN)                        
+    ##  collate  English_Netherlands.1252    
+    ##  ctype    English_Netherlands.1252    
+    ##  tz       Europe/Berlin               
+    ##  date     2021-04-03                  
+    ## 
+    ## - Packages -------------------------------------------------------------------
+    ##  package        * version    date       lib source        
+    ##  assertthat       0.2.1      2019-03-21 [1] CRAN (R 4.0.3)
+    ##  backports        1.2.0      2020-11-02 [1] CRAN (R 4.0.3)
+    ##  base64enc        0.1-3      2015-07-28 [1] CRAN (R 4.0.3)
+    ##  bit              4.0.4      2020-08-04 [1] CRAN (R 4.0.3)
+    ##  bit64            4.0.5      2020-08-30 [1] CRAN (R 4.0.3)
+    ##  blob             1.2.1      2020-01-20 [1] CRAN (R 4.0.3)
+    ##  boot           * 1.3-25     2020-04-26 [2] CRAN (R 4.0.3)
+    ##  broom            0.7.4      2021-01-29 [1] CRAN (R 4.0.3)
+    ##  broom.helpers    1.2.1      2021-02-26 [1] CRAN (R 4.0.4)
+    ##  cachem           1.0.1      2021-01-21 [1] CRAN (R 4.0.3)
+    ##  cellranger       1.1.0      2016-07-27 [1] CRAN (R 4.0.3)
+    ##  checkmate        2.0.0      2020-02-06 [1] CRAN (R 4.0.3)
+    ##  chron            2.3-56     2020-08-18 [1] CRAN (R 4.0.3)
+    ##  cli              2.3.0      2021-01-31 [1] CRAN (R 4.0.3)
+    ##  cluster          2.1.0      2019-06-19 [2] CRAN (R 4.0.3)
+    ##  cmprsk           2.2-10     2020-06-09 [1] CRAN (R 4.0.3)
+    ##  codetools        0.2-16     2018-12-24 [2] CRAN (R 4.0.3)
+    ##  colorspace       2.0-0      2020-11-11 [1] CRAN (R 4.0.3)
+    ##  conquer          1.0.2      2020-08-27 [1] CRAN (R 4.0.3)
+    ##  crayon           1.4.0      2021-01-30 [1] CRAN (R 4.0.3)
+    ##  curl             4.3        2019-12-02 [1] CRAN (R 4.0.3)
+    ##  data.table       1.13.6     2020-12-30 [1] CRAN (R 4.0.3)
+    ##  DBI              1.1.1      2021-01-15 [1] CRAN (R 4.0.3)
+    ##  dbplyr           2.1.0      2021-02-03 [1] CRAN (R 4.0.3)
+    ##  digest           0.6.27     2020-10-24 [1] CRAN (R 4.0.3)
+    ##  dplyr          * 1.0.3      2021-01-15 [1] CRAN (R 4.0.3)
+    ##  ellipsis         0.3.1      2020-05-15 [1] CRAN (R 4.0.3)
+    ##  evaluate         0.14       2019-05-28 [1] CRAN (R 4.0.3)
+    ##  fastmap          1.1.0      2021-01-25 [1] CRAN (R 4.0.3)
+    ##  forcats        * 0.5.1      2021-01-27 [1] CRAN (R 4.0.3)
+    ##  foreach          1.5.1      2020-10-15 [1] CRAN (R 4.0.3)
+    ##  foreign          0.8-80     2020-05-24 [2] CRAN (R 4.0.3)
+    ##  Formula        * 1.2-4      2020-10-16 [1] CRAN (R 4.0.3)
+    ##  fs               1.5.0      2020-07-31 [1] CRAN (R 4.0.3)
+    ##  furrr            0.2.2      2021-01-29 [1] CRAN (R 4.0.3)
+    ##  future           1.21.0     2020-12-10 [1] CRAN (R 4.0.3)
+    ##  generics         0.1.0      2020-10-31 [1] CRAN (R 4.0.3)
+    ##  ggplot2        * 3.3.3      2020-12-30 [1] CRAN (R 4.0.3)
+    ##  globals          0.14.0     2020-11-22 [1] CRAN (R 4.0.3)
+    ##  glue             1.4.2      2020-08-27 [1] CRAN (R 4.0.3)
+    ##  gridExtra      * 2.3        2017-09-09 [1] CRAN (R 4.0.3)
+    ##  gsubfn         * 0.7        2018-03-16 [1] CRAN (R 4.0.3)
+    ##  gt               0.2.2      2020-08-05 [1] CRAN (R 4.0.4)
+    ##  gtable           0.3.0      2019-03-25 [1] CRAN (R 4.0.3)
+    ##  gtsummary      * 1.3.7      2021-02-26 [1] CRAN (R 4.0.4)
+    ##  haven            2.3.1      2020-06-01 [1] CRAN (R 4.0.3)
+    ##  here             1.0.1      2020-12-13 [1] CRAN (R 4.0.4)
+    ##  highr            0.8        2019-03-20 [1] CRAN (R 4.0.3)
+    ##  Hmisc          * 4.4-2      2020-11-29 [1] CRAN (R 4.0.3)
+    ##  hms              1.0.0      2021-01-13 [1] CRAN (R 4.0.3)
+    ##  htmlTable        2.1.0      2020-09-16 [1] CRAN (R 4.0.3)
+    ##  htmltools        0.5.1.1    2021-01-22 [1] CRAN (R 4.0.3)
+    ##  htmlwidgets      1.5.3      2020-12-10 [1] CRAN (R 4.0.3)
+    ##  httr             1.4.2      2020-07-20 [1] CRAN (R 4.0.3)
+    ##  iterators        1.0.13     2020-10-15 [1] CRAN (R 4.0.3)
+    ##  jpeg             0.1-8.1    2019-10-24 [1] CRAN (R 4.0.3)
+    ##  jsonlite         1.7.2      2020-12-09 [1] CRAN (R 4.0.3)
+    ##  kableExtra     * 1.3.1      2020-10-22 [1] CRAN (R 4.0.3)
+    ##  knitr          * 1.31       2021-01-27 [1] CRAN (R 4.0.3)
+    ##  lattice        * 0.20-41    2020-04-02 [2] CRAN (R 4.0.3)
+    ##  latticeExtra     0.6-29     2019-12-19 [1] CRAN (R 4.0.3)
+    ##  lava             1.6.8.1    2020-11-04 [1] CRAN (R 4.0.3)
+    ##  lifecycle        0.2.0      2020-03-06 [1] CRAN (R 4.0.3)
+    ##  listenv          0.8.0      2019-12-05 [1] CRAN (R 4.0.3)
+    ##  lubridate        1.7.9.2    2020-11-13 [1] CRAN (R 4.0.3)
+    ##  magrittr         2.0.1      2020-11-17 [1] CRAN (R 4.0.3)
+    ##  MASS             7.3-53     2020-09-09 [2] CRAN (R 4.0.3)
+    ##  Matrix           1.2-18     2019-11-27 [2] CRAN (R 4.0.3)
+    ##  MatrixModels     0.4-1      2015-08-22 [1] CRAN (R 4.0.3)
+    ##  matrixStats      0.58.0     2021-01-29 [1] CRAN (R 4.0.3)
+    ##  memoise          2.0.0      2021-01-26 [1] CRAN (R 4.0.3)
+    ##  mets             1.2.8.1    2020-09-28 [1] CRAN (R 4.0.3)
+    ##  modelr           0.1.8      2020-05-19 [1] CRAN (R 4.0.3)
+    ##  mstate         * 0.3.1      2020-12-17 [1] CRAN (R 4.0.3)
+    ##  multcomp         1.4-15     2020-11-14 [1] CRAN (R 4.0.3)
+    ##  munsell          0.5.0      2018-06-12 [1] CRAN (R 4.0.3)
+    ##  mvtnorm          1.1-1      2020-06-09 [1] CRAN (R 4.0.3)
+    ##  nlme             3.1-149    2020-08-23 [2] CRAN (R 4.0.3)
+    ##  nnet             7.3-14     2020-04-26 [2] CRAN (R 4.0.3)
+    ##  numDeriv         2016.8-1.1 2019-06-06 [1] CRAN (R 4.0.3)
+    ##  openxlsx         4.2.3      2020-10-27 [1] CRAN (R 4.0.4)
+    ##  pacman         * 0.5.1      2019-03-11 [1] CRAN (R 4.0.4)
+    ##  parallelly       1.23.0     2021-01-04 [1] CRAN (R 4.0.3)
+    ##  pec            * 2020.11.17 2020-11-16 [1] CRAN (R 4.0.3)
+    ##  pillar           1.4.7      2020-11-20 [1] CRAN (R 4.0.3)
+    ##  pkgconfig        2.0.3      2019-09-22 [1] CRAN (R 4.0.3)
+    ##  plotrix        * 3.8-1      2021-01-21 [1] CRAN (R 4.0.3)
+    ##  png              0.1-7      2013-12-03 [1] CRAN (R 4.0.3)
+    ##  polspline        1.1.19     2020-05-15 [1] CRAN (R 4.0.3)
+    ##  prodlim        * 2019.11.13 2019-11-17 [1] CRAN (R 4.0.3)
+    ##  proto          * 1.0.0      2016-10-29 [1] CRAN (R 4.0.3)
+    ##  purrr          * 0.3.4      2020-04-17 [1] CRAN (R 4.0.3)
+    ##  quantreg         5.83       2021-01-22 [1] CRAN (R 4.0.3)
+    ##  R6               2.5.0      2020-10-28 [1] CRAN (R 4.0.3)
+    ##  RColorBrewer     1.1-2      2014-12-07 [1] CRAN (R 4.0.3)
+    ##  Rcpp             1.0.6      2021-01-15 [1] CRAN (R 4.0.3)
+    ##  readr          * 1.4.0      2020-10-05 [1] CRAN (R 4.0.3)
+    ##  readxl           1.3.1      2019-03-13 [1] CRAN (R 4.0.3)
+    ##  reprex           1.0.0      2021-01-27 [1] CRAN (R 4.0.3)
+    ##  rio            * 0.5.26     2021-03-01 [1] CRAN (R 4.0.4)
+    ##  riskRegression * 2020.12.08 2020-12-09 [1] CRAN (R 4.0.3)
+    ##  rlang            0.4.10     2020-12-30 [1] CRAN (R 4.0.3)
+    ##  rmarkdown        2.6        2020-12-14 [1] CRAN (R 4.0.3)
+    ##  rms            * 6.1-0      2020-11-29 [1] CRAN (R 4.0.3)
+    ##  rpart            4.1-15     2019-04-12 [2] CRAN (R 4.0.3)
+    ##  rprojroot        2.0.2      2020-11-15 [1] CRAN (R 4.0.3)
+    ##  rsample        * 0.0.8      2020-09-23 [1] CRAN (R 4.0.3)
+    ##  RSQLite        * 2.2.3      2021-01-24 [1] CRAN (R 4.0.3)
+    ##  rstudioapi       0.13       2020-11-12 [1] CRAN (R 4.0.3)
+    ##  rvest            0.3.6      2020-07-25 [1] CRAN (R 4.0.3)
+    ##  sandwich         3.0-0      2020-10-02 [1] CRAN (R 4.0.3)
+    ##  scales           1.1.1      2020-05-11 [1] CRAN (R 4.0.3)
+    ##  sessioninfo      1.1.1      2018-11-05 [1] CRAN (R 4.0.4)
+    ##  SparseM        * 1.78       2019-12-13 [1] CRAN (R 4.0.3)
+    ##  sqldf          * 0.4-11     2017-06-28 [1] CRAN (R 4.0.3)
+    ##  stringi          1.5.3      2020-09-09 [1] CRAN (R 4.0.3)
+    ##  stringr        * 1.4.0      2019-02-10 [1] CRAN (R 4.0.3)
+    ##  survAUC        * 1.0-5      2012-09-04 [1] CRAN (R 4.0.3)
+    ##  survival       * 3.2-7      2020-09-28 [1] CRAN (R 4.0.3)
+    ##  survivalROC    * 1.0.3      2013-01-13 [1] CRAN (R 4.0.3)
+    ##  table1         * 1.2.1      2020-11-26 [1] CRAN (R 4.0.3)
+    ##  TH.data          1.0-10     2019-01-21 [1] CRAN (R 4.0.3)
+    ##  tibble         * 3.0.6      2021-01-29 [1] CRAN (R 4.0.3)
+    ##  tidyr          * 1.1.2      2020-08-27 [1] CRAN (R 4.0.3)
+    ##  tidyselect       1.1.0      2020-05-11 [1] CRAN (R 4.0.3)
+    ##  tidyverse      * 1.3.0      2019-11-21 [1] CRAN (R 4.0.3)
+    ##  timereg          1.9.8      2020-10-05 [1] CRAN (R 4.0.3)
+    ##  timeROC        * 0.4        2019-12-18 [1] CRAN (R 4.0.3)
+    ##  usethis          2.0.1      2021-02-10 [1] CRAN (R 4.0.4)
+    ##  vctrs            0.3.6      2020-12-17 [1] CRAN (R 4.0.3)
+    ##  viridisLite      0.3.0      2018-02-01 [1] CRAN (R 4.0.3)
+    ##  webshot        * 0.5.2      2019-11-22 [1] CRAN (R 4.0.3)
+    ##  withr            2.4.1      2021-01-26 [1] CRAN (R 4.0.3)
+    ##  xfun             0.20       2021-01-06 [1] CRAN (R 4.0.3)
+    ##  xml2             1.3.2      2020-04-23 [1] CRAN (R 4.0.3)
+    ##  yaml             2.2.1      2020-02-01 [1] CRAN (R 4.0.3)
+    ##  zip              2.1.1      2020-08-27 [1] CRAN (R 4.0.4)
+    ##  zoo              1.8-8      2020-05-02 [1] CRAN (R 4.0.3)
+    ## 
+    ## [1] C:/Users/danie/Documents/R/win-library/4.0
+    ## [2] C:/Program Files/R/R-4.0.3/library
