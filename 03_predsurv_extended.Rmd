@@ -955,7 +955,7 @@ dimnames = list(
 )
 ```
 
-```{r, cal_res, echo=FALSE}
+```{r, cal_res, echo=FALSE,message=FALSE,warning=FALSE}
 res_cal <- matrix(c(
   rcfit1$coefficients,
   confint(rcfit1), # Apparent - calibration in-the-large
