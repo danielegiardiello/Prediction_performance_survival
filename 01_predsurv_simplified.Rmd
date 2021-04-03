@@ -2,32 +2,21 @@
 title: "Performance assessment of survival prediction models - simplified code"
 subtitle: "Simplified code when individual data of development and validation set are both available"
 always_allow_html: true
-output: 
-    github_document:
+output:
+  github_document:
     toc: true
-    keep_text: true
-    pandoc_args: --webtex
+    toc_depth: 4
+  keep_text: true
+  pandoc_args: --webtex
 ---
 
-- [Goals](#goals)
-  * [Install/load packages and import data](#install-load-packages-and-import-data)
-  * [Descriptive statistics](#descriptive-statistics)
-- [Goal 1: develop a risk prediction model with a time-to-event outcome](#goal-1--develop-a-risk-prediction-model-with-a-time-to-event-outcome)
-  * [1.1 Preliminary investigation: survival and censoring curves in the development and validation data](#11-preliminary-investigation--survival-and-censoring-curves-in-the-development-and-validation-data)
-  * [1.2 Secondary investigation: check non-linearity of continuous predictors](#12-secondary-investigation--check-non-linearity-of-continuous-predictors)
-  * [1.3 Model development: first check - the proportional hazard (PH) assumption](#13-model-development--first-check---the-proportional-hazard--ph--assumption)
-  * [1.4 Model development: fit the risk prediction models](#14-model-development--fit-the-risk-prediction-models)
-- [Goal 2: Assessing performance in survival prediction models](#goal-2--assessing-performance-in-survival-prediction-models)
-  * [2.1 Overall performance measures](#21-overall-performance-measures)
-  * [2.2 Discrimination measures](#22-discrimination-measures)
-  * [2.3 Calibration](#23-calibration)
-  * [2.3.1 Observed/Expected ratio](#231-observed-expected-ratio)
-  * [2.3.2 Calibration plot using restricted cubic splines](#232-calibration-plot-using-restricted-cubic-splines)
-- [Goal 3: Clinical utility](#goal-3--clinical-utility)
-- [References](#references)
-
-
-
+```{r setup, include=FALSE}
+# Knitr options
+knitr::opts_chunk$set(
+  fig.retina = 3,
+  fig.path = "imgs/01_predsurv_simplified/"
+)
+```
 
 ## Goals
 In this document, we assume that individual data of the development and validation set are both available. This file illustrates in a simplified way how to develop a survival prediction model and how to assess the corresponding prediction performance using internal and external validation.
@@ -44,29 +33,38 @@ install.packages('') (e.g. install.packages('survival')) or use the user-friendl
 
 ```{r, wdlib, message=FALSE,warning=FALSE}
 
-# Libraries needed
-library(survival)
-library(rms)
-library(sqldf)
-library(pec)
-library(riskRegression)
-library(survAUC)
-library(survivalROC)
-library(timeROC)
-library(plotrix)
-library(splines)
-library(knitr)
-library(table1)
-library(kableExtra)
-library(boot)
-library(tidyverse)
-library(rsample)
-library(webshot)
+# Use pacman to check whether packages are installed, if not load
+if (!require("pacman")) install.packages("pacman")
+library(pacman)
+
+pacman::p_load(
+  rio,
+  survival,
+  rms,
+  mstate,
+  sqldf,
+  pec,
+  riskRegression,
+  survAUC,
+  survivalROC,
+  timeROC,
+  plotrix,
+  splines,
+  knitr,
+  table1,
+  kableExtra,
+  gtsummary,
+  boot,
+  tidyverse,
+  rsample,
+  gridExtra,
+  webshot
+)
 # webshot::install_phantomjs()
 
 
-rdata <- readRDS("C:\\Users\\danie\\Documents\\GitHub\\Prediction_performance_survival\\Data\\rdata.rds")
-vdata <- readRDS("C:\\Users\\danie\\Documents\\GitHub\\Prediction_performance_survival\\Data\\vdata.rds")
+rdata <- readRDS(here::here("Data/rdata.rds"))
+vdata <- readRDS(here::here("Data/vdata.rds"))
 ```
 
 We loaded the development (rdata) and the validation data (vdata) from .rds format.
@@ -75,7 +73,7 @@ The Germany Breast Cancer Study Group data was used as an external validation of
 The improvement in prediction performance will be evaluated internally in the Rotterdam data (development data) and in German Breast Cancer Study data (validation data).  
 
 ### Descriptive statistics
-```{r, import,fig.align='center'}
+```{r, import,echo=FALSE}
 rdata$id <- rdata$pid
 rsel <- rdata[, c("id", "csize", "cnode", "cgrade", "age", "pgr")]
 vsel <- vdata[, c("id", "csize", "cnode", "cgrade", "age", "pgr")]
@@ -101,11 +99,24 @@ units(cdata$pgr) <- "ng/mL"
 
 options(prType = "html")
 tab1 <- table1(~ csize + cnode + cgrade + age + pgr | dt, data = cdata, overall = FALSE, topclass = "Rtable1-zebra")
-# print(tab1)
-rm(rsel, vsel, cdata)
 ```
 
-<img src="01_predsurv_simplified_files/figure-gfm/tab1.png" style="display: block; margin: auto;" />
+
+```{r tab1_bis, echo=FALSE}
+gtsummary::tbl_summary(
+  data = cdata %>% select(-id),
+  label = list(age ~ "Age (years)", csize ~ "Size (cm)", 
+               pgr ~ "PGR (ng/mL)"),
+  by = "dt", 
+  type = all_continuous() ~ "continuous2",
+  statistic = all_continuous() ~ c(
+    "{mean} ({sd})",
+    "{median} ({min}, {max})"
+  ),
+) %>% 
+  gtsummary::as_kable_extra() %>% 
+  kableExtra::kable_styling("striped") 
+```
 
 
 ## Goal 1: develop a risk prediction model with a time-to-event outcome
@@ -394,7 +405,9 @@ vboot <- vboot %>% mutate(
   IPA1 = map_dbl(splits, score_boot_1),
   IPA1b = map_dbl(splits, score_boot_1b)
 ) # Validation dataset
+```
 
+```{r, overall_table, warning=FALSE, echo=FALSE}
 # Table overall measures
 alpha <- .05
 k <- 2 # number of digits
@@ -487,7 +500,9 @@ Uno_vdata1b <-
   )
 # NOTE: if you have a lot of data n > 2000, standard error computation may be really long.
 # In that case, please use bootstrap percentile to calculate confidence intervals.
+```
 
+```{r, AUC_table,warning=FALSE,echo=FALSE}
 # Save results
 alpha <- .05
 k <- 2
@@ -564,12 +579,18 @@ We calculate the observed/ expected ratio (OE) at 5 years in the development and
 In the development data the OE should be (close to) 1.  
 
 ```{r, OE, fig.align='center',warning=FALSE,message=FALSE}
-# Function, arguments:
-# tfup = follow-up time
-# event = variable indication event (0=no, 1=yes)
-# pred.risk = predicted risk at time horizon
-# thorizon = time horizon to calculate the observed/expected ratio at time t
-# alpha = type I error (to calculate confidence intervals, default: 0.05)
+#' Calculate the O/E ratio
+#'
+#' @param tfup follow-up time
+#' @param event variable indication event (0=no, 1=yes)
+#' @param pred.risk predicted risk at time horizon
+#' @param thorizon time horizon to calculate the observed/expected ratio at time t
+#' @param alpha type I error (to calculate confidence intervals, default: 0.05)
+#'
+#' @return 
+#'
+#' @examples
+
 OE.ratio.t <- function(tfup, event, pred.risk, thorizon, alpha = .05) {
   obs_t <- 1 - summary(survfit(Surv(tfup, event) ~ 1), times = thorizon)$surv
   exp_t <- mean(pred.risk)
@@ -587,8 +608,9 @@ OE.rdata1b <- round(OE.ratio.t(rdata$ryear, event = rdata$status, pred.risk = 1 
 
 OE.vdata <- round(OE.ratio.t(vdata$ryear, event = vdata$status, pred.risk = 1 - evdata1$predsurv5, thorizon = 5), 2)
 OE.vdata1b <- round(OE.ratio.t(vdata$ryear, event = vdata$status, pred.risk = 1 - evdata1$predsurv5_1b, thorizon = 5), 2)
+```
 
-
+```{r, OE_table,warning=FALSE,echo=FALSE}
 res_OE <- matrix(c(
   OE.rdata,
   OE.rdata1b,
@@ -726,7 +748,7 @@ Given some thresholds, the model/strategy with higher net benefit represents the
 
 ```{r, function_stdca, message=FALSE,warning=FALSE, fig.align='center',include=FALSE}
 # Run the function to calculate the net benefit and the elements needed to develop decision curve analysis
-source("C:\\Users\\danie\\Documents\\GitHub\\Prediction_performance_survival\\Functions\\stdca.R", local = knitr::knit_global())
+source(here::here("Functions/stdca.R"))
 ```
 
 
@@ -873,5 +895,9 @@ https://diagnprognres.biomedcentral.com/articles/10.1186/s41512-019-0064-7 \
 https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6728752/ \
 https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7100774/ \
 
+## Reproducibility ticket
 
+```{r repro_ticket, echo=TRUE}
+sessioninfo::session_info()
+```
 
