@@ -19,4 +19,24 @@ Data, external functions and figures are available in the corresponding subfolde
 
 SAS code is available [here](https://github.com/danielegiardiello/Prediction_performance_survival/tree/main/SAS_code).
 
+## Usage
+
+You can either download a zip file containing the directory, or you can clone it by using
+
+```bash
+git clone https://github.com/danielegiardiello/Prediction_performance_survival.git
+```
+
+In either case, you can then use the `Prediction_performance_survival.Rproj` file to open
+and Rstudio session in the directory you have just downloaded. You may then knit
+both rmarkdown files, or run them line-by-line.
+
+## Contributions
+
+| Name                                                         | Affiliation                           | Role                  |
+| ------------------------------------------------------------ | ------------------------------------- | ----------------------|
+| [Daniele Giardiello](https://github.com/danielegiardiello/)  | The Netherlands Cancer Institute (NL) | Author/maintainer     |
+| [David Mc Lernorn](https://twitter.com/davemclernon?lang=en) | University of Aberdeen (UK) | Author of SAS code              |
+| [Edouard Bonneville](https://www.lumc.nl/org/bds/medewerkers/1968807) | Leiden University Medical Center (NL) | Contributor  |
+| [Terry Therneau](https://www.mayo.edu/research/faculty/therneau-terry-m-ph-d/bio-00025991) | Mayo Clinic (US)| Contributor  |
 
