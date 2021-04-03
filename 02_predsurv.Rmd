@@ -62,39 +62,39 @@ The time-to-death outcome should be in years and the variables should be categor
 
 ```{r, create, message=FALSE, warning=FALSE}
 # Load
-vdata<-readRDS('C:\\Users\\danie\\Documents\\Predsurv\\Data\\vdata.rds')
-options(show.signif.stars = FALSE)  # display statistical intelligence
+vdata <- readRDS("C:\\Users\\danie\\Documents\\Predsurv\\Data\\vdata.rds")
+options(show.signif.stars = FALSE) # display statistical intelligence
 
 
 # Winzorise PGR to the 99th percentile to deal with very large influential values;
-p99<-1347.85 
+p99 <- 1347.85
 # 99th quantile of development data and they should available in the literature
 vdata$pgr2 <- pmin(vdata$pgr, p99)
 
 # Create the splines as provided in the paper for the PGR variable
-rcs3_pgr<-rcspline.eval(vdata$pgr2, knots=c(0,41,486))
-attr(rcs3_pgr,'dim')<-NULL
-attr(rcs3_pgr,'knots')<-NULL
-vdata$pgr3<-rcs3_pgr
+rcs3_pgr <- rcspline.eval(vdata$pgr2, knots = c(0, 41, 486))
+attr(rcs3_pgr, "dim") <- NULL
+attr(rcs3_pgr, "knots") <- NULL
+vdata$pgr3 <- rcs3_pgr
 rm(rcs3_pgr)
 ```
 
 ### Descriptive statistics of validation data
 Descriptive statistics were provided in the table below.
 ```{r, tab1,message=FALSE, warning=FALSE}
-vsel<-vdata[,c('id', 'csize', 'cnode', 'cgrade', 'age', 'pgr')]
+vsel <- vdata[, c("id", "csize", "cnode", "cgrade", "age", "pgr")]
 
-label(vsel$csize)<-'Size'
-label(vsel$cnode)<-'Number of nodes'
-label(vsel$cgrade)<-'Grade of tumor'
-label(vsel$age)<-'Age'
-label(vsel$pgr)<-'PGR'
+label(vsel$csize) <- "Size"
+label(vsel$cnode) <- "Number of nodes"
+label(vsel$cgrade) <- "Grade of tumor"
+label(vsel$age) <- "Age"
+label(vsel$pgr) <- "PGR"
 
-units(vsel$csize)<-'mm'
-units(vsel$age)<-'years'
-units(vsel$pgr)<-'ng/mL'
+units(vsel$csize) <- "mm"
+units(vsel$age) <- "years"
+units(vsel$pgr) <- "ng/mL"
 
-tab1<-table1(~ csize + cnode + cgrade + age+ pgr, data=vsel, topclass="Rtable1-zebra")
+tab1 <- table1(~ csize + cnode + cgrade + age + pgr, data = vsel, topclass = "Rtable1-zebra")
 # print(tab1)
 ```
 
@@ -102,23 +102,23 @@ tab1<-table1(~ csize + cnode + cgrade + age+ pgr, data=vsel, topclass="Rtable1-z
 
 We draw the survival and the censoring curves of validation data
 ```{r, surv,fig.align='center',message=FALSE, warning=FALSE}
-# Validation set 
-sfit3 <- survfit(Surv(ryear, status==1) ~1, data=vdata) # survival
-sfit4 <- survfit(Surv(ryear, status==0) ~1, data=vdata) # censoring
+# Validation set
+sfit3 <- survfit(Surv(ryear, status == 1) ~ 1, data = vdata) # survival
+sfit4 <- survfit(Surv(ryear, status == 0) ~ 1, data = vdata) # censoring
 
-par(xaxs='i',yaxs='i',las=1)
-plot(sfit3, conf.int=FALSE, lwd=2, xlab="Years",bty='n',xlim=c(0,8))
-lines(sfit4, conf.int=FALSE, col=2, lwd=2)
-legend('bottomleft', c("Death", "Censoring"), col=1:2, lwd=2, bty='n')
-title('Validation set')
+par(xaxs = "i", yaxs = "i", las = 1)
+plot(sfit3, conf.int = FALSE, lwd = 2, xlab = "Years", bty = "n", xlim = c(0, 8))
+lines(sfit4, conf.int = FALSE, col = 2, lwd = 2)
+legend("bottomleft", c("Death", "Censoring"), col = 1:2, lwd = 2, bty = "n")
+title("Validation set")
 ```
 A number of 686 patients were selected to externally validate the risk prediction model.The median survival in the validation data was 4 years. The median survival was 4.5 years  while the 5-year survival was 49% (95% CI: 45-54%).
 
 In the prediction model developed using the Rotterdam data, violation of proportional hazards was detected for some predictors and the development data was administratively censored at 5 years. For this reason, we also administratively censor patients in the new (validation) data at 5 years.
 
 ```{r, censor,message=FALSE, warning=FALSE}
-evdata<-survSplit(Surv(ryear,status)~.,data=vdata,cut=5,episode='epoch')
-evdata1<-evdata[evdata$epoch==1,]
+evdata <- survSplit(Surv(ryear, status) ~ ., data = vdata, cut = 5, episode = "epoch")
+evdata1 <- evdata[evdata$epoch == 1, ]
 ```
 
 ## Goal 1: Assessing performance of a developed survival model in a new data
@@ -172,27 +172,27 @@ Categorization of number of positive lymph nodes was suboptimal in this example 
 
 ```{r, predsurv, message=FALSE, warning=FALSE}
 # Baseline survival at 5 years
-S0.5yr<-.614 # Assuming the baseline survival at 5 years is available in the model equation (model with no PGR)
-S0b.5yr<-.616 # Baseline survival for the extended model (with PGR)
+S0.5yr <- .614 # Assuming the baseline survival at 5 years is available in the model equation (model with no PGR)
+S0b.5yr <- .616 # Baseline survival for the extended model (with PGR)
 
 # Centercepts of the models
-centercept1<-.920
-centercept1b<-.658
+centercept1 <- .920
+centercept1b <- .658
 
 # Calculate the predictor index (linear predictor) and predicted survival at 5 years in the validation data for the model without PGR
-vdf_lp<-as.data.frame(model.matrix(~csize+cnode+cgrade,data=evdata1))
-vdf_lp$`(Intercept)`<-NULL
-coef_efit1<-c(.394,.623,.361,1.090,.415)
-lp<-as.matrix(vdf_lp)%*%cbind(coef_efit1)
-evdata1$lp<-lp-centercept1
-evdata1$predsurv5<-S0.5yr**exp(evdata1$lp)
+vdf_lp <- as.data.frame(model.matrix(~ csize + cnode + cgrade, data = evdata1))
+vdf_lp$`(Intercept)` <- NULL
+coef_efit1 <- c(.394, .623, .361, 1.090, .415)
+lp <- as.matrix(vdf_lp) %*% cbind(coef_efit1)
+evdata1$lp <- lp - centercept1
+evdata1$predsurv5 <- S0.5yr**exp(evdata1$lp)
 
-vdf_lp_1b<-as.data.frame(model.matrix(~csize+cnode+cgrade+I(pgr2)+I(pgr3),data=evdata1))
-vdf_lp_1b$`(Intercept)`<-NULL
-coef_efit1b<-c(.370,.598,.385,1.09,.35,-.003,.014)
-lp_1b<-as.matrix(vdf_lp_1b)%*%cbind(coef_efit1b)
-evdata1$lp_1b<-lp_1b-centercept1b
-evdata1$predsurv5_1b<-S0b.5yr**exp(evdata1$lp_1b)
+vdf_lp_1b <- as.data.frame(model.matrix(~ csize + cnode + cgrade + I(pgr2) + I(pgr3), data = evdata1))
+vdf_lp_1b$`(Intercept)` <- NULL
+coef_efit1b <- c(.370, .598, .385, 1.09, .35, -.003, .014)
+lp_1b <- as.matrix(vdf_lp_1b) %*% cbind(coef_efit1b)
+evdata1$lp_1b <- lp_1b - centercept1b
+evdata1$predsurv5_1b <- S0b.5yr**exp(evdata1$lp_1b)
 ```
 ### 1.2 Overall performance measures
 Some overall performance measures are proposed using survival data:
@@ -204,73 +204,86 @@ Some overall performance measures are proposed using survival data:
 Bootstrapping validation data to calculate bootstrap percentile confidence intervals
 ```{r, bootstrap, message=FALSE, warning=FALSE}
 set.seed(20200416)
-vboot<-bootstraps(evdata1,times=10)
+vboot <- bootstraps(evdata1, times = 10)
 # NOTE: B=10 otherwise the computation time will be too long
 ```
 
 
 ```{r, function_brier, message=FALSE,warning=FALSE, fig.align='center',include=FALSE}
 # Run the function to calculate the net benefit and the elements needed to develop decision curve analysis
-source('C:\\Users\\danie\\Documents\\Predsurv\\Functions\\brier_score.R',local = knitr::knit_global())
+source("C:\\Users\\danie\\Documents\\Predsurv\\Functions\\brier_score.R", local = knitr::knit_global())
 ```
 
 
 ```{r, overall, warning=FALSE, message=FALSE}
-brier_evdata1<-
-  brier_score(tfup=evdata1$ryear,status=evdata1$status,
-            thorizon=4.95,survival=evdata1$predsurv5)
+brier_evdata1 <-
+  brier_score(
+    tfup = evdata1$ryear, status = evdata1$status,
+    thorizon = 4.95, survival = evdata1$predsurv5
+  )
 
-brier_evdata1b<-
-  brier_score(tfup=evdata1$ryear,status=evdata1$status,
-            thorizon=4.95,survival=evdata1$predsurv5_1b)
+brier_evdata1b <-
+  brier_score(
+    tfup = evdata1$ryear, status = evdata1$status,
+    thorizon = 4.95, survival = evdata1$predsurv5_1b
+  )
 
-brier_score_boot1<-function(split){
-  brier_score(tfup=analysis(split)$ryear,
-              status=analysis(split)$status,
-              thorizon=4.95,
-              survival=analysis(split)$predsurv5)}
+brier_score_boot1 <- function(split) {
+  brier_score(
+    tfup = analysis(split)$ryear,
+    status = analysis(split)$status,
+    thorizon = 4.95,
+    survival = analysis(split)$predsurv5
+  )
+}
 
-brier_score_boot1b<-function(split){
-  brier_score(tfup=analysis(split)$ryear,
-              status=analysis(split)$status,
-              thorizon=4.95,
-              survival=analysis(split)$predsurv5_1b)}
+brier_score_boot1b <- function(split) {
+  brier_score(
+    tfup = analysis(split)$ryear,
+    status = analysis(split)$status,
+    thorizon = 4.95,
+    survival = analysis(split)$predsurv5_1b
+  )
+}
 
 # Bootstrap percentile confidence intervals for Brier score
-vboot<- vboot %>% mutate(err1=map(splits,brier_score_boot1),
-                         err1b=map(splits,brier_score_boot1b),
-                         Brier1=map_dbl(err1,"Brier"),
-                         Brier1b=map_dbl(err1b,"Brier"),
-                         IPA1=map_dbl(err1,"IPA"),
-                         IPA1b=map_dbl(err1b,"IPA"))
+vboot <- vboot %>% mutate(
+  err1 = map(splits, brier_score_boot1),
+  err1b = map(splits, brier_score_boot1b),
+  Brier1 = map_dbl(err1, "Brier"),
+  Brier1b = map_dbl(err1b, "Brier"),
+  IPA1 = map_dbl(err1, "IPA"),
+  IPA1b = map_dbl(err1b, "IPA")
+)
 # # Table overall measures
-alpha<-.05
-k<-2 # number of digits
-res_ov<-matrix(c(brier_evdata1["Brier"],
-               quantile(vboot$Brier1,probs=alpha/2),
-               quantile(vboot$Brier1,probs=1-alpha/2),
-               
-               brier_evdata1b["Brier"],
-               quantile(vboot$Brier1b,probs=alpha/2),
-               quantile(vboot$Brier1b,probs=1-alpha/2),
-               
-               brier_evdata1["IPA"],
-               quantile(vboot$IPA1,probs=alpha/2),
-               quantile(vboot$IPA1,probs=1-alpha/2),
-               
-                brier_evdata1b["IPA"],
-                quantile(vboot$IPA1b,probs=alpha/2),
-                quantile(vboot$IPA1b,probs=1-alpha/2)
-               ),
+alpha <- .05
+k <- 2 # number of digits
+res_ov <- matrix(c(
+  brier_evdata1["Brier"],
+  quantile(vboot$Brier1, probs = alpha / 2),
+  quantile(vboot$Brier1, probs = 1 - alpha / 2),
+  brier_evdata1b["Brier"],
+  quantile(vboot$Brier1b, probs = alpha / 2),
+  quantile(vboot$Brier1b, probs = 1 - alpha / 2),
+  brier_evdata1["IPA"],
+  quantile(vboot$IPA1, probs = alpha / 2),
+  quantile(vboot$IPA1, probs = 1 - alpha / 2),
+  brier_evdata1b["IPA"],
+  quantile(vboot$IPA1b, probs = alpha / 2),
+  quantile(vboot$IPA1b, probs = 1 - alpha / 2)
+),
+nrow = 2, ncol = 6, byrow = T,
+dimnames = list(
+  c("Brier", "IPA"),
+  rep(c("Estimate", "Lower .95 ", "Upper .95"), 2)
+)
+)
 
-      nrow=2,ncol=6, byrow=T, 
-      dimnames = list(c('Brier','IPA'),
-                        rep(c('Estimate','Lower .95 ','Upper .95'),2)))
+res_ov <- round(res_ov, 2) # Digits
 
-res_ov<-round(res_ov,2) # Digits
-
-kable(res_ov) %>% kable_styling('striped') %>% 
-  add_header_above(c(' '=1,'External'=3,'External + PGR'=3))
+kable(res_ov) %>%
+  kable_styling("striped") %>%
+  add_header_above(c(" " = 1, "External" = 3, "External + PGR" = 3))
 ```
 
 As expected the overall performance measures were lower in the external validation. Including information about PGR slightly improved the overall performance.
@@ -293,45 +306,51 @@ The dynamic controls are defined as subjects surviving after the time horizon (i
 
 
 # External validation
-Uno_vdata1<-
-  timeROC(T=evdata1$ryear, delta=evdata1$status,
-        marker=evdata1$lp,
-        cause=1,weighting='marginal',times=4.95,
-        iid=TRUE)
+Uno_vdata1 <-
+  timeROC(
+    T = evdata1$ryear, delta = evdata1$status,
+    marker = evdata1$lp,
+    cause = 1, weighting = "marginal", times = 4.95,
+    iid = TRUE
+  )
 
 # External validation with pgr
-Uno_vdata1b<-
-  timeROC(T=evdata1$ryear, delta=evdata1$status,
-        marker=evdata1$lp_1b,
-        cause=1,weighting='marginal',times=4.95,
-        iid=TRUE)
+Uno_vdata1b <-
+  timeROC(
+    T = evdata1$ryear, delta = evdata1$status,
+    marker = evdata1$lp_1b,
+    cause = 1, weighting = "marginal", times = 4.95,
+    iid = TRUE
+  )
 # NOTE: if you have a lot of data n > 2000, standard error computation may be really long.
 # In that case, please use bootstrap percentile to calculate confidence intervals.
 
-alpha<-.05
-k<-2
-res_discr<-matrix(c(
-
-              Uno_vdata1$AUC['t=4.95'],
-              Uno_vdata1$AUC['t=4.95']-qnorm(1-alpha/2)*
-              Uno_vdata1$inference$vect_sd_1['t=4.95'],
-              Uno_vdata1$AUC['t=4.95']+qnorm(1-alpha/2)*
-              Uno_vdata1$inference$vect_sd_1['t=4.95'],
-              
-              Uno_vdata1b$AUC['t=4.95'],
-              Uno_vdata1b$AUC['t=4.95']-qnorm(1-alpha/2)*
-              Uno_vdata1b$inference$vect_sd_1['t=4.95'],
-              Uno_vdata1b$AUC['t=4.95']+qnorm(1-alpha/2)*
-              Uno_vdata1b$inference$vect_sd_1['t=4.95']
+alpha <- .05
+k <- 2
+res_discr <- matrix(c(
+  Uno_vdata1$AUC["t=4.95"],
+  Uno_vdata1$AUC["t=4.95"] - qnorm(1 - alpha / 2) *
+    Uno_vdata1$inference$vect_sd_1["t=4.95"],
+  Uno_vdata1$AUC["t=4.95"] + qnorm(1 - alpha / 2) *
+    Uno_vdata1$inference$vect_sd_1["t=4.95"],
+  Uno_vdata1b$AUC["t=4.95"],
+  Uno_vdata1b$AUC["t=4.95"] - qnorm(1 - alpha / 2) *
+    Uno_vdata1b$inference$vect_sd_1["t=4.95"],
+  Uno_vdata1b$AUC["t=4.95"] + qnorm(1 - alpha / 2) *
+    Uno_vdata1b$inference$vect_sd_1["t=4.95"]
 ),
-                  
-              nrow=1,ncol=6, byrow=T, 
-              dimnames = 
-  list(c('Uno AUC'),
-  rep(c('Estimate','Lower .95 ','Upper .95'),2)))
+nrow = 1, ncol = 6, byrow = T,
+dimnames =
+  list(
+    c("Uno AUC"),
+    rep(c("Estimate", "Lower .95 ", "Upper .95"), 2)
+  )
+)
 
-res_discr<-round(res_discr,k)
-kable(res_discr) %>% kable_styling('striped') %>% add_header_above(c(' '=1,'External'=3,'External + PGR'=3))
+res_discr <- round(res_discr, k)
+kable(res_discr) %>%
+  kable_styling("striped") %>%
+  add_header_above(c(" " = 1, "External" = 3, "External + PGR" = 3))
 ```
 
 The time-dependent AUCs at 5 years were in the external validation were between 0.68 and 0.72 showing moderate discrimination. The additional information of the PGR marker increased the discrimination by 0.04.
@@ -392,60 +411,65 @@ Typically, the model equation is provided in terms of predicted survival at a fi
 # thorizon = time horizon to calculate the observed/expected ratio at time t
 # alpha = type I error (to calculate confidence intervals, default: 0.05)
 
-OE.ratio.t<-function(tfup,event,pred.risk,thorizon,alpha=.05)
-{
-  obs_t<-1-summary(survfit(Surv(tfup,event)~1),times=thorizon)$surv
-  exp_t<-mean(pred.risk)
-  
-  OE<-obs_t/exp_t
-  OE.lower<-OE*exp(-qnorm(1-alpha/2)*sqrt(1/sum(event)))
-  OE.upper<-OE*exp(+qnorm(1-alpha/2)*sqrt(1/sum(event)))
-  res<-c(OE,OE.lower,OE.upper)
-  names(res)<-c('Estimate','Lower .95','Upper .95')
+OE.ratio.t <- function(tfup, event, pred.risk, thorizon, alpha = .05) {
+  obs_t <- 1 - summary(survfit(Surv(tfup, event) ~ 1), times = thorizon)$surv
+  exp_t <- mean(pred.risk)
+
+  OE <- obs_t / exp_t
+  OE.lower <- OE * exp(-qnorm(1 - alpha / 2) * sqrt(1 / sum(event)))
+  OE.upper <- OE * exp(+qnorm(1 - alpha / 2) * sqrt(1 / sum(event)))
+  res <- c(OE, OE.lower, OE.upper)
+  names(res) <- c("Estimate", "Lower .95", "Upper .95")
   return(res)
 }
 
 # Calculation
 # Without PGR
-OE_ratio5<-OE.ratio.t(
-  tfup=evdata1$ryear,event=evdata1$status,
-  pred.risk=1-evdata1$predsurv5,
-  thorizon = 5)
+OE_ratio5 <- OE.ratio.t(
+  tfup = evdata1$ryear, event = evdata1$status,
+  pred.risk = 1 - evdata1$predsurv5,
+  thorizon = 5
+)
 # With PGR
-OE_ratio5_1b<-OE.ratio.t(
-  tfup=evdata1$ryear,event=evdata1$status,
-  pred.risk=1-evdata1$predsurv5_1b,
-  thorizon = 5)
+OE_ratio5_1b <- OE.ratio.t(
+  tfup = evdata1$ryear, event = evdata1$status,
+  pred.risk = 1 - evdata1$predsurv5_1b,
+  thorizon = 5
+)
 
 # Calibration slope
-calslope<-coxph(Surv(ryear,status)~lp,data=evdata1) 
-calslope_1b<-coxph(Surv(ryear,status)~lp_1b,data=evdata1) 
+calslope <- coxph(Surv(ryear, status) ~ lp, data = evdata1)
+calslope_1b <- coxph(Surv(ryear, status) ~ lp_1b, data = evdata1)
 
 # Save results
-alpha<-.05
-k<-2
-res_cal<-matrix(c(OE_ratio5["Estimate"], 
-                  OE_ratio5["Lower .95"],
-                  OE_ratio5["Upper .95"],
-                    
-                  OE_ratio5_1b["Estimate"], 
-                  OE_ratio5_1b["Lower .95"],
-                  OE_ratio5_1b["Upper .95"],
-          
-                  calslope$coefficients['lp'], 
-                  confint(calslope),  # External - calibration slope
-                    
-                  calslope_1b$coefficients['lp_1b'],
-                  confint(calslope_1b)),# External + PGR - calibration slope
-                  
-                  nrow=2,ncol=6, byrow=T, 
-                  dimnames = list(c('O/E ratio at 5 years','Calibration slope'),
-                                  rep(c('Estimate','Lower .95 ','Upper .95'),2)))
+alpha <- .05
+k <- 2
+res_cal <- matrix(c(
+  OE_ratio5["Estimate"],
+  OE_ratio5["Lower .95"],
+  OE_ratio5["Upper .95"],
+  OE_ratio5_1b["Estimate"],
+  OE_ratio5_1b["Lower .95"],
+  OE_ratio5_1b["Upper .95"],
+  calslope$coefficients["lp"],
+  confint(calslope), # External - calibration slope
 
-k<-2
-res_cal<-round(res_cal,k) # number of digits
-kable(res_cal) %>% kable_styling('striped', position='center') %>% add_header_above(c(' '=1,'External'=3, 'External + PGR'=3))
-rm(res_cal,calslope,calslope_1b,OE_ratio5,OE_ratio5_1b)
+  calslope_1b$coefficients["lp_1b"],
+  confint(calslope_1b)
+), # External + PGR - calibration slope
+nrow = 2, ncol = 6, byrow = T,
+dimnames = list(
+  c("O/E ratio at 5 years", "Calibration slope"),
+  rep(c("Estimate", "Lower .95 ", "Upper .95"), 2)
+)
+)
+
+k <- 2
+res_cal <- round(res_cal, k) # number of digits
+kable(res_cal) %>%
+  kable_styling("striped", position = "center") %>%
+  add_header_above(c(" " = 1, "External" = 3, "External + PGR" = 3))
+rm(res_cal, calslope, calslope_1b, OE_ratio5, OE_ratio5_1b)
 ```
 
 The OE ratio was 1.12 and 1.05 indicating that the predicted values at 5 years were systematic overestimated for both models with and without PGR. The calibration slope was 1.04 and 1.15 indicate good estimation of the risk by the model and slight under estimation when PGR was included as a predictor.
@@ -455,64 +479,68 @@ Calibration plot at 5 years may be created using equally-sized groups of patient
 
 ```{r, cal_rcs, fig.align='center',message=FALSE, warning=FALSE}
 ## External data without PGR
-evdata1$predmort5<-1-evdata1$predsurv5
-evdata1$predmort5.cll<-log(-log(1-evdata1$predmort5))
+evdata1$predmort5 <- 1 - evdata1$predsurv5
+evdata1$predmort5.cll <- log(-log(1 - evdata1$predmort5))
 
 # Estimate
-vcalibrate.efit1<-cph(Surv(ryear,status)~rcs(predmort5.cll,3),x=T,y=T,data=evdata1,surv=T)  # better rms::cph?
-predict.grid<-seq(quantile(evdata1$predmort5,prob=0.01), quantile(evdata1$predmort5,prob=0.99),length=100)
-predict.grid.cll<-log(-log(1-predict.grid))
-predict.grid.df<-data.frame(predict.grid)
-predict.grid.cll.df<-data.frame(predict.grid.cll)
-names(predict.grid.df)<-'predmort5'
-names(predict.grid.cll.df)<-'predmort5.cll'
+vcalibrate.efit1 <- cph(Surv(ryear, status) ~ rcs(predmort5.cll, 3), x = T, y = T, data = evdata1, surv = T) # better rms::cph?
+predict.grid <- seq(quantile(evdata1$predmort5, prob = 0.01), quantile(evdata1$predmort5, prob = 0.99), length = 100)
+predict.grid.cll <- log(-log(1 - predict.grid))
+predict.grid.df <- data.frame(predict.grid)
+predict.grid.cll.df <- data.frame(predict.grid.cll)
+names(predict.grid.df) <- "predmort5"
+names(predict.grid.cll.df) <- "predmort5.cll"
 
 # Plot
-pred.vcalibrate.efit1<-1-survest(vcalibrate.efit1,newdata=predict.grid.cll.df,times=5)$surv
-pred.vcalibrate.efit1.lower<-1-survest(vcalibrate.efit1,newdata=predict.grid.cll.df,times=5)$upper
-pred.vcalibrate.efit1.upper<-1-survest(vcalibrate.efit1,newdata=predict.grid.cll.df,times=5)$lower
-par(xaxs='i',yaxs='i',las=1)
-plot(predict.grid,pred.vcalibrate.efit1,type='l',lty=1,xlim=c(0,1),
-     ylim=c(0,1), lwd=2,
-     xlab='Predicted risk at 5 years',
-     ylab='Observed risk at 5 years', bty='n')
-lines(predict.grid,pred.vcalibrate.efit1.lower,type='l',lty=2,lwd=2)
-lines(predict.grid,pred.vcalibrate.efit1.upper,type='l',lty=2,lwd=2)
-abline(0,1,lwd=2,lty=2,col='red')
-title('A External data without PGR', adj=0)
+pred.vcalibrate.efit1 <- 1 - survest(vcalibrate.efit1, newdata = predict.grid.cll.df, times = 5)$surv
+pred.vcalibrate.efit1.lower <- 1 - survest(vcalibrate.efit1, newdata = predict.grid.cll.df, times = 5)$upper
+pred.vcalibrate.efit1.upper <- 1 - survest(vcalibrate.efit1, newdata = predict.grid.cll.df, times = 5)$lower
+par(xaxs = "i", yaxs = "i", las = 1)
+plot(predict.grid, pred.vcalibrate.efit1,
+  type = "l", lty = 1, xlim = c(0, 1),
+  ylim = c(0, 1), lwd = 2,
+  xlab = "Predicted risk at 5 years",
+  ylab = "Observed risk at 5 years", bty = "n"
+)
+lines(predict.grid, pred.vcalibrate.efit1.lower, type = "l", lty = 2, lwd = 2)
+lines(predict.grid, pred.vcalibrate.efit1.upper, type = "l", lty = 2, lwd = 2)
+abline(0, 1, lwd = 2, lty = 2, col = "red")
+title("A External data without PGR", adj = 0)
 # par(new=T)
-#plot(density(evdata1$predmort5),
+# plot(density(evdata1$predmort5),
 #     axes=F,xlab=NA,ylab=NA,
 #     main="")
 
 
 ## External data with PGR
-evdata1$predmort5<-1-evdata1$predsurv5_1b
-evdata1$predmort5.cll<-log(-log(1-evdata1$predmort5))
+evdata1$predmort5 <- 1 - evdata1$predsurv5_1b
+evdata1$predmort5.cll <- log(-log(1 - evdata1$predmort5))
 
 # Estimate
-vcalibrate.efit1b<-cph(Surv(ryear,status)~rcs(predmort5.cll,3),x=T,y=T,data=evdata1,surv=T)  # better rms::cph?
-predict.grid<-seq(quantile(evdata1$predmort5,prob=0.01), quantile(evdata1$predmort5,prob=0.99),length=100)
-predict.grid.cll<-log(-log(1-predict.grid))
-predict.grid.df<-data.frame(predict.grid)
-predict.grid.cll.df<-data.frame(predict.grid.cll)
-names(predict.grid.df)<-'predmort5'
-names(predict.grid.cll.df)<-'predmort5.cll'
+vcalibrate.efit1b <- cph(Surv(ryear, status) ~ rcs(predmort5.cll, 3), x = T, y = T, data = evdata1, surv = T) # better rms::cph?
+predict.grid <- seq(quantile(evdata1$predmort5, prob = 0.01), quantile(evdata1$predmort5, prob = 0.99), length = 100)
+predict.grid.cll <- log(-log(1 - predict.grid))
+predict.grid.df <- data.frame(predict.grid)
+predict.grid.cll.df <- data.frame(predict.grid.cll)
+names(predict.grid.df) <- "predmort5"
+names(predict.grid.cll.df) <- "predmort5.cll"
 
 
 # Plot
-pred.vcalibrate.efit1b<-1-survest(vcalibrate.efit1b,newdata=predict.grid.cll.df,times=5)$surv
-pred.vcalibrate.efit1b.lower<-1-survest(vcalibrate.efit1b,newdata=predict.grid.cll.df,times=5)$upper
-pred.vcalibrate.efit1b.upper<-1-survest(vcalibrate.efit1b,newdata=predict.grid.cll.df,times=5)$lower
-par(xaxs='i',yaxs='i',las=1)
-plot(predict.grid,pred.vcalibrate.efit1b,type='l',lty=1,xlim=c(0,1),
-     ylim=c(0,1), lwd=2,
-     xlab='Predicted risk at 5 years',
-     ylab='Observed risk at 5 years', bty='n')
-lines(predict.grid,pred.vcalibrate.efit1b.lower,type='l',lty=2,lwd=2)
-lines(predict.grid,pred.vcalibrate.efit1b.upper,type='l',lty=2,lwd=2)
-abline(0,1,lwd=2,lty=2,col='red')
-title('B External data with PGR', adj=0)
+pred.vcalibrate.efit1b <- 1 - survest(vcalibrate.efit1b, newdata = predict.grid.cll.df, times = 5)$surv
+pred.vcalibrate.efit1b.lower <- 1 - survest(vcalibrate.efit1b, newdata = predict.grid.cll.df, times = 5)$upper
+pred.vcalibrate.efit1b.upper <- 1 - survest(vcalibrate.efit1b, newdata = predict.grid.cll.df, times = 5)$lower
+par(xaxs = "i", yaxs = "i", las = 1)
+plot(predict.grid, pred.vcalibrate.efit1b,
+  type = "l", lty = 1, xlim = c(0, 1),
+  ylim = c(0, 1), lwd = 2,
+  xlab = "Predicted risk at 5 years",
+  ylab = "Observed risk at 5 years", bty = "n"
+)
+lines(predict.grid, pred.vcalibrate.efit1b.lower, type = "l", lty = 2, lwd = 2)
+lines(predict.grid, pred.vcalibrate.efit1b.upper, type = "l", lty = 2, lwd = 2)
+abline(0, 1, lwd = 2, lty = 2, col = "red")
+title("B External data with PGR", adj = 0)
 # par(new=T)
 # plot(density(evdata1$predmort5),
 #      axes=F,xlab=NA,ylab=NA,
@@ -530,24 +558,28 @@ However, one graphical representation of calibration is based on the Kaplan-Meie
 # Development and validation dataset without pgr
 ## NOTE: this code should be adjusted using assuming only information of the coefficients is provided according to the previous sections
 
-evdata1$group1<-cut(evdata1$lp,breaks=quantile(evdata1$lp,probs=seq(0,1,0.25)),include.lowest = TRUE)
+evdata1$group1 <- cut(evdata1$lp, breaks = quantile(evdata1$lp, probs = seq(0, 1, 0.25)), include.lowest = TRUE)
 
-par(las=1,xaxs='i',yaxs='i')
-plot(survfit(Surv(ryear,status)~group1,data=evdata1),
-     bty='n',xlim=c(0,5), ylim=c(0,1), lwd=2,col='black',
-     lty=2, xlab='Time (years)', ylab='Survival probability')
-title("A External data without PGR",adj=0)
+par(las = 1, xaxs = "i", yaxs = "i")
+plot(survfit(Surv(ryear, status) ~ group1, data = evdata1),
+  bty = "n", xlim = c(0, 5), ylim = c(0, 1), lwd = 2, col = "black",
+  lty = 2, xlab = "Time (years)", ylab = "Survival probability"
+)
+title("A External data without PGR", adj = 0)
 
-evdata1$group1b<-cut(
-  evdata1$lp_1b, breaks= quantile(evdata1$lp_1b,probs=seq(0,1,0.25)),
-  include.lowest = TRUE)
+evdata1$group1b <- cut(
+  evdata1$lp_1b,
+  breaks = quantile(evdata1$lp_1b, probs = seq(0, 1, 0.25)),
+  include.lowest = TRUE
+)
 # evdata1$group1b<-cut(evdata1$lp1b,breaks=quantile(evdata1$# lp1b,probs=seq(0,1,0.25)),include.lowest = TRUE)
 
-par(las=1,xaxs='i',yaxs='i')
- plot(survfit(Surv(ryear,status)~group1b,data=evdata1),
-      bty='n',xlim=c(0,5),
-      ylim=c(0,1), lwd=2,col='black',lty=2)
-title("B External data with PGR",adj=0)
+par(las = 1, xaxs = "i", yaxs = "i")
+plot(survfit(Surv(ryear, status) ~ group1b, data = evdata1),
+  bty = "n", xlim = c(0, 5),
+  ylim = c(0, 1), lwd = 2, col = "black", lty = 2
+)
+title("B External data with PGR", adj = 0)
 ```
 
 ## 2. Clinical utility
@@ -620,7 +652,7 @@ However, poor discrimination and calibration lead to lower net benefit.
 
 ```{r, function_stdca, message=FALSE,warning=FALSE, fig.align='center',include=FALSE}
 # Run the function to calculate the net benefit and the elements needed to develop decision curve analysis
-source('C:\\Users\\danie\\Documents\\Predsurv\\Functions\\stdca.R',local = knitr::knit_global())
+source("C:\\Users\\danie\\Documents\\Predsurv\\Functions\\stdca.R", local = knitr::knit_global())
 ```
 
 
@@ -633,44 +665,54 @@ source('C:\\Users\\danie\\Documents\\Predsurv\\Functions\\stdca.R',local = knitr
 # External data
 # Validation data
 # Predicted probability calculation
-evdata1$mort5_model1<-1-evdata1$predsurv5
+evdata1$mort5_model1 <- 1 - evdata1$predsurv5
 
 # Extended model with PGR
 # Predicted probability calculation
-evdata1$mort5_model1b<-1-evdata1$predsurv5_1b
+evdata1$mort5_model1b <- 1 - evdata1$predsurv5_1b
 
 # Run decision curve analysis
 
 # Validation data
 # Model without PGR
-evdata1<-as.data.frame(evdata1)
-dca_vdata_model1<-stdca(data=evdata1,outcome='status',ttoutcome = "ryear",
-                            timepoint=5,predictors='mort5_model1',xstop=1.0,
-                            ymin=-0.01, graph=FALSE)
+evdata1 <- as.data.frame(evdata1)
+dca_vdata_model1 <- stdca(
+  data = evdata1, outcome = "status", ttoutcome = "ryear",
+  timepoint = 5, predictors = "mort5_model1", xstop = 1.0,
+  ymin = -0.01, graph = FALSE
+)
 # Model with PGR
-dca_vdata_model1b<-stdca(data=evdata1,outcome='status',ttoutcome = "ryear",
-                            timepoint=5,predictors='mort5_model1b',xstop=1,
-                            ymin=-0.01, graph=FALSE)
+dca_vdata_model1b <- stdca(
+  data = evdata1, outcome = "status", ttoutcome = "ryear",
+  timepoint = 5, predictors = "mort5_model1b", xstop = 1,
+  ymin = -0.01, graph = FALSE
+)
 
 # Decision curves plot
-par(xaxs='i',yaxs='i',las=1)
+par(xaxs = "i", yaxs = "i", las = 1)
 plot(dca_vdata_model1$net.benefit$threshold,
-     dca_vdata_model1$net.benefit$mort5_model1,type='l',lwd=2,lty=1,
-     xlab='Threshold probability in %', ylab='Net Benefit',
-     xlim=c(0,1),ylim=c(-0.10,0.60),bty='n',
-     cex.lab=1.2,cex.axis=1)
+  dca_vdata_model1$net.benefit$mort5_model1,
+  type = "l", lwd = 2, lty = 1,
+  xlab = "Threshold probability in %", ylab = "Net Benefit",
+  xlim = c(0, 1), ylim = c(-0.10, 0.60), bty = "n",
+  cex.lab = 1.2, cex.axis = 1
+)
 # legend('topright',c('Treat all','Treat none','Prediction model'),
 #        lwd=c(2,2,2),lty=c(1,1,2),col=c('darkgray','black','black'),bty='n')
-lines(dca_vdata_model1$net.benefit$threshold,dca_vdata_model1$net.benefit$none,type='l',lwd=2, lty=4)
-lines(dca_vdata_model1$net.benefit$threshold,dca_vdata_model1$net.benefit$all,type='l',lwd=2,col='darkgray')
-lines(dca_vdata_model1b$net.benefit$threshold,dca_vdata_model1b$net.benefit$mort5_model1b,type='l',lwd=2,lty=5)
-legend('topright',
-       c('Treat All',
-         'Original model',
-         'Original model + PGR',
-         'Treat None'), lty=c(1,1,5,4),lwd=2,col=c("darkgray","black","black","black"),
-       bty='n')
-title("B External data",adj=0,cex=1.5)
+lines(dca_vdata_model1$net.benefit$threshold, dca_vdata_model1$net.benefit$none, type = "l", lwd = 2, lty = 4)
+lines(dca_vdata_model1$net.benefit$threshold, dca_vdata_model1$net.benefit$all, type = "l", lwd = 2, col = "darkgray")
+lines(dca_vdata_model1b$net.benefit$threshold, dca_vdata_model1b$net.benefit$mort5_model1b, type = "l", lwd = 2, lty = 5)
+legend("topright",
+  c(
+    "Treat All",
+    "Original model",
+    "Original model + PGR",
+    "Treat None"
+  ),
+  lty = c(1, 1, 5, 4), lwd = 2, col = c("darkgray", "black", "black", "black"),
+  bty = "n"
+)
+title("B External data", adj = 0, cex = 1.5)
 ```
 
 Based on previous research we used a range of thresholds from 14% to 23% for adjuvant chemotherapy. If we choose a threshold of 20% the model had a net benefit of 0.385 in the validation data using the basic model. This means that the model would identify 38 patients per 100 who will have recurrent breast cancer or die within 5 years since diagnosis and thus adjuvant chemotherapy is really needed. The decision curve shows that the net benefit compared with intervention in all would be much larger for higher threshold values, i.e., patients accepting higher risks of recurrence. 
