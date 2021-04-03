@@ -13,8 +13,6 @@ The repository (will) contain the following code:
 + [03_predsurv_extended](https://github.com/danielegiardiello/Prediction_performance_survival/blob/main/03_predsurv_extended.md) is a more extensive illustration of [01_predsurv_simplified](https://github.com/danielegiardiello/Prediction_performance_survival/blob/main/01_predsurv_simplified.md) for users with more advanced statistical knowledge. The prediction performance of survival models is not only evaluated at a fixed time horizon but also further assessments of the entire follow-up are provided.
 The RMarkdown source code (.Rmd) is [here](https://github.com/danielegiardiello/Prediction_performance_survival/blob/main/03_predsurv_extended.Rmd).
 
-R/Rstudio and packages version information used to generate the documentation and code are available [here](https://github.com/danielegiardiello/Prediction_performance_survival/blob/main/sessionInfo.md).
-
 Data, external functions and figures are available in the corresponding subfolders.  
 
 SAS code is available [here](https://github.com/danielegiardiello/Prediction_performance_survival/tree/main/SAS_code).
