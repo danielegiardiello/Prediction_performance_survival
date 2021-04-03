@@ -1,25 +1,20 @@
 ---
 title: "Performance assessment of survival prediction models"
 always_allow_html: true
-output: 
-    github_document:
+output:
+  github_document:
     toc: true
-    keep_text: true
-    pandoc_args: --webtex
+    toc_depth: 4
+  keep_text: true
+  pandoc_args: --webtex
 ---
-
-- [Goals](#goals)
-- [Install/load packages and import data](#install-load-packages-and-import-data)
-  * [Data and descriptive statistics](#data-and-descriptive-statistics)
-  * [Descriptive statistics of validation data](#descriptive-statistics-of-validation-data)
-- [Goal 1: Assessing performance of a developed survival model in a new data](#goal-1--assessing-performance-of-a-developed-survival-model-in-a-new-data)
-  * [1.1 Calculate the absolute risk prediction at 5 years in the validation data](#11-calculate-the-absolute-risk-prediction-at-5-years-in-the-validation-data)
-  * [1.2 Overall performance measures](#12-overall-performance-measures)
-  * [1.3 Discrimination measures](#13-discrimination-measures)
-  * [1.4 Calibration](#14-calibration)
-- [2. Clinical utility](#2-clinical-utility)
-- [References](#references)
-
+```{r setup, include=FALSE}
+# Knitr options
+knitr::opts_chunk$set(
+  fig.retina = 3,
+  fig.path = "imgs/02_predsurv/"
+)
+```
 
 ## Goals
 When a risk prediction model has been developed and published in the literature, individual data are probably not available.
@@ -36,23 +31,35 @@ We following libraries are needed to achieve the following goals, if you have no
 install.packages('') (e.g. install.packages('survival')) or use the user-friendly approach if you are using RStudio.
 
 ```{r, wdlib, message=FALSE,warning=FALSE}
-# Libraries needed
-library(survival)
-library(rms)
-library(sqldf)
-library(pec)
-library(riskRegression)
-library(survAUC)
-library(survivalROC)
-library(timeROC)
-library(plotrix)
-library(splines)
-library(knitr)
-library(table1)
-library(kableExtra)
-library(boot)
-library(tidyverse)
-library(rsample)
+
+# Use pacman to check whether packages are installed, if not load
+if (!require("pacman")) install.packages("pacman")
+library(pacman)
+
+pacman::p_load(
+  rio,
+  survival,
+  rms,
+  mstate,
+  sqldf,
+  pec,
+  riskRegression,
+  survAUC,
+  survivalROC,
+  timeROC,
+  plotrix,
+  splines,
+  knitr,
+  table1,
+  kableExtra,
+  gtsummary,
+  boot,
+  tidyverse,
+  rsample,
+  gridExtra,
+  webshot
+)
+# webshot::install_phantomjs()
 ```
 
 
@@ -62,9 +69,8 @@ The time-to-death outcome should be in years and the variables should be categor
 
 ```{r, create, message=FALSE, warning=FALSE}
 # Load
-vdata <- readRDS("C:\\Users\\danie\\Documents\\Predsurv\\Data\\vdata.rds")
+vdata <- readRDS(here::here("Data/vdata.rds"))
 options(show.signif.stars = FALSE) # display statistical intelligence
-
 
 # Winzorise PGR to the 99th percentile to deal with very large influential values;
 p99 <- 1347.85
@@ -95,10 +101,23 @@ units(vsel$age) <- "years"
 units(vsel$pgr) <- "ng/mL"
 
 tab1 <- table1(~ csize + cnode + cgrade + age + pgr, data = vsel, topclass = "Rtable1-zebra")
-# print(tab1)
+
 ```
 
-<img src="02_predsurv_files/figure-gfm/Tab1_val.png" style="display: block; margin: auto;" />
+```{r tab1_bis, echo=FALSE}
+gtsummary::tbl_summary(
+  data = vsel %>% select(-id),
+  label = list(age ~ "Age (years)", csize ~ "Size (cm)", 
+               pgr ~ "PGR (ng/mL)"),
+  type = all_continuous() ~ "continuous2",
+  statistic = all_continuous() ~ c(
+    "{mean} ({sd})",
+    "{median} ({min}, {max})"
+  ),
+) %>% 
+  gtsummary::as_kable_extra() %>% 
+  kableExtra::kable_styling("striped") 
+```
 
 We draw the survival and the censoring curves of validation data
 ```{r, surv,fig.align='center',message=FALSE, warning=FALSE}
@@ -147,7 +166,7 @@ where: \
 
 In some software, the baseline survival might be already internally rescaled including the centercept. Since the function cph() in the rms R package provides the centercept the formula above included also the centercept in the model equation. More information can be found in *help(cph)*. However, if the centercept is mentioned in the model equation, this can be used to rescaled the baseline using some easy algebraic steps:
 
-<img src="https://render.githubusercontent.com/render/math?math=%5Clarge%7B%5Csf%7BS(t)%20%3D%20S_0(t)%5E%7Bexp(PI-c)%7D%20%3D%20%5B%7BS_0(t)%5E%7B-c%7D%7D%5D%5E%7Bexp(PI)%7D%7D%20%3D%20%7BS_0(t)_%7Bresc%7D%7D%5E%7Bexp(PI)%7D%7D">
+<img src="https://render.githubusercontent.com/render/math?math=%5Clarge%7BS(t)%20%3D%20%7BS_%7B0%7D(t)%7D%5E%7Bexp(PI-c)%7D%20%3D%20%5B%7BS_%7B0%7D(t)%7D%5E%7Bexp(-c)%7D%5D%5E%7Bexp(PI)%7D%20%3D%7BS_%7B0%7D(t)_%7Bresc%7D%7D%5E%7Bexp(PI)%7D%7D">
 
 The model equation assuming the centercept was mentioned in the developed model was:  
 
@@ -194,6 +213,7 @@ lp_1b <- as.matrix(vdf_lp_1b) %*% cbind(coef_efit1b)
 evdata1$lp_1b <- lp_1b - centercept1b
 evdata1$predsurv5_1b <- S0b.5yr**exp(evdata1$lp_1b)
 ```
+
 ### 1.2 Overall performance measures
 Some overall performance measures are proposed using survival data:
 
@@ -211,7 +231,7 @@ vboot <- bootstraps(evdata1, times = 10)
 
 ```{r, function_brier, message=FALSE,warning=FALSE, fig.align='center',include=FALSE}
 # Run the function to calculate the net benefit and the elements needed to develop decision curve analysis
-source("C:\\Users\\danie\\Documents\\Predsurv\\Functions\\brier_score.R", local = knitr::knit_global())
+source(here::here("Functions/brier_score.R"))
 ```
 
 
@@ -255,7 +275,11 @@ vboot <- vboot %>% mutate(
   IPA1 = map_dbl(err1, "IPA"),
   IPA1b = map_dbl(err1b, "IPA")
 )
-# # Table overall measures
+
+```
+
+```{r, overall_table, echo=FALSE}
+## Table overall measures
 alpha <- .05
 k <- 2 # number of digits
 res_ov <- matrix(c(
@@ -324,7 +348,9 @@ Uno_vdata1b <-
   )
 # NOTE: if you have a lot of data n > 2000, standard error computation may be really long.
 # In that case, please use bootstrap percentile to calculate confidence intervals.
+```
 
+```{r, AUC_table,echo=FALSE}
 alpha <- .05
 k <- 2
 res_discr <- matrix(c(
@@ -403,13 +429,17 @@ If the model equation is provided including the coefficients and the baseline at
 Typically, the model equation is provided in terms of predicted survival at a fixed time point _t_.
 
 ```{r, cal_time,message=FALSE, warning=FALSE}
-# O/E ratio and calibration slope at 5 years for the model without PGR
-# Function, arguments:
-# tfup = follow-up time
-# event = variable indication event (0=no, 1=yes)
-# pred.risk = predicted risk at time horizon
-# thorizon = time horizon to calculate the observed/expected ratio at time t
-# alpha = type I error (to calculate confidence intervals, default: 0.05)
+#' Calculate the O/E ratio
+#'
+#' @param tfup follow-up time
+#' @param event variable indication event (0=no, 1=yes)
+#' @param pred.risk predicted risk at time horizon
+#' @param thorizon time horizon to calculate the observed/expected ratio at time t
+#' @param alpha type I error (to calculate confidence intervals, default: 0.05)
+#'
+#' @return 
+#'
+#' @examples
 
 OE.ratio.t <- function(tfup, event, pred.risk, thorizon, alpha = .05) {
   obs_t <- 1 - summary(survfit(Surv(tfup, event) ~ 1), times = thorizon)$surv
@@ -440,7 +470,9 @@ OE_ratio5_1b <- OE.ratio.t(
 # Calibration slope
 calslope <- coxph(Surv(ryear, status) ~ lp, data = evdata1)
 calslope_1b <- coxph(Surv(ryear, status) ~ lp_1b, data = evdata1)
+```
 
+```{r, cal_table,echo=FALSE}
 # Save results
 alpha <- .05
 k <- 2
@@ -652,7 +684,7 @@ However, poor discrimination and calibration lead to lower net benefit.
 
 ```{r, function_stdca, message=FALSE,warning=FALSE, fig.align='center',include=FALSE}
 # Run the function to calculate the net benefit and the elements needed to develop decision curve analysis
-source("C:\\Users\\danie\\Documents\\Predsurv\\Functions\\stdca.R", local = knitr::knit_global())
+source(here::here("Functions/stdca.R"))
 ```
 
 
@@ -752,5 +784,9 @@ where *NB*<sub>model</sub> is the net benefit of the prediction model,
   https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6728752/ \
   https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7100774/ \
   
-  
+## Reproducibility ticket
+
+```{r repro_ticket, echo=TRUE}
+sessioninfo::session_info()
+```
   

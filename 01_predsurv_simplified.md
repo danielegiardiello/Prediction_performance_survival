@@ -539,9 +539,6 @@ efit2 <- cph(Surv(ryear, status) ~ csize + cnode + cgrade,
 efit3 <- cph(Surv(ryear, status) ~ csize + cnode + cgrade,
   data = edata[edata$epoch == 3, ], x = T, y = T, surv = T
 )
-res_efit <- round(rbind(e1 = coef(efit1), e2 = coef(efit2), e3 = coef(efit3)), 2)
-rownames(res_efit) <- c("Epoch 1: 0-5 years", "Epoch 2: 5-10 years", "Epoch 3: >10 years")
-kable(res_efit) %>% kable_styling("striped", position = "center")
 ```
 
 <table class="table table-striped" style="margin-left: auto; margin-right: auto;">
@@ -629,17 +626,6 @@ Epoch 3: &gt;10 years
 </tr>
 </tbody>
 </table>
-
-``` r
-options(prType = "html")
-tt1 <- table(edata$epoch, edata$status, dnn = c("Epoch", "Status"))
-rownames(tt1) <- c("Epoch 1: 0-5 years", "Epoch 2: 5-10 years", "Epoch 3: >10 years")
-kable(tt1,
-  col.names = c("Censored", "Event"),
-  row.names = TRUE
-) %>% kable_styling("striped", position = "center")
-```
-
 <table class="table table-striped" style="margin-left: auto; margin-right: auto;">
 <thead>
 <tr>
