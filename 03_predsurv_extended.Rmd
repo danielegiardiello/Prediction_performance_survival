@@ -2,29 +2,19 @@
 title: "Performance assessment of survival prediction models - extended code"
 always_allow_html: true
 output: 
-    github_document:
+  github_document:
     toc: true
-    keep_text: true
-    pandoc_args: --webtex
+    toc_depth: 4
+  keep_text: true
+  pandoc_args: --webtex
 ---
-
-- [Goals](#goals)
-  * [Install/load packages and import data](#install-load-packages-and-import-data)
-  * [Descriptive statistics](#descriptive-statistics)
-- [Goal 1: develop a risk prediction model with a time-to-event outcome](#goal-1--develop-a-risk-prediction-model-with-a-time-to-event-outcome)
-  * [1.1 Preliminary investigation: survival and censoring curves in the development and validation data](#11-preliminary-investigation--survival-and-censoring-curves-in-the-development-and-validation-data)
-  * [1.2 Secondary investigation: check non-linearity of continuous predictors](#12-secondary-investigation--check-non-linearity-of-continuous-predictors)
-  * [1.3 Model development: first check - the proportional hazard (PH) assumption](#13-model-development--first-check---the-proportional-hazard--ph--assumption)
-  * [1.4 Model development: fit the risk prediction models](#14-model-development--fit-the-risk-prediction-models)
-- [Goal 2: Assessing performance in survival prediction models](#goal-2--assessing-performance-in-survival-prediction-models)
-  * [2.1 Overall performance measures](#21-overall-performance-measures)
-  * [2.2 Discrimination measures](#22-discrimination-measures)
-  * [2.3 Calibration](#23-calibration)
-    + [2.3.1 Calibration-in-the-large and calibration slope](#231-calibration-in-the-large-and-calibration-slope)
-    + [2.3.2 Calibration plot using restricted cubic splines](#232-calibration-plot-using-restricted-cubic-splines)
-    + [2.3.3 Other calibration metrics: ICI, E50,E90 and Emax based on restricted cubic splines](#233-other-calibration-metrics--ici--e50-e90-and-emax-based-on-restricted-cubic-splines)
-- [Goal 3: Clinical utility](#goal-3--clinical-utility)
-- [References](#references)
+```{r setup, include=FALSE}
+# Knitr options
+knitr::opts_chunk$set(
+  fig.retina = 3,
+  fig.path = "imgs/03_predsurv_extended/"
+)
+```
 
 ## Goals
 Assessing the performance of prediction models with a time-to-event outcome: guidance for validation and updating with a new prognostic factor. In this document, we assume that individual data of the development and validation set are both available.
@@ -36,35 +26,43 @@ In particular:
 
 The extended code basically evaluates the prediction performance at a fixed time horizon (e.g. 5 years) and also for the entire follow-up time.
 
-### Install/load packages and import data
+### Load packages and import data
 We following libraries are needed to achieve the following goals, if you have not them installed, please use
 install.packages('') (e.g. install.packages('survival')) or use the user-friendly approach if you are using RStudio.
 
 ```{r, wdlib, message=FALSE,warning=FALSE}
 
-# Libraries needed
-library(survival)
-library(rms)
-library(sqldf)
-library(pec)
-library(riskRegression)
-library(survAUC)
-library(survivalROC)
-library(timeROC)
-library(plotrix)
-library(splines)
-library(knitr)
-library(table1)
-library(kableExtra)
-library(boot)
-library(tidyverse)
-library(rsample)
-library(webshot)
-webshot::install_phantomjs()
+# Use pacman to check whether packages are installed, if not load
+if (!require("pacman")) install.packages("pacman")
+library(pacman)
+
+pacman::p_load(
+  rio,
+  survival,
+  rms,
+  mstate,
+  sqldf,
+  pec,
+  riskRegression,
+  survAUC,
+  survivalROC,
+  timeROC,
+  plotrix,
+  splines,
+  knitr,
+  table1,
+  kableExtra,
+  gtsummary,
+  boot,
+  tidyverse,
+  rsample,
+  gridExtra,
+  webshot
+)
 
 
-rdata <- readRDS("C:\\Users\\danie\\Documents\\Predsurv\\Data\\rdata.rds")
-vdata <- readRDS("C:\\Users\\danie\\Documents\\Predsurv\\Data\\vdata.rds")
+rdata <- readRDS(here::here("Data/rdata.rds"))
+vdata <- readRDS(here::here("Data/vdata.rds"))
 ```
 We loaded the development (rdata) and the validation data (vdata) from .rds format.
 The Rotterdam breast cancer data was used to predict the risk of recurrence or death using size, stage and tumor size as predictors. These three predictors were used in the Nottingham Prognostic Index, one of the most popular index to determine prognosis following surgery of breast cancer.  
@@ -98,17 +96,31 @@ units(cdata$pgr) <- "ng/mL"
 
 options(prType = "html")
 tab1 <- table1(~ csize + cnode + cgrade + age + pgr | dt, data = cdata, overall = FALSE, topclass = "Rtable1-zebra")
-# print(tab1)
-rm(rsel, vsel, cdata)
 ```
 
-<img src="03_predsurv_extended_files/figure-gfm/tab1.png" style="display: block; margin: auto;" />
 
-## Goal 1: develop a risk prediction model with a time-to-event outcome
+```{r tab1_bis, echo=FALSE}
+gtsummary::tbl_summary(
+  data = cdata %>% select(-id),
+  label = list(age ~ "Age (years)", csize ~ "Size (cm)", 
+               pgr ~ "PGR (ng/mL)"),
+  by = "dt", 
+  type = all_continuous() ~ "continuous2",
+  statistic = all_continuous() ~ c(
+    "{mean} ({sd})",
+    "{median} ({min}, {max})"
+  ),
+) %>% 
+  gtsummary::as_kable_extra() %>% 
+  kableExtra::kable_styling("striped") 
+```
+
+
+## Goal 1 - Develop a risk prediction model with a time-to-event outcome
 Prediction models are useful to provide the estimated probability of a specific outcome using personal information.
 In many studies, especially in medicine, the main outcome under assessment is the time to an event of interest defined generally as survival time. Prognostic models for survival end points, such as recurrence or progression of disease, need to account for drop out during follow-up. Patients who have not experienced the event of interest are censored observations. Cox regression analysis is the most popular statistical model to deal with such data in oncology and other medical research.  
 
-### 1.1 Preliminary investigation: survival and censoring curves in the development and validation data
+### 1.1 Preliminary investigation - survival and censoring curves in the development and validation data
 First, we draw the survival and the censoring curves of the development and validation data
 ```{r, surv, fig.align='center'}
 # Development set
@@ -138,7 +150,7 @@ The 5-year survival was 59% (95% CI: 58-61%).
 A number of 686 patients were selected to externally validate the risk prediction model.The median survival in the validation data was 4 years. The median survival was 5 years while the 5-year survival was 49% (95% CI: 45-54%).
 
 
-### 1.2 Secondary investigation: check non-linearity of continuous predictors
+### 1.2 Secondary investigation - check non-linearity of continuous predictors
 The potential non-linear relation between continuous predictors (i.e. progesterone level) and the outcome should be investigated before developing a risk prediction model. Non-linearity of continuous predictors can be checked using splines.  
 Physically, a spline is a flexible wood or metal strip, which is passed through a set of fixed points (knots) in order to approximate a curve. The most common computational approximation to this is a cubic smoothing spline which is cubic between the knot points, and constrained to be linear beyond the two end knots. 
 For the restricted cubic spline using rms::rcs() R package::function(), the position of the knots are defined at 10<sup>th</sup>,50<sup>th</sup> and 90<sup>th</sup> quantile of the continuous predictor distribution. For more details see Frank Harrell's book 'Regression Model Strategies' on page 27 (second edition).  
@@ -177,7 +189,7 @@ vdata$pgr3 <- rcs3_pgr
 rm(rcs3_pgr)
 ```
 
-### 1.3 Model development: first check - the proportional hazard (PH) assumption
+### 1.3 Model development - first check - the proportional hazard (PH) assumption
 We now examine the fits in a more careful way by checking the proportionality of the hazards of the Cox regression model.
 Firstly, we fit the first prediction model in the development data using size, node, grade. Then, we check the PH assumption.
 
@@ -218,6 +230,9 @@ efit2 <- cph(Surv(ryear, status) ~ csize + cnode + cgrade,
 efit3 <- cph(Surv(ryear, status) ~ csize + cnode + cgrade,
   data = edata[edata$epoch == 3, ], x = T, y = T, surv = T
 )
+```
+
+```{r,ph_table, echo=FALSE}
 res_efit <- round(rbind(e1 = coef(efit1), e2 = coef(efit2), e3 = coef(efit3)), 2)
 rownames(res_efit) <- c("Epoch 1: 0-5 years", "Epoch 2: 5-10 years", "Epoch 3: >10 years")
 kable(res_efit) %>% kable_styling("striped", position = "center")
@@ -245,7 +260,7 @@ Possible alternatives to address the violation of proportional hazards are:
 If we ignored the non-proportional hazards entirely, the prediction performance of the model may lead to increase bias in estimating the risk especially in terms of calibration performances.
 
 
-### 1.4 Model development: fit the risk prediction models
+### 1.4 Model development - fit the risk prediction models
 We develop the risk prediction model in the development data considering the first 5-year follow-up to minimize the violation of proportional hazard including size, nodel and grade. The second model also includes the progesterone level modelled using a 3-knot restricted cubic spline.  
 We also administratively censored the validation data at 5 years.
 
@@ -296,7 +311,7 @@ options(datadist = NULL)
 The coefficients of the models indicated that higher size, higher number of positive lymph nodes and higher grade is more associate with poorer prognosis. The association of the progesterone biomarker and the outcome is non-linear as investigated previously.
 
 
-## Goal 2: Assessing performance in survival prediction models
+## Goal 2 - Assessing performance in survival prediction models
 The performance of a risk prediction models may be evaluated through:  
   
   + discrimination:  the ability of the model to identify patients with and without the outcome and it requires the coefficients (or the log of the hazard ratios) of the developed risk prediction model to be evaluated.   
@@ -343,7 +358,7 @@ vboot <- bootstraps(evdata1, times = 10)
 We calculate the overall performance measures: R<sup>2</sup>, Brier score, and IPA and the corresponding confidence intervals.
 
 ```{r, r2sq, warning=FALSE,message=FALSE,include=FALSE}
-source("C:\\Users\\danie\\Documents\\Predsurv\\Functions\\Rsquared.R", local = knitr::knit_global())
+source(here::here("Functions/Rsquared.R"))
 ```
 
 ```{r, overall, warning=FALSE}
@@ -465,6 +480,9 @@ vboot <- vboot %>% mutate(
   IPA1b = map_dbl(splits, score_boot_1b)
 ) # Validation dataset
 
+```
+
+```{r, overall_table, echo=FALSE}
 # Table overall measures
 alpha <- .05
 k <- 2 # number of digits
@@ -538,8 +556,8 @@ The Uno's C-index provided in the function subfolder (file UnoC.R) takes a lot o
 
 More details are in the paper and in the references.
 
-```{r, function_UnoC, message=FALSE,warning=FALSE, fig.align='center',include=FALSE}
-source("C:\\Users\\danie\\Documents\\Predsurv\\Functions\\UnoC.R", local = knitr::knit_global())
+```{r, function_UnoC,include=FALSE}
+source(here::here('Functions/UnoC.R'))
 ```
 
 ```{r, UnoC, message=FALSE,warning=FALSE, fig.align='center',include=FALSE,echo=FALSE, eval=FALSE}
@@ -605,6 +623,9 @@ vboot <- vboot %>% mutate(
   UnoC1b = map_dbl(splits, UnoC_boot1b)
 )
 
+```
+
+```{r, res_UnoC,echo=FALSE,include=FALSE,eval=FALSE}
 alpha <- .05
 k <- 2
 res_unoC <- matrix(c(
@@ -695,7 +716,9 @@ Uno_vdata1b <-
   )
 # NOTE: if you have a lot of data n > 2000, standard error computation may be really long.
 # In that case, please use bootstrap percentile to calculate confidence intervals.
+```
 
+```{r, discr_table, echo=FALSE}
 # Save results
 alpha <- .05
 k <- 2
@@ -930,7 +953,9 @@ dimnames = list(
   c("Apparent", "Apparent + PGR", "Validation", "Validation + PGR")
 )
 )
+```
 
+```{r, cal_res, echo=FALSE}
 res_cal <- matrix(c(
   rcfit1$coefficients,
   confint(rcfit1), # Apparent - calibration in-the-large
@@ -1120,7 +1145,9 @@ ICI.evdata1b.5yr <- mean(abs(evdata1$predmort5 - pred.vcalibrate.efit1b))
 E50.evdata1b.5yr <- median(abs(evdata1$predmort5 - pred.vcalibrate.efit1b))
 E90.evdata1b.5yr <- quantile(abs(evdata1$predmort5 - pred.vcalibrate.efit1b), probs = 0.9)
 Emax.evdata1b.5yr <- max(abs(evdata1$predmort5 - pred.vcalibrate.efit1b))
+```
 
+```{r, calmetrics_res, echo=FALSE}
 
 res_calmetrix <- matrix(c(
   ICI.edata1.5yr, ICI.edata1b.5yr, ICI.evdata1.5yr, ICI.evdata1b.5yr,
@@ -1141,7 +1168,7 @@ kable(res_calmetrix) %>% kable_styling("striped", position = "center")
 In the validation data, PGR improves slightly the ICI and the median of the absolute difference between observed and predicted probabilities at 5 years.  More imprecise absolute differences between and observed and predicted probabilities in the extreme values of the distribution (E90, Emax). This is also graphically confirmed by the calibration plots.
 
 
-## Goal 3: Clinical utility
+## Goal 3 - Clinical utility
 Discrimination and calibration measures are essential to assess the prediction performance but insufficient to evaluate the potential clinical utility of a risk prediction model for decision making. When new markers are available, clinical utility assessment evaluates whether the extended model helps to improve decision making.  
 Clinical utility is measured by the net benefit that includes the number of true positives and the number of false positives. For example, in time-to-event models, the true positives reflect the benefit of being event free for a given time horizon using additional interventions such as additional treatments, personalized follow-up or additional surgeries. The false positives represent the harms of unnecessary interventions.   
 Generally, in medicine, clinicians accepts to treat a certain number of patients for which interventions are unnecessary to be event free for a given time horizon. So, false negatives (the harm of not being event free for a given time horizon) are more important than false positives (the harm of unnecessary interventions). Thus, net benefit is the number of true positives classifications minus the false positives classifications weighted by a factor related to the harm of not preventing the event versus unnecessary interventions. The weighting is derived from the threshold probability to death (one minus survival probability) using a defined time horizon (for example 5 years since diagnosis). For example, a threshold of 10% implies that additional interventions for 10 patients of whom one would have experience the event in 5 years if untreated is acceptable (thus treating 9 unnecessary patients). This strategy is compared with the strategies of treat all and treat none patients. If overtreatment is harmful, a higher threshold should be used.  
@@ -1177,7 +1204,7 @@ Given some thresholds, the model/strategy with higher net benefit represents the
 
 ```{r, function_stdca, message=FALSE,warning=FALSE, fig.align='center',include=FALSE}
 # Run the function to calculate the net benefit and the elements needed to develop decision curve analysis
-source("C:\\Users\\danie\\Documents\\Predsurv\\Functions\\stdca.R", local = knitr::knit_global())
+source(here::here('Functions/stdca.R'))
 ```
 
 
@@ -1325,6 +1352,12 @@ Moreover, net benefit can be defined in terms of reduction of avoidable interven
 + Other useful references \
   https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6728752/ \
   https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7100774/ \
+  
+## Reproducibility ticket
+
+```{r repro_ticket, echo=TRUE}
+sessioninfo::session_info()
+```
   
   
   
