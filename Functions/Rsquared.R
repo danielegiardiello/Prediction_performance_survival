@@ -1,3 +1,17 @@
+#' Calculate  R2 and Royston's D
+#'
+#' @param lp linear predictor (X*beta e.g. survival::predict())
+#' @param time follow-up time in the validation data
+#' @param status indicator variable (0=censored, 1=event) in the validation data
+#' @param ties correction for ties (default is TRUE)
+#'
+#' @return
+#'
+#' @author Terry Therneau, Daniele Giardiello
+#'
+#' @examples
+
+
 # R2
 # Function to calculate R2 and also Royston's D
 # although we suggest time-dependent C and AUC

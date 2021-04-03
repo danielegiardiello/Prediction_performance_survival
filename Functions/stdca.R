@@ -1,5 +1,25 @@
-# Function to calculate net benefit and decision curves
-
+#' Calculate net benefit and decision curves
+#'
+#' @param data data
+#' @param outcome
+#' @param ttoutcome
+#' @param timepoint time horizon to calculate net benefit
+#' @param predictors
+#' @param xstart
+#' @param xstop
+#' @param xby
+#' @param ymin
+#' @param probability
+#' @param harm
+#' @param graph
+#' @param intervention
+#' @param interventionper
+#' @param smooth
+#' @param loess.span
+#' @param cmprsk presence of competing risks
+#' 
+#' 
+#' 
 stdca <- function(data, outcome, ttoutcome, timepoint, predictors, xstart = 0.01, xstop = 0.99, xby = 0.01,
                   ymin = -0.05, probability = NULL, harm = NULL, graph = TRUE, intervention = FALSE,
                   interventionper = 100, smooth = FALSE, loess.span = 0.10, cmprsk = FALSE) {

@@ -1,3 +1,18 @@
+#' Calculate Uno' C-index
+#'
+#' @param tfup follow-up time in the validation data
+#' @param status indicator variable (0=censored, 1=event) in the validation data
+#' @param linear.predictor linear predictor using e.g. survival::predict()
+#' @param pred.surv predicted survival at time t
+#' @param thorizon fixed time horizon t 
+#'
+#' @return
+#'
+#' @author Daniele Giardiello
+#'
+#' @examples
+
+
 # Uno C
 # Function to calculate Uno's C-index
 Uno_C <- function(tfup, status,

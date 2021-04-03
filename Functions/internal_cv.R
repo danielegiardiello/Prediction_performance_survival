@@ -1,15 +1,31 @@
+#' Calculate optimism-corrected bootstrap internal validation for AUC, Brier and Scaled Brier Score
+#' @param db data to calculate the optimism-corrected bootstrap
+#' @param B number of bootstrap sample (default 10)
+#' @param time follow-up time
+#' @param status indicator variable (0=censored, 1=event)
+#' @param formula_model formula for the model (Cox model)
+#' @param pred.time time horizon as predictor
+#' @param formula_ipcw formula to calculate inverse probability censoring weighting
+#'
+#' @return
+#'
+#' @author Daniele Giardiello
+#'
+#' @examples
 
-# 04th March 2021
-# Goal: function to calculate optimism-corrected bootstrap internal validation of
-# Area under the Curve, Brier Score and Scaled Brier.
-# Author: Daniele Giardiello
+# Use pacman to check whether packages are installed, if not load
+if (!require("pacman")) install.packages("pacman")
+library(pacman)
 
-library(rms)
-library(survival)
-library(pec)
-library(tidyverse)
-library(timeROC)
-library(riskRegression)
+pacman::p_load(
+  rio,
+  survival,
+  rms,
+  pec,
+  tidyverse,
+  timeROC,
+  riskRegression
+)
 
 
 bootstrap_cv <- function(db, B = 10,

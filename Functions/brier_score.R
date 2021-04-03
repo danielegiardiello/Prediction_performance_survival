@@ -1,3 +1,16 @@
+#' Calculate Brier score for survival data without development data and model
+#'
+#' @param tfup follow-up time in the validation data
+#' @param status indicator variable (0=censored, 1=event) in the validation data
+#' @param thorizon fixed time horizon t 
+#' @param survival predicted survival at time t
+#'
+#' @return
+#'
+#' @author Daniele Giardiello
+#'
+#' @examples
+
 
 # Function to calculate Brier Score without development data
 # Author: Daniele Giardiello
