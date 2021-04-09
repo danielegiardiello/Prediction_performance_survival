@@ -4,7 +4,7 @@ Different guidelines are available according to the different level of statistic
 
 The collaboration with STRATOS topic [groups](https://www.stratos-initiative.org/groups) 6 and 8 was essential to provide this work.
 
-The repository (will) contain the following code:  
+The repository contains the following code:  
 
 + [01_predsurv_simplified](https://github.com/danielegiardiello/Prediction_performance_survival/blob/main/01_predsurv_simplified.md) illustrates how to develop and validate a risk prediction model with survival outcomes when both development and validation data are available. Basically, the prediction performance of survival models are evaluated at a fixed time horizon (for example at 5 years). The RMarkdown source code (.Rmd) is [here](https://github.com/danielegiardiello/Prediction_performance_survival/blob/main/01_predsurv_simplified.Rmd). People with basic or low statistical knowledge are encouraged to use these files. Another nice R code was motivated by the paper of [Royston & Altman](https://bmcmedresmethodol.biomedcentral.com/articles/10.1186/1471-2288-13-33) and is provided by [Martijn Heymans](https://github.com/mwheymans) [here](https://missingdatasolutions.rbind.io/2021/02/cox-external-validation/).
 
