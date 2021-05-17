@@ -44,6 +44,7 @@ pacman::p_load(
   mstate,
   sqldf,
   pec,
+  dynpred,
   riskRegression,
   survAUC,
   survivalROC,
@@ -74,6 +75,23 @@ The improvement in prediction performance will be evaluated internally in the Ro
 
 ### Descriptive statistics
 ```{r, import,echo=FALSE}
+
+# NOTE: this can be removed, probably Table 1 is unneccesary in the very simplified code
+# Summary guidelines of Terry
+# 1. Nice output may be as a matrix with rownames and colnames
+# 2. Provide sections mostly stand alone with dataset setup and libraries needed for
+# every section
+# 3. Use survival package and dnypred (e.g. pec)
+
+
+## Additional NOTE:
+# Hmisc:rcs() is used in the survival::coxph() to allow rcs with 3 knots
+# Bootstrap: can we use rsample::bootstraps() or a classical way avoiding tidyverse?
+# Brier: dynpred:pecox() does not allow to estimate Brier score for external validation 
+# can we use riskRegression::Score() ?
+# Concordance: do you agree with timeROC::timeROC()?
+# Calibration: Austin is OK using survival::coxph() and OE ratio is calculated using an ad-hoc function using survival and pec:predictSurvProb() package
+
 rdata$id <- rdata$pid
 rsel <- rdata[, c("id", "csize", "cnode", "cgrade", "age", "pgr")]
 vsel <- vdata[, c("id", "csize", "cnode", "cgrade", "age", "pgr")]
@@ -95,28 +113,8 @@ label(cdata$dt) <- "Dataset"
 units(cdata$csize) <- "mm"
 units(cdata$age) <- "years"
 units(cdata$pgr) <- "ng/mL"
-
-
-options(prType = "html")
-tab1 <- table1(~ csize + cnode + cgrade + age + pgr | dt, data = cdata, overall = FALSE, topclass = "Rtable1-zebra")
 ```
 
-
-```{r tab1_bis, echo=FALSE}
-gtsummary::tbl_summary(
-  data = cdata %>% select(-id),
-  label = list(age ~ "Age (years)", csize ~ "Size (cm)", 
-               pgr ~ "PGR (ng/mL)"),
-  by = "dt", 
-  type = all_continuous() ~ "continuous2",
-  statistic = all_continuous() ~ c(
-    "{mean} ({sd})",
-    "{median} ({min}, {max})"
-  ),
-) %>% 
-  gtsummary::as_kable_extra() %>% 
-  kableExtra::kable_styling("striped") 
-```
 
 
 ## Goal 1 - Develop a risk prediction model with a time to event outcome
@@ -126,6 +124,17 @@ In many studies, especially in medicine, the main outcome under assessment is th
 ### 1.1 Preliminary investigation - survival and censoring curves in the development and validation data
 First, we draw the survival and the censoring curves of the development and validation data
 ```{r, surv, fig.align='center'}
+# Libraries needed
+library(survival)
+
+# Data set up
+rdata <- readRDS(here::here("Data/rdata.rds"))
+vdata <- readRDS(here::here("Data/vdata.rds"))
+
+# rdata <- readRDS("C:/Users/dgiardiello/Documents/GitHub/Prediction_performance_survival/Data/rdata.rds")
+# vdata <- readRDS("C:/Users/dgiardiello/Documents/GitHub/Prediction_performance_survival/Data/vdata.rds")
+
+
 # Development set
 sfit1 <- survfit(Surv(ryear, status == 1) ~ 1, data = rdata) # survival
 sfit2 <- survfit(Surv(ryear, status == 0) ~ 1, rdata) # censoring
@@ -135,7 +144,6 @@ plot(sfit1, conf.int = FALSE, lwd = 2, xlab = "Years", bty = "n")
 lines(sfit2, conf.int = FALSE, col = 2, lwd = 2)
 legend(11, .9, c("Death", "Censoring"), col = 1:2, lwd = 2, bty = "n")
 title("Development set")
-
 
 # Validation set
 sfit3 <- survfit(Surv(ryear, status == 1) ~ 1, data = vdata) # survival
@@ -161,22 +169,27 @@ The user can specify the positions of the knots instead of using the default cal
 To deal with very large influential value, we winzorize progesterone level to the 90<sup>th</sup>  percentile.
 
 ```{r,ff, warning=FALSE, fig.align='center'}
+
+# Libraries needed
+library(survival)
+library(Hmisc)
+
+# Data set up
+rdata <- readRDS(here::here("Data/rdata.rds"))
+vdata <- readRDS(here::here("Data/vdata.rds"))
+
 # Winzorise PGR to the 99th percentile to deal with very large influential values;
 p99 <- quantile(rdata$pgr, probs = .99)
 rdata$pgr2 <- pmin(rdata$pgr, p99)
 vdata$pgr2 <- pmin(vdata$pgr, p99)
 
-dd <- datadist(rdata)
-options(datadist = "dd")
-fit_pgr <- cph(Surv(ryear, status) ~ rcs(pgr2), data = rdata, x = T, y = T, surv = T)
-plot(Predict(fit_pgr))
-options(datadist = NULL)
-```
+pfit <-  coxph(Surv(ryear, status) ~ rcs(pgr2, knots=c(0, 41, 486)), rdata)
+termplot(pfit, se=TRUE, col.term=1, col.se=1,
+    xlab="PGR", ylab="Linear predictor")
+legend(350, .25, c("rcs, knots at 0, 41, 486)"),
+       col=1, lwd=1, bty='n')
 
-We should model the progesterone level using a three-knot restricted cubic spline. We save the spline in the development and validation data.
-
-```{r,rcs_save, message=FALSE, warning=FALSE,fig.align='center'}
-# Save in the date the restricted cubic spline term using rms::rcspline.eval() package
+# Save in the date the restricted cubic spline term using Hmisc::rcspline.eval() package
 # Development set
 rcs3_pgr <- rcspline.eval(rdata$pgr2, knots = c(0, 41, 486))
 attr(rcs3_pgr, "dim") <- NULL
@@ -196,57 +209,75 @@ rm(rcs3_pgr)
 We now examine the fits in a more careful way by checking the proportionality of the hazards of the Cox regression model.
 Firstly, we fit the first prediction model in the development data using size, node, grade. Then, we check the PH assumption.
 
-```{r,ph, message=FALSE, warning=FALSE,fig.align='center'}
-dd <- datadist(rdata)
-options(datadist = "dd")
-options(prType = "html")
-fit1_cph <- cph(Surv(ryear, status) ~ csize + cnode + cgrade, rdata, x = T, y = T, surv = T)
+```{r,ph, message=FALSE, warning=FALSE,fig.align='center'} 
+# Libraries needed
+library(survival)
 
+# Data set up and management
+rdata <- readRDS(here::here("Data/rdata.rds"))
 
-zp1 <- cox.zph(fit1_cph, transform = "identity")
-kable(round(zp1$table, 3)) %>% kable_styling("striped", position = "center")
+# Fit model in the development data
+fit1_cox <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade, 
+                  data = rdata, x = T, y = T)
 
+# Test the proportional hazard assumption
+zp1 <- cox.zph(fit1_cox, transform = "identity")
+zp1$table # table output
+
+# Proportional hazard assumption visualization
 oldpar <- par(mfrow = c(2, 2), mar = c(5, 5, 1, 1))
 for (i in 1:3) {
   plot(zp1[i], resid = F)
   abline(0, 0, lty = 3)
 }
 par(oldpar)
-options(datadist = NULL)
 ```
 
+#### 1.3.1  Model development - addressing the proportional hazard (PH) assumption
 The statistical tests show strong evidence of non-proportionality. Since the number of death is large the formal tests are quite sensitive, however, and it is important to also examine the graphs.  
 These show an estimated coefficient as a function of time. As a further follow-up we will divide the data into 3 epochs of 0-5, 5-10, and 10+ years, fitting a separate model to each.
 
 ```{r, epoch,warning=FALSE}
+# Libraries needed
+library(survival)
+
+# Data set up and management
+rdata <- readRDS(here::here("Data/rdata.rds"))
+
 # Development
 edata <- survSplit(Surv(ryear, status) ~ .,
   data = rdata, cut = c(5, 10),
   episode = "epoch"
 )
-efit1 <- cph(Surv(ryear, status) ~ csize + cnode + cgrade,
-  data = edata[edata$epoch == 1, ], x = T, y = T, surv = T
-)
-efit2 <- cph(Surv(ryear, status) ~ csize + cnode + cgrade,
-  data = edata[edata$epoch == 2, ], x = T, y = T, surv = T
-)
-efit3 <- cph(Surv(ryear, status) ~ csize + cnode + cgrade,
-  data = edata[edata$epoch == 3, ], x = T, y = T, surv = T
-)
-```
 
-```{r,ph_tables, echo=FALSE}
-res_efit <- round(rbind(e1 = coef(efit1), e2 = coef(efit2), e3 = coef(efit3)), 2)
-rownames(res_efit) <- c("Epoch 1: 0-5 years", "Epoch 2: 5-10 years", "Epoch 3: >10 years")
-kable(res_efit) %>% kable_styling("striped", position = "center")
+# First period (0-5] years
+efit1 <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade,
+  data = edata[edata$epoch == 1, ], x = T, y = T
+)
+# Second period (5-10] years
+efit2 <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade,
+  data = edata[edata$epoch == 2, ], x = T, y = T
+  )
+# Third period (> 10 years)
+efit3 <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade,
+  data = edata[edata$epoch == 3, ], x = T, y = T
+)
 
-options(prType = "html")
+# Results
+res_efit <- round(rbind(e1 = coef(efit1), 
+                        e2 = coef(efit2), 
+                        e3 = coef(efit3)), 2)
+rownames(res_efit) <- c("Epoch 1: 0-5 years", 
+                        "Epoch 2: 5-10 years", 
+                        "Epoch 3: >10 years")
+
+res_efit
+
+# Number of events per period
 tt1 <- table(edata$epoch, edata$status, dnn = c("Epoch", "Status"))
 rownames(tt1) <- c("Epoch 1: 0-5 years", "Epoch 2: 5-10 years", "Epoch 3: >10 years")
-kable(tt1,
-  col.names = c("Censored", "Event"),
-  row.names = TRUE
-) %>% kable_styling("striped", position = "center")
+colnames(tt1) <- c("Censored", "Event")
+tt1
 ```
 
 A drastic change in the size coefficients across all epochs is apparent,
@@ -268,44 +299,69 @@ We also administratively censored the validation data at 5 years.
 
 
 ```{r, model_development, fig.align='center'}
+# Libraries needed
+library(survival)
+library(Hmisc)
+library(pec)
+
+# Data set up and management
+rdata <- readRDS(here::here("Data/rdata.rds"))
+vdata <- readRDS(here::here("Data/vdata.rds"))
+
+# Winzorise PGR to the 99th percentile to deal with very large influential values;
+p99 <- quantile(rdata$pgr, probs = .99)
+rdata$pgr2 <- pmin(rdata$pgr, p99)
+vdata$pgr2 <- pmin(vdata$pgr, p99)
+
+# Save in the date the restricted cubic spline term using Hmisc::rcspline.eval() package
+# Development set
+rcs3_pgr <- rcspline.eval(rdata$pgr2, knots = c(0, 41, 486))
+attr(rcs3_pgr, "dim") <- NULL
+attr(rcs3_pgr, "knots") <- NULL
+rdata$pgr3 <- rcs3_pgr
+rm(rcs3_pgr)
+
+# Validation set
+rcs3_pgr <- rcspline.eval(vdata$pgr2, knots = c(0, 41, 486))
+attr(rcs3_pgr, "dim") <- NULL
+attr(rcs3_pgr, "knots") <- NULL
+vdata$pgr3 <- rcs3_pgr
+rm(rcs3_pgr)
+
 # Consider the first 5-year epoch in the development set
+edata <- survSplit(Surv(ryear, status) ~ .,
+  data = rdata, cut = 5,
+  episode = "epoch")
+
 edata1 <- edata[edata$epoch == 1, ]
-# Refit the model
+
+# Fit the model without PGR
 efit1 <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade,
-  data = edata1, x = T, y = T
-)
+  data = edata1, x = T, y = T)
+efit1
+
+# Fit the model with PGR
+efit1b <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade + pgr2 + pgr3,
+  data = edata1, x = T, y = T)
+efit1b
+
+edata1$lp <- predict(efit1) # linear predictor
+edata1$predsurv5 <- predictSurvProb(efit1, newdata = edata1, times = 5) # predicted survival
+edata1$lp_1b <- predict(efit1b)
+edata1$predsurv5_1b <- predictSurvProb(efit1b, newdata = edata1, times = 5)
+
 # Additional marker
 efit1b <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade + pgr2 + pgr3,
-  data = edata1, x = T, y = T
-)
+  data = edata1, x = T, y = T)
+
+efit1b
 
 
-# Validation
+# Save in the validation data
 evdata <- survSplit(Surv(ryear, status) ~ ., data = vdata, cut = 5, episode = "epoch")
 evdata1 <- evdata[evdata$epoch == 1, ]
 ```
 
-
-Below the results of the models:  
-
-```{r, summary, fig.align='center',warning=FALSE}
-
-dd <- datadist(edata1)
-options(datadist = "dd")
-options(prType = "html")
-s5 <- cph(Surv(ryear, status) ~ csize + cnode + cgrade,
-  data = edata1, x = T, y = T, surv = T
-)
-print(s5)
-
-
-options(prType = "html")
-s6 <- cph(Surv(ryear, status) ~ csize + cnode + cgrade + rcs(pgr2, c(0, 41, 486)),
-  data = edata1, x = T, y = T, surv = T
-)
-print(s6)
-options(datadist = NULL)
-```
 The coefficients of the models indicated that higher size, higher number of positive lymph nodes and higher grade is more associate with poorer prognosis. The association of the progesterone biomarker and the outcome is non-linear as investigated previously.
 
 
@@ -326,30 +382,95 @@ Here we aim to assess the prediction performance of a risk prediction model with
 ### 2.1 Overall performance measures
 We calculate the Brier Score and the Index of Prediction Accuracy (IPA, the scaled Brier) as a overall performance measure.  
 
-First we save elements need to calculate the performance measures as the linear predictor and the predicted survival at 5 years in the development and validation data. Secondly, we create B bootstrap data to calculate percentile bootstrap confidence intervals needed for some performance measures.
-```{r, bootstrap,warning=FALSE}
+We calculate the overall performance measures: Brier score, IPA and the corresponding confidence intervals.
 
+```{r, overall, warning=FALSE}
+# NOTES:
+# IPA 1 - Brier model \ Brier null
+# NOTE: dynpred::pecox() does not allow for external validation?
+
+######
+# Libraries needed
+library(survival)
+library(Hmisc)
+library(pec)
+library(dynpred)
+
+# Data set up and management
+rdata <- readRDS(here::here("Data/rdata.rds"))
+vdata <- readRDS(here::here("Data/vdata.rds"))
+
+# Winzorise PGR to the 99th percentile to deal with very large influential values;
+p99 <- quantile(rdata$pgr, probs = .99)
+rdata$pgr2 <- pmin(rdata$pgr, p99)
+vdata$pgr2 <- pmin(vdata$pgr, p99)
+
+# Save in the date the restricted cubic spline term using Hmisc::rcspline.eval() package
+# Development set
+rcs3_pgr <- rcspline.eval(rdata$pgr2, knots = c(0, 41, 486))
+attr(rcs3_pgr, "dim") <- NULL
+attr(rcs3_pgr, "knots") <- NULL
+rdata$pgr3 <- rcs3_pgr
+
+# Validation set
+rcs3_pgr <- rcspline.eval(vdata$pgr2, knots = c(0, 41, 486))
+attr(rcs3_pgr, "dim") <- NULL
+attr(rcs3_pgr, "knots") <- NULL
+vdata$pgr3 <- rcs3_pgr
+
+# Consider the first 5-year epoch in the development set
+edata <- survSplit(Surv(ryear, status) ~ .,
+  data = rdata, cut = 5,
+  episode = "epoch"
+)
+edata1 <- edata[edata$epoch == 1, ]
+
+# Fit the model without PGR
+efit1 <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade,
+  data = edata1, x = T, y = T)
+
+# Fit the model with PGR
+efit1b <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade + pgr2 + pgr3,
+  data = edata1, x = T, y = T)
+
+# Save validation data censored at 5 years
+evdata <- survSplit(Surv(ryear, status) ~ ., data = vdata, cut = 5, episode = "epoch")
+evdata1 <- evdata[evdata$epoch == 1, ]
+
+# Add linear predictor and predicted survival at 5 years in the development set
 edata1$lp <- predict(efit1) # linear predictor
 edata1$predsurv5 <- predictSurvProb(efit1, newdata = edata1, times = 5) # predicted survival
 edata1$lp_1b <- predict(efit1b)
 edata1$predsurv5_1b <- predictSurvProb(efit1b, newdata = edata1, times = 5)
 
-
+# Add linear predictor and predicted survival at 5 years in the validation set
 evdata1$lp_1b <- predict(efit1b, newdata = evdata1)
 evdata1$predsurv5 <- predictSurvProb(efit1, newdata = evdata1, times = 5)
 evdata1$lp_1b <- predict(efit1b, newdata = evdata1)
 evdata1$predsurv5_1b <- predictSurvProb(efit1b, newdata = evdata1, times = 5)
 
-set.seed(20200416)
-eboot <- bootstraps(edata1, times = 10)
-vboot <- bootstraps(evdata1, times = 10)
-# NOTE: B=10 otherwise the computation time will be too long
-```
+# Bootstrap
 
-We calculate the overall performance measures: Brier score, IPA and the corresponding confidence intervals.
+rboot <- list()
+vboot <- list()
+B <- 10  # Number of bootstrap samples
+set.seed(2021)
+for (j in 1:B) {
+rboot[[j]] <- edata1[sample(nrow(edata1), 
+                           size = nrow(edata1), 
+                           replace = TRUE),]
 
-```{r, overall, warning=FALSE}
-# Development set (apparent Brier and IPA) without pgr
+vboot[[j]] <- evdata1[sample(nrow(evdata1), 
+                           size = nrow(evdata1), 
+                           replace = TRUE),]
+}
+
+
+# Brier Score and IPA in the development set (model without PGR)
+a <- pecox(formula = Surv(ryear, status) ~ csize + cnode + cgrade, 
+      censformula = Surv(ryear, 1 - status) ~ 1,
+      data = edata1, FUN = "Brier", tout = 5, progress = TRUE)
+
 score_rdata1 <-
   Score(list("Cox development" = efit1),
     formula = Surv(ryear, status) ~ 1, data = edata1, conf.int = TRUE, times = 4.95,
@@ -357,15 +478,7 @@ score_rdata1 <-
     summary = "ipa"
   )
 
-# Validation set without pgr
-score_vdata1 <-
-  Score(list("Cox development" = efit1),
-    formula = Surv(ryear, status) ~ 1, data = evdata1, conf.int = TRUE, times = 4.95,
-    cens.model = "km", metrics = "brier",
-    summary = "ipa"
-  )
-
-# Development set (apparent Brier and IPA) with pgr
+# Brier Score and IPA in the development set (model with PGR)
 score_rdata1b <-
   Score(list("Cox development" = efit1b),
     formula = Surv(ryear, status) ~ 1, data = edata1, conf.int = TRUE, times = 4.95,
@@ -373,7 +486,16 @@ score_rdata1b <-
     summary = "ipa"
   )
 
-# Validation set with pgr
+# Brier Score and IPA in the validation set (model without PGR)
+score_vdata1 <-
+  Score(list("Cox development" = efit1),
+    formula = Surv(ryear, status) ~ 1, data = evdata1, conf.int = TRUE, times = 4.95,
+    cens.model = "km", metrics = "brier",
+    summary = "ipa"
+  )
+
+
+# Brier Score and IPA in the validation set (model with PGR)
 score_vdata1b <-
   Score(list("Cox development" = efit1b),
     formula = Surv(ryear, status) ~ 1, data = evdata1, conf.int = TRUE, times = 4.95,
@@ -384,30 +506,90 @@ score_vdata1b <-
 
 # IPA confidence intervals
 # NOTE: computational time is too long to compute them when the number of bootstrap replications is high
-score_boot_1 <- function(split) {
-  Score(list("Cox development" = efit1),
-    formula = Surv(ryear, status) ~ 1, data = analysis(split), conf.int = FALSE, times = 4.95,
-    cens.model = "km", metrics = "brier",
-    summary = "ipa"
-  )$Brier[[1]]$IPA[2]
+B <- length(rboot)
+score_rboot_1 <- c() # Bootstrap IPA development set for model without PGR
+score_rboot_1b <- c() # Bootstrap IPA development set for model with PGR
+score_vboot_1 <- c() # Bootstrap IPA validation set for model without PGR
+score_vboot_1b <- c() # Bootstrap IPA validation set for model with PGR
+
+for (j in 1:B) {
+  score_rboot_1[j] <-  Score(list("Cox development" = efit1), 
+                         formula = Surv(ryear, status) ~ 1,
+                         data = rboot[[j]], 
+                         conf.int = FALSE, 
+                         times = 4.95, 
+                         cens.model = "km", 
+                         metrics = "brier",
+                         summary = "ipa")$Brier[[1]]$IPA[2]
+  
+   score_rboot_1b[j] <- Score(list("Cox development" = efit1b), 
+                         formula = Surv(ryear, status) ~ 1,
+                         data = rboot[[j]], 
+                         conf.int = FALSE, 
+                         times = 4.95, 
+                         cens.model = "km", 
+                         metrics = "brier",
+                         summary = "ipa")$Brier[[1]]$IPA[2]
+   
+    score_vboot_1[j] <-  Score(list("Cox development" = efit1), 
+                         formula = Surv(ryear, status) ~ 1,
+                         data = vboot[[j]], 
+                         conf.int = FALSE, 
+                         times = 4.95, 
+                         cens.model = "km", 
+                         metrics = "brier",
+                         summary = "ipa")$Brier[[1]]$IPA[2]
+  
+   score_vboot_1b[j] <- Score(list("Cox development" = efit1b), 
+                         formula = Surv(ryear, status) ~ 1,
+                         data = vboot[[j]], 
+                         conf.int = FALSE, 
+                         times = 4.95, 
+                         cens.model = "km", 
+                         metrics = "brier",
+                         summary = "ipa")$Brier[[1]]$IPA[2]
 }
 
-score_boot_1b <- function(split) {
-  Score(list("Cox development" = efit1b),
-    formula = Surv(ryear, status) ~ 1, data = analysis(split), conf.int = FALSE, times = 4.95,
-    cens.model = "km", metrics = "brier",
-    summary = "ipa"
-  )$Brier[[1]]$IPA[2]
-}
-eboot <- eboot %>% mutate(
-  IPA1 = map_dbl(splits, score_boot_1),
-  IPA1b = map_dbl(splits, score_boot_1b)
-) # Development dataset
+# Table overall measures
+alpha <- .05
+k <- 2 # number of digits
+res_ov <- matrix(unlist(c(
+  score_rdata1$Brier$score$Brier[2], # Brier apparent validation
+  score_rdata1$Brier$score[2, 6],
+  score_rdata1$Brier$score[2, 7],
+  score_rdata1b$Brier$score$Brier[2], # Brier apparent validation with PGR
+  score_rdata1b$Brier$score[2, 6],
+  score_rdata1b$Brier$score[2, 7],
+  score_vdata1$Brier$score$Brier[2], # Brier external validation
+  score_vdata1$Brier$score[2, 6],
+  score_vdata1$Brier$score[2, 7],
+  score_vdata1b$Brier$score$Brier[2], # Brier external validation with PGR
+  score_vdata1b$Brier$score[2, 6],
+  score_vdata1b$Brier$score[2, 7],
+  score_rdata1$Brier$score$IPA[2], # IPA apparent validation
+  quantile(score_rboot_1, probs = alpha / 2),
+  quantile(score_rboot_1, probs = 1 - alpha / 2),
+  score_rdata1b$Brier$score$IPA[2], # IPA apparent validation with PGR
+  quantile(score_rboot_1b, probs = alpha / 2),
+  quantile(score_rboot_1b, probs = 1 - alpha / 2),
+  score_vdata1$Brier$score$IPA[2], # IPA external validation
+  quantile(score_vboot_1, probs = alpha / 2),
+  quantile(score_vboot_1, probs = 1 - alpha / 2),
+  score_vdata1b$Brier$score$IPA[2], # IPA external validation with PGR
+  quantile(score_vboot_1b, probs = alpha / 2),
+  quantile(score_vboot_1b, probs = 1 - alpha / 2)
+)),
+nrow = 2, ncol = 12, byrow = T, dimnames = list(
+  c("Brier", "IPA"),
+  rep(c("Estimate", "Lower .95 ", "Upper .95"), 4)
+)
+)
 
-vboot <- vboot %>% mutate(
-  IPA1 = map_dbl(splits, score_boot_1),
-  IPA1b = map_dbl(splits, score_boot_1b)
-) # Validation dataset
+res_ov <- round(res_ov, 2) # Digit
+# res_ov_lab <- c("", "Apparent", "", "", "Apparent + PGR", "",
+#                 "", "External", "", "", "External + PGR", "")
+# res_ov <- rbind(res_ov_lab,res_ov)
+res_ov
 ```
 
 ```{r, overall_table, warning=FALSE, echo=FALSE}
