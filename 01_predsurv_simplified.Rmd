@@ -63,7 +63,11 @@ pacman::p_load(
 )
 # webshot::install_phantomjs()
 
-
+# COMMENT: Rotterdam data (rdata) is not the correct version. Terry,
+# can provide me the corrent version?
+# COMMENT: if you do not use GitHub and clone the repository / open a .Rproject
+# data must be downloaded locally and imported manually. 
+# Please modify the path to your path.
 rdata <- readRDS(here::here("Data/rdata.rds"))
 vdata <- readRDS(here::here("Data/vdata.rds"))
 ```
@@ -73,49 +77,6 @@ The Rotterdam breast cancer data was used to predict the risk of recurrence or d
 The Germany Breast Cancer Study Group data was used as an external validation of the model developed in the Rotterdam breast cancer data. The prediction model will be then extended using the progesterone (PGR) marker measured at primary surgery.  
 The improvement in prediction performance will be evaluated internally in the Rotterdam data (development data) and in German Breast Cancer Study data (validation data).  
 
-### Descriptive statistics
-```{r, import,echo=FALSE}
-
-# NOTE: this can be removed, probably Table 1 is unneccesary in the very simplified code
-# Summary guidelines of Terry
-# 1. Nice output may be as a matrix with rownames and colnames
-# 2. Provide sections mostly stand alone with dataset setup and libraries needed for
-# every section
-# 3. Use survival package and dnypred (e.g. pec)
-
-
-## Additional NOTE:
-# Hmisc:rcs() is used in the survival::coxph() to allow rcs with 3 knots
-# Bootstrap: can we use rsample::bootstraps() or a classical way avoiding tidyverse?
-# Brier: dynpred:pecox() does not allow to estimate Brier score for external validation 
-# can we use riskRegression::Score() ?
-# Concordance: do you agree with timeROC::timeROC()?
-# Calibration: Austin is OK using survival::coxph() and OE ratio is calculated using an ad-hoc function using survival and pec:predictSurvProb() package
-
-rdata$id <- rdata$pid
-rsel <- rdata[, c("id", "csize", "cnode", "cgrade", "age", "pgr")]
-vsel <- vdata[, c("id", "csize", "cnode", "cgrade", "age", "pgr")]
-rsel$dt <- 1
-vsel$dt <- 2
-cdata <- rbind(rsel, vsel)
-cdata$dt <- factor(cdata$dt,
-  levels = c(1, 2),
-  labels = c("Development dataset", "Validation dataset")
-)
-
-label(cdata$csize) <- "Size"
-label(cdata$cnode) <- "Number of nodes"
-label(cdata$cgrade) <- "Grade of tumor"
-label(cdata$age) <- "Age"
-label(cdata$pgr) <- "PGR"
-label(cdata$dt) <- "Dataset"
-
-units(cdata$csize) <- "mm"
-units(cdata$age) <- "years"
-units(cdata$pgr) <- "ng/mL"
-```
-
-
 
 ## Goal 1 - Develop a risk prediction model with a time to event outcome
 Prediction models are useful to provide the estimated probability of a specific outcome using personal information.
@@ -124,13 +85,18 @@ In many studies, especially in medicine, the main outcome under assessment is th
 ### 1.1 Preliminary investigation - survival and censoring curves in the development and validation data
 First, we draw the survival and the censoring curves of the development and validation data
 ```{r, surv, fig.align='center'}
+
+# COMMENT: I tried to repeat the same R code multiple times to make "stand-alone" paragraphs # and sub-paragraphs
+
 # Libraries needed
 library(survival)
 
 # Data set up
+# COMMENT: here as well change the directory if you work locally
 rdata <- readRDS(here::here("Data/rdata.rds"))
 vdata <- readRDS(here::here("Data/vdata.rds"))
 
+# COMMENT: I used it internally, please adapt any time or just ignore
 # rdata <- readRDS("C:/Users/dgiardiello/Documents/GitHub/Prediction_performance_survival/Data/rdata.rds")
 # vdata <- readRDS("C:/Users/dgiardiello/Documents/GitHub/Prediction_performance_survival/Data/vdata.rds")
 
@@ -161,9 +127,9 @@ The 5-year survival was 59% (95% CI: 58-61%).
 A number of 686 patients were selected to externally validate the risk prediction model.The median survival in the validation data was 4 years. The median survival was 5 years while the 5-year survival was 49% (95% CI: 45-54%).
 
 
-### 1.2 Secondary investigation - check non-linearity of continuous predictors
+### 1.2 Secondary investigation - check non linearity of continuous predictors
 The potential non-linear relation between continuous predictors (i.e. progesterone level) and the outcome should be investigated before developing a risk prediction model. Non-linearity of continuous predictors can be checked using splines.  
-Physically, a spline is a flexible wood or metal strip, which is passed through a set of fixed points (knots) in order to approximate a curve. The most common computational approximation to this is a cubic smoothing spline which is cubic between the knot points, and constrained to be linear beyond the two end knots. 
+Physically, a spline is a flexible wood or metal strip, which is passed through a set of fixed points (knots) in order to approximate a curve. The most common computational approximation to this is a cubic smoothing spline which is cubic between the knot points, and constrained to be linear beyond the two end knots. Other splines like natural splines, B-splines can be implemented. The coefficients may be completely different among different type of splines but the user should not be worried about which one to use since the predicted survival/risk will be fairly similar.
 For the restricted cubic spline using rms::rcs() R package::function(), the position of the knots are defined at 10<sup>th</sup>,50<sup>th</sup> and 90<sup>th</sup> quantile of the continuous predictor distribution. For more details see Frank Harrell's book 'Regression Model Strategies' on page 27 (second edition).  
 The user can specify the positions of the knots instead of using the default calculation of the knots proposed in the book of Frank Harrell.
 To deal with very large influential value, we winzorize progesterone level to the 90<sup>th</sup>  percentile.
@@ -294,9 +260,8 @@ Possible alternatives to address the violation of proportional hazards are:
 If we ignored the non-proportional hazards entirely, the prediction performance of the model may lead to increase bias in estimating the risk especially in terms of calibration performances.
 
 ### 1.4 Model development - fit the risk prediction models
-We develop the risk prediction model in the development data considering the first 5-year follow-up to minimize the violation of proportional hazard including size, nodel and grade. The second model also includes the progesterone level modelled using a 3-knot restricted cubic spline.  
+We develop the risk prediction model in the development data considering the first 5-year follow-up to minimize the violation of proportional hazard including size, nodel and grade. The second model also includes the progesterone level modeled using a 3-knot restricted cubic spline.  
 We also administratively censored the validation data at 5 years.
-
 
 ```{r, model_development, fig.align='center'}
 # Libraries needed
@@ -349,13 +314,8 @@ edata1$lp <- predict(efit1) # linear predictor
 edata1$predsurv5 <- predictSurvProb(efit1, newdata = edata1, times = 5) # predicted survival
 edata1$lp_1b <- predict(efit1b)
 edata1$predsurv5_1b <- predictSurvProb(efit1b, newdata = edata1, times = 5)
-
-# Additional marker
-efit1b <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade + pgr2 + pgr3,
-  data = edata1, x = T, y = T)
-
-efit1b
-
+# COMMENTS: can we use pec::predictSurvProb() to estimate the predicted risk?
+# I checked and it is reliable.
 
 # Save in the validation data
 evdata <- survSplit(Surv(ryear, status) ~ ., data = vdata, cut = 5, episode = "epoch")
@@ -385,9 +345,12 @@ We calculate the Brier Score and the Index of Prediction Accuracy (IPA, the scal
 We calculate the overall performance measures: Brier score, IPA and the corresponding confidence intervals.
 
 ```{r, overall, warning=FALSE}
-# NOTES:
+# COMMENTS:
 # IPA 1 - Brier model \ Brier null
-# NOTE: dynpred::pecox() does not allow for external validation?
+# COMMENT: Terry: riskRegression() does not calculate exactly Brier score
+# (tied censoring and survival issue)
+# COMMENT: dynpred::pecox() does not allow to calculate Brier for external data.
+# Any alternatives?
 
 ######
 # Libraries needed
@@ -467,6 +430,11 @@ vboot[[j]] <- evdata1[sample(nrow(evdata1),
 
 
 # Brier Score and IPA in the development set (model without PGR)
+## Intermezzo: use dynpred::pecox()
+# COMMENT: dynpred::pecox() does not allow to assess Brier
+# using external data. I tried to modify dynpred::pecox() 
+# but it uses dynpred::pe() implemented in C so it is not possible. Do you have suggestions? # Should we get in touch with Hein Putter since he is the creator of dynpred?
+
 a <- pecox(formula = Surv(ryear, status) ~ csize + cnode + cgrade, 
       censformula = Surv(ryear, 1 - status) ~ 1,
       data = edata1, FUN = "Brier", tout = 5, progress = TRUE)
@@ -494,7 +462,6 @@ score_vdata1 <-
     summary = "ipa"
   )
 
-
 # Brier Score and IPA in the validation set (model with PGR)
 score_vdata1b <-
   Score(list("Cox development" = efit1b),
@@ -505,7 +472,7 @@ score_vdata1b <-
 
 
 # IPA confidence intervals
-# NOTE: computational time is too long to compute them when the number of bootstrap replications is high
+# COMMENT: computational time is too long to compute them when the number of bootstrap replications is high
 B <- length(rboot)
 score_rboot_1 <- c() # Bootstrap IPA development set for model without PGR
 score_rboot_1b <- c() # Bootstrap IPA development set for model with PGR
@@ -550,6 +517,10 @@ for (j in 1:B) {
                          summary = "ipa")$Brier[[1]]$IPA[2]
 }
 
+```
+
+
+```{r, res_ov_ table,warning=FALSE,echo=FALSE}
 # Table overall measures
 alpha <- .05
 k <- 2 # number of digits
@@ -579,59 +550,20 @@ res_ov <- matrix(unlist(c(
   quantile(score_vboot_1b, probs = alpha / 2),
   quantile(score_vboot_1b, probs = 1 - alpha / 2)
 )),
-nrow = 2, ncol = 12, byrow = T, dimnames = list(
+nrow = 2, 
+ncol = 12, 
+byrow = T, 
+dimnames = list(
   c("Brier", "IPA"),
-  rep(c("Estimate", "Lower .95 ", "Upper .95"), 4)
-)
+  c("", "Apparent", "", "", "Apparent + PGR", "",
+    "", "External", "", "", "External + PGR", ""))
 )
 
 res_ov <- round(res_ov, 2) # Digit
-# res_ov_lab <- c("", "Apparent", "", "", "Apparent + PGR", "",
-#                 "", "External", "", "", "External + PGR", "")
-# res_ov <- rbind(res_ov_lab,res_ov)
+res_ov_lab <- rep(c("Estimate", "Lower .95 ", "Upper .95"), 4)
+res_ov <- rbind(res_ov_lab,res_ov)
+rownames(res_ov) <- c("", "Brier", "IPA")
 res_ov
-```
-
-```{r, overall_table, warning=FALSE, echo=FALSE}
-# Table overall measures
-alpha <- .05
-k <- 2 # number of digits
-res_ov <- matrix(unlist(c(
-  score_rdata1$Brier$score$Brier[2], # Brier apparent validation
-  score_rdata1$Brier$score[2, 6],
-  score_rdata1$Brier$score[2, 7],
-  score_rdata1b$Brier$score$Brier[2], # Brier apparent validation with PGR
-  score_rdata1b$Brier$score[2, 6],
-  score_rdata1b$Brier$score[2, 7],
-  score_vdata1$Brier$score$Brier[2], # Brier external validation
-  score_vdata1$Brier$score[2, 6],
-  score_vdata1$Brier$score[2, 7],
-  score_vdata1b$Brier$score$Brier[2], # Brier external validation with PGR
-  score_vdata1b$Brier$score[2, 6],
-  score_vdata1b$Brier$score[2, 7],
-  score_rdata1$Brier$score$IPA[2], # IPA apparent validation
-  quantile(eboot$IPA1, probs = alpha / 2),
-  quantile(eboot$IPA1, probs = 1 - alpha / 2),
-  score_rdata1b$Brier$score$IPA[2], # IPA apparent validation with PGR
-  quantile(eboot$IPA1b, probs = alpha / 2),
-  quantile(eboot$IPA1b, probs = 1 - alpha / 2),
-  score_vdata1$Brier$score$IPA[2], # IPA external validation
-  quantile(vboot$IPA1, probs = alpha / 2),
-  quantile(vboot$IPA1, probs = 1 - alpha / 2),
-  score_vdata1b$Brier$score$IPA[2], # IPA external validation with PGR
-  quantile(vboot$IPA1b, probs = alpha / 2),
-  quantile(vboot$IPA1b, probs = 1 - alpha / 2)
-)),
-nrow = 2, ncol = 12, byrow = T, dimnames = list(
-  c("Brier", "IPA"),
-  rep(c("Estimate", "Lower .95 ", "Upper .95"), 4)
-)
-)
-
-res_ov <- round(res_ov, 2) # Digits
-kable(res_ov) %>%
-  kable_styling("striped", position = "center") %>%
-  add_header_above(c(" " = 1, "Apparent" = 3, "Apparent + PGR" = 3, "External" = 3, "External + PGR" = 3))
 ```
 
 As expected the overall performance measures were lower in the external validation. Including information about PGR slightly improved the overall performance.
@@ -646,6 +578,82 @@ Values close to 1 indicate good discrimination ability, while values close to 0.
 We used the time horizon at 4.95 and not 5 years since controls are considered patients at risk after the time horizon and we administratively censored at 5 years to minimize the violation of PH assumption (see paragraph 1.3).
 
 ```{r, AUC,warning=FALSE}
+# Libraries needed
+library(survival)
+library(Hmisc)
+library(pec)
+library(dynpred)
+
+# Data set up and management
+rdata <- readRDS(here::here("Data/rdata.rds"))
+vdata <- readRDS(here::here("Data/vdata.rds"))
+
+# Winzorise PGR to the 99th percentile to deal with very large influential values;
+p99 <- quantile(rdata$pgr, probs = .99)
+rdata$pgr2 <- pmin(rdata$pgr, p99)
+vdata$pgr2 <- pmin(vdata$pgr, p99)
+
+# Save in the date the restricted cubic spline term using Hmisc::rcspline.eval() package
+# Development set
+rcs3_pgr <- rcspline.eval(rdata$pgr2, knots = c(0, 41, 486))
+attr(rcs3_pgr, "dim") <- NULL
+attr(rcs3_pgr, "knots") <- NULL
+rdata$pgr3 <- rcs3_pgr
+
+# Validation set
+rcs3_pgr <- rcspline.eval(vdata$pgr2, knots = c(0, 41, 486))
+attr(rcs3_pgr, "dim") <- NULL
+attr(rcs3_pgr, "knots") <- NULL
+vdata$pgr3 <- rcs3_pgr
+
+# Consider the first 5-year epoch in the development set
+edata <- survSplit(Surv(ryear, status) ~ .,
+  data = rdata, cut = 5,
+  episode = "epoch"
+)
+edata1 <- edata[edata$epoch == 1, ]
+
+# Fit the model without PGR
+efit1 <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade,
+  data = edata1, x = T, y = T)
+
+# Fit the model with PGR
+efit1b <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade + pgr2 + pgr3,
+  data = edata1, x = T, y = T)
+
+# Save validation data censored at 5 years
+evdata <- survSplit(Surv(ryear, status) ~ ., data = vdata, cut = 5, episode = "epoch")
+evdata1 <- evdata[evdata$epoch == 1, ]
+
+# Add linear predictor and predicted survival at 5 years in the development set
+edata1$lp <- predict(efit1) # linear predictor
+edata1$predsurv5 <- predictSurvProb(efit1, newdata = edata1, times = 5) # predicted survival
+edata1$lp_1b <- predict(efit1b)
+edata1$predsurv5_1b <- predictSurvProb(efit1b, newdata = edata1, times = 5)
+
+# Add linear predictor and predicted survival at 5 years in the validation set
+evdata1$lp_1b <- predict(efit1b, newdata = evdata1)
+evdata1$predsurv5 <- predictSurvProb(efit1, newdata = evdata1, times = 5)
+evdata1$lp_1b <- predict(efit1b, newdata = evdata1)
+evdata1$predsurv5_1b <- predictSurvProb(efit1b, newdata = evdata1, times = 5)
+
+# Bootstrap
+
+rboot <- list()
+vboot <- list()
+B <- 10  # Number of bootstrap samples
+set.seed(2021)
+for (j in 1:B) {
+rboot[[j]] <- edata1[sample(nrow(edata1), 
+                           size = nrow(edata1), 
+                           replace = TRUE),]
+
+vboot[[j]] <- evdata1[sample(nrow(evdata1), 
+                           size = nrow(evdata1), 
+                           replace = TRUE),]
+}
+
+
 # Time-dependent AUC (in Table 3 called Uno's TD AUC at 5 years) ###
 # Uno's time-dependent Area Under the Curve
 # Apparent
@@ -683,8 +691,7 @@ Uno_vdata1b <-
     cause = 1, weighting = "marginal", times = 4.95,
     iid = TRUE
   )
-# NOTE: if you have a lot of data n > 2000, standard error computation may be really long.
-# In that case, please use bootstrap percentile to calculate confidence intervals.
+# COMMENT: if you have a lot of data n > 2000, standard error computation may be really long. Please use bootstrap percentile to calculate confidence intervals.
 ```
 
 ```{r, AUC_table,warning=FALSE,echo=FALSE}
@@ -716,14 +723,15 @@ res_discr <- matrix(c(
 nrow = 1, ncol = 12, byrow = T,
 dimnames = list(
   c("Uno AUC"),
-  rep(c("Estimate", "Lower .95 ", "Upper .95"), 4)
-)
+    c("", "Apparent", "", "", "Apparent + PGR", "",
+      "", "External", "", "", "External + PGR", ""))
 )
 
 res_discr <- round(res_discr, k)
-kable(res_discr) %>%
-  kable_styling("striped", position = "center") %>%
-  add_header_above(c(" " = 1, "Apparent" = 3, "Apparent + PGR" = 3, "External" = 3, "External + PGR" = 3))
+res_discr_lab <- rep(c("Estimate", "Lower .95 ", "Upper .95"), 4)
+res_discr <- rbind(res_discr_lab,res_discr)
+rownames(res_discr) <- c("", "Uno AUC")
+res_discr
 ```
 
 The time-dependent AUCs at 5 years were in the external validation were between 0.68 and 0.72 showing moderate discrimination. The additional information of the PGR marker increased the discrimination by 0.04.
@@ -755,7 +763,6 @@ If points are above the 45-degree line, the model underestimate the observed ris
 The observed probabilities estimated by the Kaplan-Meier curves (in case of survival) or by the complementary of the Kaplan-Meier curves (in case of risk in absence of competing risks) are represented in terms of percentiles of the predicted survival (risk) probabilities.  
 
 
-
 Other calibration measures are proposed in the literature. More details are provided in the references at the end of the document. 
 
 ### 2.3.1 Observed Expected ratio
@@ -764,6 +771,63 @@ We calculate the observed/ expected ratio (OE) at 5 years in the development and
 In the development data the OE should be (close to) 1.  
 
 ```{r, OE, fig.align='center',warning=FALSE,message=FALSE}
+# Libraries needed
+library(survival)
+library(Hmisc)
+
+# Data set up and management
+rdata <- readRDS(here::here("Data/rdata.rds"))
+vdata <- readRDS(here::here("Data/vdata.rds"))
+
+# Winzorise PGR to the 99th percentile to deal with very large influential values;
+p99 <- quantile(rdata$pgr, probs = .99)
+rdata$pgr2 <- pmin(rdata$pgr, p99)
+vdata$pgr2 <- pmin(vdata$pgr, p99)
+
+# Save in the date the restricted cubic spline term using Hmisc::rcspline.eval() package
+# Development set
+rcs3_pgr <- rcspline.eval(rdata$pgr2, knots = c(0, 41, 486))
+attr(rcs3_pgr, "dim") <- NULL
+attr(rcs3_pgr, "knots") <- NULL
+rdata$pgr3 <- rcs3_pgr
+
+# Validation set
+rcs3_pgr <- rcspline.eval(vdata$pgr2, knots = c(0, 41, 486))
+attr(rcs3_pgr, "dim") <- NULL
+attr(rcs3_pgr, "knots") <- NULL
+vdata$pgr3 <- rcs3_pgr
+
+# Consider the first 5-year epoch in the development set
+edata <- survSplit(Surv(ryear, status) ~ .,
+  data = rdata, cut = 5,
+  episode = "epoch"
+)
+edata1 <- edata[edata$epoch == 1, ]
+
+# Fit the model without PGR
+efit1 <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade,
+  data = edata1, x = T, y = T)
+
+# Fit the model with PGR
+efit1b <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade + pgr2 + pgr3,
+  data = edata1, x = T, y = T)
+
+# Save validation data censored at 5 years
+evdata <- survSplit(Surv(ryear, status) ~ ., data = vdata, cut = 5, episode = "epoch")
+evdata1 <- evdata[evdata$epoch == 1, ]
+
+# Add linear predictor and predicted survival at 5 years in the development set
+edata1$lp <- predict(efit1) # linear predictor
+edata1$predsurv5 <- predictSurvProb(efit1, newdata = edata1, times = 5) # predicted survival
+edata1$lp_1b <- predict(efit1b)
+edata1$predsurv5_1b <- predictSurvProb(efit1b, newdata = edata1, times = 5)
+
+# Add linear predictor and predicted survival at 5 years in the validation set
+evdata1$lp_1b <- predict(efit1b, newdata = evdata1)
+evdata1$predsurv5 <- predictSurvProb(efit1, newdata = evdata1, times = 5)
+evdata1$lp_1b <- predict(efit1b, newdata = evdata1)
+evdata1$predsurv5_1b <- predictSurvProb(efit1b, newdata = evdata1, times = 5)
+
 #' Calculate the O/E ratio
 #'
 #' @param tfup follow-up time
@@ -788,11 +852,25 @@ OE.ratio.t <- function(tfup, event, pred.risk, thorizon, alpha = .05) {
   return(res)
 }
 
-OE.rdata <- round(OE.ratio.t(rdata$ryear, event = rdata$status, pred.risk = 1 - edata1$predsurv5, thorizon = 5), 2)
-OE.rdata1b <- round(OE.ratio.t(rdata$ryear, event = rdata$status, pred.risk = 1 - edata1$predsurv5_1b, thorizon = 5), 2)
+OE.rdata <- round(OE.ratio.t(rdata$ryear,
+                             event = rdata$status, 
+                             pred.risk = 1 - edata1$predsurv5, 
+                             thorizon = 5), 2)
 
-OE.vdata <- round(OE.ratio.t(vdata$ryear, event = vdata$status, pred.risk = 1 - evdata1$predsurv5, thorizon = 5), 2)
-OE.vdata1b <- round(OE.ratio.t(vdata$ryear, event = vdata$status, pred.risk = 1 - evdata1$predsurv5_1b, thorizon = 5), 2)
+OE.rdata1b <- round(OE.ratio.t(rdata$ryear, 
+                               event = rdata$status, 
+                               pred.risk = 1 - edata1$predsurv5_1b, 
+                               thorizon = 5), 2)
+
+OE.vdata <- round(OE.ratio.t(vdata$ryear, 
+                             event = vdata$status, 
+                             pred.risk = 1 - evdata1$predsurv5, 
+                             thorizon = 5), 2)
+
+OE.vdata1b <- round(OE.ratio.t(vdata$ryear, 
+                               event = vdata$status, 
+                               pred.risk = 1 - evdata1$predsurv5_1b, 
+                               thorizon = 5), 2)
 ```
 
 ```{r, OE_table,warning=FALSE,echo=FALSE}
@@ -805,14 +883,17 @@ res_OE <- matrix(c(
 nrow = 1, ncol = 12, byrow = T,
 dimnames = list(
   c("O/E ratio"),
-  rep(c("Estimate", "Lower .95 ", "Upper .95"), 4)
-)
+  c("", "Apparent", "", "", "Apparent + PGR", "",
+    "", "External", "", "", "External + PGR", ""))
 )
 
+
 res_OE <- round(res_OE, 2)
-kable(res_OE) %>%
-  kable_styling("striped", position = "center") %>%
-  add_header_above(c(" " = 1, "Apparent" = 3, "Apparent + PGR" = 3, "External" = 3, "External + PGR" = 3))
+res_OE_lab <- rep(c("Estimate", "Lower .95 ", "Upper .95"), 4)
+res_OE <- rbind(res_OE_lab,res_OE)
+rownames(res_OE) <- c("", "Uno AUC")
+res_OE
+
 ```
 
 The models PGR tend to slightly underpredict the risk of mortality in the validation data (OE: 1.11, 95%CI: 0.99-1.25 without PGR; OE: 1.08 95%CI: 0.96-1.21).  
@@ -822,6 +903,8 @@ Calibration plots of the external validation data with and without PGR are calcu
 The interpretation of the calibration plot were provided in the section 2.3 of this document, in the corresponding paper and in the literature provided in the paper and at the end of this document. More details about the method are given in the references below.
 
 ```{r, cal_rcs, fig.align='center',warning=FALSE,message=FALSE}
+
+
 ## External data without PGR
 evdata1$predmort5 <- 1 - survest(s5, newdata = evdata1, times = 5)$surv
 evdata1$predmort5.cll <- log(-log(1 - evdata1$predmort5))
