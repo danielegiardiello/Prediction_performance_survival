@@ -968,18 +968,6 @@ efit1b <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade + pgr2 + pgr3,
 evdata <- survSplit(Surv(ryear, status) ~ ., data = vdata, cut = 5, episode = "epoch")
 evdata1 <- evdata[evdata$epoch == 1, ]
 
-# Add linear predictor and predicted survival at 5 years in the development set
-edata1$lp <- predict(efit1) # linear predictor
-edata1$predsurv5 <- predictSurvProb(efit1, newdata = edata1, times = 5) # predicted survival
-edata1$lp_1b <- predict(efit1b)
-edata1$predsurv5_1b <- predictSurvProb(efit1b, newdata = edata1, times = 5)
-
-# Add linear predictor and predicted survival at 5 years in the validation set
-evdata1$lp_1b <- predict(efit1b, newdata = evdata1)
-evdata1$predsurv5 <- predictSurvProb(efit1, newdata = evdata1, times = 5)
-evdata1$lp_1b <- predict(efit1b, newdata = evdata1)
-evdata1$predsurv5_1b <- predictSurvProb(efit1b, newdata = evdata1, times = 5)
-
 ## External data without PGR
 # Fit model with cph since it is useful to get confidence intervals of prediction
 efit1_cph <- cph(formula = Surv(ryear, status) ~ csize + cnode + cgrade, 
