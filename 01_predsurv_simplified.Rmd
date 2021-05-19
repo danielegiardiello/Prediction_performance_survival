@@ -89,7 +89,9 @@ First, we draw the survival and the censoring curves of the development and vali
 # COMMENT: I tried to repeat the same R code multiple times to make "stand-alone" paragraphs # and sub-paragraphs
 
 # Libraries needed
-library(survival)
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(survival,
+               here)
 
 # Data set up
 # COMMENT: here as well change the directory if you work locally
@@ -137,8 +139,10 @@ To deal with very large influential value, we winzorize progesterone level to th
 ```{r,ff, warning=FALSE, fig.align='center'}
 
 # Libraries needed
-library(survival)
-library(Hmisc)
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(survival,
+               Hmisc,
+               here)
 
 # Data set up
 rdata <- readRDS(here::here("Data/rdata.rds"))
@@ -177,7 +181,9 @@ Firstly, we fit the first prediction model in the development data using size, n
 
 ```{r,ph, message=FALSE, warning=FALSE,fig.align='center'} 
 # Libraries needed
-library(survival)
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(survival,
+               here)
 
 # Data set up and management
 rdata <- readRDS(here::here("Data/rdata.rds"))
@@ -205,7 +211,9 @@ These show an estimated coefficient as a function of time. As a further follow-u
 
 ```{r, epoch,warning=FALSE}
 # Libraries needed
-library(survival)
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(survival,
+               here)
 
 # Data set up and management
 rdata <- readRDS(here::here("Data/rdata.rds"))
@@ -265,9 +273,11 @@ We also administratively censored the validation data at 5 years.
 
 ```{r, model_development, fig.align='center'}
 # Libraries needed
-library(survival)
-library(Hmisc)
-library(pec)
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(survival,
+              Hmisc,
+              pec,
+              here)
 
 # Data set up and management
 rdata <- readRDS(here::here("Data/rdata.rds"))
@@ -354,10 +364,12 @@ We calculate the overall performance measures: Brier score, IPA and the correspo
 
 ######
 # Libraries needed
-library(survival)
-library(Hmisc)
-library(pec)
-library(dynpred)
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(survival,
+               Hmisc,
+               pec,
+               dynpred,
+               here)
 
 # Data set up and management
 rdata <- readRDS(here::here("Data/rdata.rds"))
@@ -413,7 +425,6 @@ evdata1$lp_1b <- predict(efit1b, newdata = evdata1)
 evdata1$predsurv5_1b <- predictSurvProb(efit1b, newdata = evdata1, times = 5)
 
 # Bootstrap
-
 rboot <- list()
 vboot <- list()
 B <- 10  # Number of bootstrap samples
@@ -579,10 +590,14 @@ We used the time horizon at 4.95 and not 5 years since controls are considered p
 
 ```{r, AUC,warning=FALSE}
 # Libraries needed
-library(survival)
-library(Hmisc)
-library(pec)
-library(dynpred)
+
+if (!require("pacman")) install.packages("pacman")
+library(pacman)
+pacman::p_load(survival,
+               Hmisc,
+               pec,
+               dnypred,
+               here)
 
 # Data set up and management
 rdata <- readRDS(here::here("Data/rdata.rds"))
@@ -772,8 +787,11 @@ In the development data the OE should be (close to) 1.
 
 ```{r, OE, fig.align='center',warning=FALSE,message=FALSE}
 # Libraries needed
-library(survival)
-library(Hmisc)
+if (!require("pacman")) install.packages("pacman")
+library(pacman)
+pacman::p_load(survival,
+               Hmisc,
+               here)
 
 # Data set up and management
 rdata <- readRDS(here::here("Data/rdata.rds"))
@@ -903,18 +921,84 @@ Calibration plots of the external validation data with and without PGR are calcu
 The interpretation of the calibration plot were provided in the section 2.3 of this document, in the corresponding paper and in the literature provided in the paper and at the end of this document. More details about the method are given in the references below.
 
 ```{r, cal_rcs, fig.align='center',warning=FALSE,message=FALSE}
+if (!require("pacman")) install.packages("pacman")
+library(pacman)
+pacman::p_load(survival,
+               Hmisc,
+               here)
 
+# Data set up and management
+rdata <- readRDS(here::here("Data/rdata.rds"))
+vdata <- readRDS(here::here("Data/vdata.rds"))
+
+# Winzorise PGR to the 99th percentile to deal with very large influential values;
+p99 <- quantile(rdata$pgr, probs = .99)
+rdata$pgr2 <- pmin(rdata$pgr, p99)
+vdata$pgr2 <- pmin(vdata$pgr, p99)
+
+# Save in the date the restricted cubic spline term using Hmisc::rcspline.eval() package
+# Development set
+rcs3_pgr <- rcspline.eval(rdata$pgr2, knots = c(0, 41, 486))
+attr(rcs3_pgr, "dim") <- NULL
+attr(rcs3_pgr, "knots") <- NULL
+rdata$pgr3 <- rcs3_pgr
+
+# Validation set
+rcs3_pgr <- rcspline.eval(vdata$pgr2, knots = c(0, 41, 486))
+attr(rcs3_pgr, "dim") <- NULL
+attr(rcs3_pgr, "knots") <- NULL
+vdata$pgr3 <- rcs3_pgr
+
+# Consider the first 5-year epoch in the development set
+edata <- survSplit(Surv(ryear, status) ~ .,
+  data = rdata, cut = 5,
+  episode = "epoch"
+)
+edata1 <- edata[edata$epoch == 1, ]
+
+# Fit the model without PGR
+efit1 <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade,
+  data = edata1, x = T, y = T)
+
+# Fit the model with PGR
+efit1b <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade + pgr2 + pgr3,
+  data = edata1, x = T, y = T)
+
+# Save validation data censored at 5 years
+evdata <- survSplit(Surv(ryear, status) ~ ., data = vdata, cut = 5, episode = "epoch")
+evdata1 <- evdata[evdata$epoch == 1, ]
+
+# Add linear predictor and predicted survival at 5 years in the development set
+edata1$lp <- predict(efit1) # linear predictor
+edata1$predsurv5 <- predictSurvProb(efit1, newdata = edata1, times = 5) # predicted survival
+edata1$lp_1b <- predict(efit1b)
+edata1$predsurv5_1b <- predictSurvProb(efit1b, newdata = edata1, times = 5)
+
+# Add linear predictor and predicted survival at 5 years in the validation set
+evdata1$lp_1b <- predict(efit1b, newdata = evdata1)
+evdata1$predsurv5 <- predictSurvProb(efit1, newdata = evdata1, times = 5)
+evdata1$lp_1b <- predict(efit1b, newdata = evdata1)
+evdata1$predsurv5_1b <- predictSurvProb(efit1b, newdata = evdata1, times = 5)
 
 ## External data without PGR
-evdata1$predmort5 <- 1 - survest(s5, newdata = evdata1, times = 5)$surv
+# Fit model with cph since it is useful to get confidence intervals of prediction
+efit1_cph <- cph(formula = Surv(ryear, status) ~ csize + cnode + cgrade, 
+                 data = edata1, x = T, y = T, surv = T)
+evdata1$predmort5 <- 1 - survest(efit1_cph, newdata = evdata1, times = 5)$surv
+# evdata1$predmort5 <- 1- predictSurvProb(efit1, newdata = evdata1, times = 5)
 evdata1$predmort5.cll <- log(-log(1 - evdata1$predmort5))
 
 # Estimate
 vcalibrate.efit1 <- cph(Surv(ryear, status) ~ rcs(predmort5.cll, 3),
   x = T, y = T,
-  data = evdata1, surv = T
-) # better rms::cph?
-predict.grid <- seq(quantile(evdata1$predmort5, prob = 0.01), quantile(evdata1$predmort5, prob = 0.99), length = 100)
+  data = evdata1, 
+  surv = T
+) 
+
+predict.grid <- seq(quantile(evdata1$predmort5, prob = 0.01), 
+                    quantile(evdata1$predmort5, prob = 0.99), 
+                    length = 100)
+
 predict.grid.cll <- log(-log(1 - predict.grid))
 predict.grid.df <- data.frame(predict.grid)
 predict.grid.cll.df <- data.frame(predict.grid.cll)
@@ -922,43 +1006,79 @@ names(predict.grid.df) <- "predmort5"
 names(predict.grid.cll.df) <- "predmort5.cll"
 
 # Plot
-pred.vcalibrate.efit1 <- 1 - survest(vcalibrate.efit1, newdata = predict.grid.cll.df, times = 5)$surv
-pred.vcalibrate.efit1.upper <- 1 - survest(vcalibrate.efit1, newdata = predict.grid.cll.df, times = 5)$lower
-pred.vcalibrate.efit1.lower <- 1 - survest(vcalibrate.efit1, newdata = predict.grid.cll.df, times = 5)$upper
+pred.vcalibrate.efit1 <- 1 - survest(vcalibrate.efit1, 
+                                     newdata = predict.grid.cll.df, 
+                                     times = 5)$surv
+
+pred.vcalibrate.efit1.upper <- 1 - survest(vcalibrate.efit1, 
+                                           newdata = predict.grid.cll.df, 
+                                           times = 5)$lower
+
+pred.vcalibrate.efit1.lower <- 1 - survest(vcalibrate.efit1, 
+                                           newdata = predict.grid.cll.df, 
+                                           times = 5)$upper
 par(xaxs = "i", yaxs = "i", las = 1)
-plot(predict.grid, pred.vcalibrate.efit1,
-  type = "l", lty = 1, xlim = c(0, 1),
+plot(
+  predict.grid, 
+  pred.vcalibrate.efit1,
+  type = "l", 
+  lty = 1, 
+  xlim = c(0, 1),
   ylim = c(0, 1), lwd = 2,
   xlab = "Predicted probability",
   ylab = "Observed probability", bty = "n"
 )
-lines(predict.grid, pred.vcalibrate.efit1.lower, type = "l", lty = 2, lwd = 2)
-lines(predict.grid, pred.vcalibrate.efit1.upper, type = "l", lty = 2, lwd = 2)
+lines(predict.grid, 
+      pred.vcalibrate.efit1.lower, 
+      type = "l", 
+      lty = 2, 
+      lwd = 2)
+lines(predict.grid, 
+      pred.vcalibrate.efit1.upper,
+      type = "l", 
+      lty = 2, 
+      lwd = 2)
 abline(0, 1, lwd = 2, lty = 2, col = "red")
 title("A External data without PGR", adj = 0)
 # par(new=T)
 # plot(density(evdata1$predmort5),axes=F,xlab=NA,ylab=NA,
 #     main="")
 
-## External data with PGR
-evdata1$predmort5 <- 1 - survest(s6, newdata = evdata1, times = 5)$surv
-evdata1$predmort5.cll <- log(-log(1 - evdata1$predmort5))
+############################
+## External data with PGR  #
+############################
+
+# Model with cph to get the confidence intervals of the prediction
+efit1b_cph <- cph(formula = Surv(ryear, status) ~ csize + cnode + cgrade + pgr2 + pgr3, 
+                 data = edata1, x = T, y = T, surv = T)
+evdata1$predmort5_1b <- 1 - survest(efit1b_cph, newdata = evdata1, times = 5)$surv
+evdata1$predmort5.cll_1b <- log(-log(1 - evdata1$predmort5_1b))
 
 # Estimate
-vcalibrate.efit1b <- cph(Surv(ryear, status) ~ rcs(predmort5.cll, 3),
+vcalibrate.efit1b <- cph(Surv(ryear, status) ~ rcs(predmort5.cll_1b, 3),
   x = T, y = T, data = evdata1, surv = T
 )
-predict.grid <- seq(quantile(evdata1$predmort5, prob = 0.01), quantile(evdata1$predmort5, prob = 0.99), length = 100)
+
+predict.grid <- seq(quantile(evdata1$predmort5_1b, prob = 0.01), 
+                    quantile(evdata1$predmort5_1b, prob = 0.99), 
+                    length = 100)
+
 predict.grid.cll <- log(-log(1 - predict.grid))
 predict.grid.df <- data.frame(predict.grid)
 predict.grid.cll.df <- data.frame(predict.grid.cll)
-names(predict.grid.df) <- "predmort5"
-names(predict.grid.cll.df) <- "predmort5.cll"
+names(predict.grid.df) <- "predmort5_1b"
+names(predict.grid.cll.df) <- "predmort5.cll_1b"
 
 # Plot
-pred.vcalibrate.efit1b <- 1 - survest(vcalibrate.efit1b, newdata = predict.grid.cll.df, times = 5)$surv
-pred.vcalibrate.efit1b.lower <- 1 - survest(vcalibrate.efit1b, newdata = predict.grid.cll.df, times = 5)$upper
-pred.vcalibrate.efit1b.upper <- 1 - survest(vcalibrate.efit1b, newdata = predict.grid.cll.df, times = 5)$lower
+pred.vcalibrate.efit1b <- 1 - survest(vcalibrate.efit1b, 
+                                      newdata = predict.grid.cll.df, 
+                                      times = 5)$surv
+pred.vcalibrate.efit1b.lower <- 1 - survest(vcalibrate.efit1b, 
+                                            newdata = predict.grid.cll.df, 
+                                            times = 5)$upper
+pred.vcalibrate.efit1b.upper <- 1 - survest(vcalibrate.efit1b, 
+                                            newdata = predict.grid.cll.df, 
+                                            times = 5)$lower
 par(xaxs = "i", yaxs = "i", las = 1)
 plot(predict.grid, pred.vcalibrate.efit1b,
   type = "l", lty = 1, xlim = c(0, 1),
