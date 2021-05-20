@@ -38,28 +38,12 @@ if (!require("pacman")) install.packages("pacman")
 library(pacman)
 
 pacman::p_load(
-  rio,
   survival,
   rms,
-  mstate,
-  sqldf,
   pec,
   dynpred,
   riskRegression,
-  survAUC,
-  survivalROC,
-  timeROC,
-  plotrix,
-  splines,
-  knitr,
-  table1,
-  kableExtra,
-  gtsummary,
-  boot,
-  tidyverse,
-  rsample,
-  gridExtra,
-  webshot
+  timeROC
 )
 # webshot::install_phantomjs()
 
@@ -90,6 +74,7 @@ First, we draw the survival and the censoring curves of the development and vali
 
 # Libraries needed
 if (!require("pacman")) install.packages("pacman")
+library(pacman)
 pacman::p_load(survival,
                here)
 
@@ -140,6 +125,7 @@ To deal with very large influential value, we winzorize progesterone level to th
 
 # Libraries needed
 if (!require("pacman")) install.packages("pacman")
+library(pacman)
 pacman::p_load(survival,
                Hmisc,
                here)
@@ -154,8 +140,9 @@ rdata$pgr2 <- pmin(rdata$pgr, p99)
 vdata$pgr2 <- pmin(vdata$pgr, p99)
 
 pfit <-  coxph(Surv(ryear, status) ~ rcs(pgr2, knots=c(0, 41, 486)), rdata)
+par(las = 1, xaxs = "i", yaxs = "i")
 termplot(pfit, se=TRUE, col.term=1, col.se=1,
-    xlab="PGR", ylab="Linear predictor")
+    xlab="PGR", ylab="Linear predictor", bty = "n")
 legend(350, .25, c("rcs, knots at 0, 41, 486)"),
        col=1, lwd=1, bty='n')
 
@@ -182,6 +169,7 @@ Firstly, we fit the first prediction model in the development data using size, n
 ```{r,ph, message=FALSE, warning=FALSE,fig.align='center'} 
 # Libraries needed
 if (!require("pacman")) install.packages("pacman")
+library(packman)
 pacman::p_load(survival,
                here)
 
@@ -212,6 +200,7 @@ These show an estimated coefficient as a function of time. As a further follow-u
 ```{r, epoch,warning=FALSE}
 # Libraries needed
 if (!require("pacman")) install.packages("pacman")
+library(pacman)
 pacman::p_load(survival,
                here)
 
@@ -365,6 +354,7 @@ We calculate the overall performance measures: Brier score, IPA and the correspo
 ######
 # Libraries needed
 if (!require("pacman")) install.packages("pacman")
+library(pacman)
 pacman::p_load(survival,
                Hmisc,
                pec,
@@ -412,17 +402,6 @@ efit1b <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade + pgr2 + pgr3,
 evdata <- survSplit(Surv(ryear, status) ~ ., data = vdata, cut = 5, episode = "epoch")
 evdata1 <- evdata[evdata$epoch == 1, ]
 
-# Add linear predictor and predicted survival at 5 years in the development set
-edata1$lp <- predict(efit1) # linear predictor
-edata1$predsurv5 <- predictSurvProb(efit1, newdata = edata1, times = 5) # predicted survival
-edata1$lp_1b <- predict(efit1b)
-edata1$predsurv5_1b <- predictSurvProb(efit1b, newdata = edata1, times = 5)
-
-# Add linear predictor and predicted survival at 5 years in the validation set
-evdata1$lp_1b <- predict(efit1b, newdata = evdata1)
-evdata1$predsurv5 <- predictSurvProb(efit1, newdata = evdata1, times = 5)
-evdata1$lp_1b <- predict(efit1b, newdata = evdata1)
-evdata1$predsurv5_1b <- predictSurvProb(efit1b, newdata = evdata1, times = 5)
 
 # Bootstrap
 rboot <- list()
@@ -590,7 +569,6 @@ We used the time horizon at 4.95 and not 5 years since controls are considered p
 
 ```{r, AUC,warning=FALSE}
 # Libraries needed
-
 if (!require("pacman")) install.packages("pacman")
 library(pacman)
 pacman::p_load(survival,
@@ -640,20 +618,15 @@ efit1b <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade + pgr2 + pgr3,
 evdata <- survSplit(Surv(ryear, status) ~ ., data = vdata, cut = 5, episode = "epoch")
 evdata1 <- evdata[evdata$epoch == 1, ]
 
-# Add linear predictor and predicted survival at 5 years in the development set
+# Add linear predictor n the development set
 edata1$lp <- predict(efit1) # linear predictor
-edata1$predsurv5 <- predictSurvProb(efit1, newdata = edata1, times = 5) # predicted survival
 edata1$lp_1b <- predict(efit1b)
-edata1$predsurv5_1b <- predictSurvProb(efit1b, newdata = edata1, times = 5)
 
-# Add linear predictor and predicted survival at 5 years in the validation set
+# Add linear predictor in the validation set
+evdata1$lp <- predict(efit1, newdata = evdata1)
 evdata1$lp_1b <- predict(efit1b, newdata = evdata1)
-evdata1$predsurv5 <- predictSurvProb(efit1, newdata = evdata1, times = 5)
-evdata1$lp_1b <- predict(efit1b, newdata = evdata1)
-evdata1$predsurv5_1b <- predictSurvProb(efit1b, newdata = evdata1, times = 5)
 
 # Bootstrap
-
 rboot <- list()
 vboot <- list()
 B <- 10  # Number of bootstrap samples
@@ -667,7 +640,6 @@ vboot[[j]] <- evdata1[sample(nrow(evdata1),
                            size = nrow(evdata1), 
                            replace = TRUE),]
 }
-
 
 # Time-dependent AUC (in Table 3 called Uno's TD AUC at 5 years) ###
 # Uno's time-dependent Area Under the Curve
@@ -834,16 +806,12 @@ efit1b <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade + pgr2 + pgr3,
 evdata <- survSplit(Surv(ryear, status) ~ ., data = vdata, cut = 5, episode = "epoch")
 evdata1 <- evdata[evdata$epoch == 1, ]
 
-# Add linear predictor and predicted survival at 5 years in the development set
-edata1$lp <- predict(efit1) # linear predictor
+# Add predicted survival at 5 years in the development set
 edata1$predsurv5 <- predictSurvProb(efit1, newdata = edata1, times = 5) # predicted survival
-edata1$lp_1b <- predict(efit1b)
 edata1$predsurv5_1b <- predictSurvProb(efit1b, newdata = edata1, times = 5)
 
-# Add linear predictor and predicted survival at 5 years in the validation set
-evdata1$lp_1b <- predict(efit1b, newdata = evdata1)
+# Add predicted survival at 5 years in the validation set
 evdata1$predsurv5 <- predictSurvProb(efit1, newdata = evdata1, times = 5)
-evdata1$lp_1b <- predict(efit1b, newdata = evdata1)
 evdata1$predsurv5_1b <- predictSurvProb(efit1b, newdata = evdata1, times = 5)
 
 #' Calculate the O/E ratio
@@ -968,8 +936,14 @@ efit1b <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade + pgr2 + pgr3,
 evdata <- survSplit(Surv(ryear, status) ~ ., data = vdata, cut = 5, episode = "epoch")
 evdata1 <- evdata[evdata$epoch == 1, ]
 
-## External data without PGR
-# Fit model with cph since it is useful to get confidence intervals of prediction
+####################
+# Calibration plot #
+####################
+
+###############################
+## External data without PGR  #
+###############################
+# Fit model with rms::cph() since it is useful to get confidence intervals of prediction
 efit1_cph <- cph(formula = Surv(ryear, status) ~ csize + cnode + cgrade, 
                  data = edata1, x = T, y = T, surv = T)
 evdata1$predmort5 <- 1 - survest(efit1_cph, newdata = evdata1, times = 5)$surv
@@ -983,6 +957,7 @@ vcalibrate.efit1 <- cph(Surv(ryear, status) ~ rcs(predmort5.cll, 3),
   surv = T
 ) 
 
+# Create a grid of values according to the predicted risk distribution
 predict.grid <- seq(quantile(evdata1$predmort5, prob = 0.01), 
                     quantile(evdata1$predmort5, prob = 0.99), 
                     length = 100)
@@ -1125,18 +1100,77 @@ Given some thresholds, the model/strategy with higher net benefit represents the
 ```{r, function_stdca, message=FALSE,warning=FALSE, fig.align='center',include=FALSE}
 # Run the function to calculate the net benefit and the elements needed to develop decision curve analysis
 source(here::here("Functions/stdca.R"))
+# COMMENT: please change the directory
+# source("C:/Users/dgiardiello/Documents/GitHub/Prediction_performance_survival/Functions/stdca.R")
 ```
 
 
 ```{r, dca, message=FALSE,warning=FALSE, fig.align='center'}
-# We could use the rms::survest() or pec::predictEventProb() to get the mortality at observed time
+if (!require("pacman")) install.packages("pacman")
+library(pacman)
+pacman::p_load(survival,
+               Hmisc,
+               here)
+
+# Data set up and management
+rdata <- readRDS(here::here("Data/rdata.rds"))
+vdata <- readRDS(here::here("Data/vdata.rds"))
+
+# Winzorise PGR to the 99th percentile to deal with very large influential values;
+p99 <- quantile(rdata$pgr, probs = .99)
+rdata$pgr2 <- pmin(rdata$pgr, p99)
+vdata$pgr2 <- pmin(vdata$pgr, p99)
+
+# Save in the date the restricted cubic spline term using Hmisc::rcspline.eval() package
+# Development set
+rcs3_pgr <- rcspline.eval(rdata$pgr2, knots = c(0, 41, 486))
+attr(rcs3_pgr, "dim") <- NULL
+attr(rcs3_pgr, "knots") <- NULL
+rdata$pgr3 <- rcs3_pgr
+
+# Validation set
+rcs3_pgr <- rcspline.eval(vdata$pgr2, knots = c(0, 41, 486))
+attr(rcs3_pgr, "dim") <- NULL
+attr(rcs3_pgr, "knots") <- NULL
+vdata$pgr3 <- rcs3_pgr
+
+# Consider the first 5-year epoch in the development set
+edata <- survSplit(Surv(ryear, status) ~ .,
+  data = rdata, cut = 5,
+  episode = "epoch"
+)
+edata1 <- edata[edata$epoch == 1, ]
+
+# Fit the model without PGR
+efit1 <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade,
+  data = edata1, x = T, y = T)
+
+# Fit the model with PGR
+efit1b <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade + pgr2 + pgr3,
+  data = edata1, x = T, y = T)
+
+# Save validation data censored at 5 years
+evdata <- survSplit(Surv(ryear, status) ~ ., data = vdata, cut = 5, episode = "epoch")
+evdata1 <- evdata[evdata$epoch == 1, ]
+
+# Add predicted survival at 5 years in the development set
+edata1$predsurv5 <- predictSurvProb(efit1, newdata = edata1, times = 5) # predicted survival
+edata1$predsurv5_1b <- predictSurvProb(efit1b, newdata = edata1, times = 5)
+
+# Add predicted survival at 5 years in the validation set
+evdata1$predsurv5 <- predictSurvProb(efit1, newdata = evdata1, times = 5)
+evdata1$predsurv5_1b <- predictSurvProb(efit1b, newdata = evdata1, times = 5)
+
+###########################
+# Decision curve analysis #
+###########################
 # Development data
 # Predicted probability calculation
-edata1$mort5_efit1 <- 1 - predictSurvProb(efit1, newdata = edata1, times = 5)
+edata1$mort5_efit1 <- 1 - edata1$predsurv5
 
 # Extended model with PGR
 # Predicted probability calculation
-edata1$mort5_efit1b <- 1 - predictSurvProb(efit1b, newdata = edata1, times = 5)
+edata1$mort5_efit1b <- 1 - edata1$predsurv5_1b 
 
 # Run decision curve analysis
 
