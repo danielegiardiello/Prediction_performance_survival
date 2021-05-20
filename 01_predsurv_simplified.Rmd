@@ -3,7 +3,8 @@ title: "Performance assessment of survival prediction models - simplified code"
 subtitle: "Simplified code when individual data of development and validation set are both available"
 always_allow_html: true
 output:
-  github_document:
+  html_document:
+  # github_document:
     toc: true
     toc_depth: 4
   keep_text: true
@@ -169,7 +170,7 @@ Firstly, we fit the first prediction model in the development data using size, n
 ```{r,ph, message=FALSE, warning=FALSE,fig.align='center'} 
 # Libraries needed
 if (!require("pacman")) install.packages("pacman")
-library(packman)
+library(pacman)
 pacman::p_load(survival,
                here)
 
