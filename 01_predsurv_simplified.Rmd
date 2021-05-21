@@ -46,7 +46,6 @@ pacman::p_load(
   riskRegression,
   timeROC
 )
-# webshot::install_phantomjs()
 
 # COMMENT: Rotterdam data (rdata) is not the correct version. Terry,
 # can provide me the corrent version?
