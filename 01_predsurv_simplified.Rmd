@@ -28,7 +28,8 @@ The goals are:
 3. To assess the potential clinical utility of a risk prediction model with time-to-event outcome;  
 
 
-### Load packages and import data
+### Set up - load packages and import data
+Please run the following code to set up the data used in the following document.
 We following libraries are needed to achieve the following goals, if you have not them installed, please use
 install.packages('') (e.g. install.packages('survival')) or use the user-friendly approach if you are using RStudio.
 
@@ -53,12 +54,11 @@ palette("Okabe-Ito")  # color-blind friendly  (needs R 4.0)
 # source("brier.R")    #  my own check on Brier scores
 # COMMENT: Terry should sent it
 
+# Development data
 # Recurrence free survival (RFS) is the time until the earlier of
 #  recurrence or death
-names(rotterdam)
 rotterdam$ryear <- rotterdam$rtime/365.25  # time in years
 rotterdam$rfs <- with(rotterdam, pmax(recur, death))
-
 
 # variables used in the analysis
 pgr99 <- quantile(rotterdam$pgr, .99) # there is a large outlier of 5000
@@ -73,7 +73,7 @@ attr(rcs3_pgr, "dim") <- NULL
 attr(rcs3_pgr, "knots") <- NULL
 rotterdam$pgr3 <- rcs3_pgr
 
-
+# Validation data
 names(gbsg)
 gbsg$ryear <- gbsg$rfstime/365.25
 gbsg$rfs   <- gbsg$status           # the GBSG data contains RFS
@@ -185,8 +185,7 @@ Firstly, we fit the first prediction model in the development data using size, n
 # Libraries needed
 if (!require("pacman")) install.packages("pacman")
 library(pacman)
-pacman::p_load(survival,
-               here)
+pacman::p_load(survival)
 
 # Fit model in the development data
 fit1_cox <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade, 
@@ -214,8 +213,7 @@ These show an estimated coefficient as a function of time. As a further follow-u
 # Libraries needed
 if (!require("pacman")) install.packages("pacman")
 library(pacman)
-pacman::p_load(survival,
-               here)
+pacman::p_load(survival)
 
 # Development
 edata <- survSplit(Surv(ryear, rfs) ~ .,
@@ -266,8 +264,7 @@ We also administratively censored the validation data at 5 years.
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load(survival,
               Hmisc,
-              pec,
-              here)
+              pec)
 
 
 # Fit the model without PGR
@@ -313,8 +310,6 @@ We calculate the overall performance measures: Brier score, IPA and the correspo
 # IPA 1 - Brier model \ Brier null
 # COMMENT: Terry: riskRegression() does not calculate exactly Brier score
 # (tied censoring and survival issue)
-# COMMENT: dynpred::pecox() does not allow to calculate Brier for external data.
-# Any alternatives?
 
 ######
 # Libraries needed
@@ -322,9 +317,7 @@ if (!require("pacman")) install.packages("pacman")
 library(pacman)
 pacman::p_load(survival,
                Hmisc,
-               pec,
-               dynpred,
-               here)
+               pec)
 
 
 # Fit the model without PGR
@@ -358,7 +351,7 @@ vboot[[j]] <- gbsg5[sample(nrow(gbsg5),
 # using external data. I tried to modify dynpred::pecox() 
 # but it uses dynpred::pe() implemented in C so it is not possible. Do you have suggestions? # Should we get in touch with Hein Putter since he is the creator of dynpred?
 
-# COMMENT: I will wait for brier function of Terry
+# COMMENT: I will wait for brier function created by Terry
 score_rdata1 <-
   Score(list("Cox development" = efit1),
     formula = Surv(ryear, rfs) ~ 1, data = rott5, conf.int = TRUE, times = 4.95,
@@ -391,7 +384,7 @@ score_vdata1b <-
   )
 
 
-# IPA confidence intervals
+# Scaled Brier / IPA confidence intervals
 # COMMENT: computational time is too long to compute them when the number of bootstrap replications is high
 B <- length(rboot)
 score_rboot_1 <- c() # Bootstrap IPA development set for model without PGR
@@ -495,12 +488,12 @@ Concordance can be assessed over several different time intervals:
 * the entire range of the data
 * a 5 year window corresponding to our target assessment point
 
-Clearly the last of these is most relevant
+Clearly the last of these is most relevant.
 
 This is easy to compute using the concordance function in the survival
 package.
 There is some uncertainty in the literature about the original Harrell
-formulation verus Uno's suggestion to re-weight the time scale by the
+formulation versus Uno's suggestion to re-weight the time scale by the
 factor $1/G^2(t)$ where $G$ is the censoring distribution.
 There is more detailed information in the concordance vignette found in the
 survival package.
@@ -511,7 +504,7 @@ The time horizon to calculate the time-dependent measures was set to 5 years.
 Values close to 1 indicate good discrimination ability, while values close to 0.5 indicated poor discrimination ability.  
 We used the time horizon at 4.95 and not 5 years since controls are considered patients at risk after the time horizon and we administratively censored at 5 years to minimize the violation of PH assumption (see paragraph 1.3).
 
-```{r, AUC,warning=FALSE}
+```{r, concordance,warning=FALSE}
 # Libraries needed
 if (!require("pacman")) install.packages("pacman")
 library(pacman)
@@ -539,17 +532,24 @@ gbsg5$lp_1b <- predict(efit1b, newdata = gbsg5)
 
 
 # Harrell and Uno's concordance index 
+
+## Development data
+# Harrell's C
 harrell_C_rdata <- concordance(efit1)
 harrell_C_rdata1b <- concordance(efit1b)
+# Uno's C
 Uno_C_rdata <- concordance(efit1, timewt="n/G2")
 Uno_C_rdata1b <- concordance(efit1b, timewt="n/G2")
 
+## Validation data
+# Harrell's C
 harrell_C_vdata <- concordance(Surv(ryear, rfs) ~ lp, 
                                gbsg5, 
                                reverse=TRUE)
 harrell_C_vdata1b <- concordance(Surv(ryear, rfs) ~ lp_1b, 
                                  gbsg5, 
                                  reverse=TRUE)
+# Uno's C
 Uno_C_vdata <- concordance(Surv(ryear, rfs) ~ lp, 
                            gbsg5, 
                            reverse=TRUE,
@@ -561,22 +561,67 @@ Uno_C_vdata1b <-concordance(Surv(ryear, rfs) ~ lp_1b,
                            timewt="n/G2")
 
 
-temp <- c(Uno_C_rdata$concordance,
-          Uno_C_rdata$concordance - 
-            qnorm(1 - alpha/2) * sqrt(Uno_C_rdata$var),
-          Uno_C_rdata$concordance + 
-            qnorm(1 - alpha/2) * sqrt(Uno_C_rdata$var),
-          
-          Uno_C_rdata1b$concordance - 
-            qnorm(1 - alpha/2) * sqrt(Uno_C_rdata1b$var),
-           Uno_C_rdata1b$concordance + 
-            qnorm(1 - alpha/2) * sqrt(Uno_C_rdata1b$var),
+temp <- c(
+  harrell_C_rdata$concordance,
+  harrell_C_rdata$concordance - 
+    qnorm(1 - alpha/2) * sqrt(harrell_C_rdata$var),
+  harrell_C_rdata$concordance + 
+    qnorm(1 - alpha/2) * sqrt(harrell_C_rdata$var),
+  
+  harrell_C_rdata1b$concordance,
+  harrell_C_rdata1b$concordance - 
+    qnorm(1 - alpha/2) * sqrt(harrell_C_rdata1b$var),
+  harrell_C_rdata1b$concordance + 
+    qnorm(1 - alpha/2) * sqrt(harrell_C_rdata1b$var),
+  
+  Uno_C_rdata$concordance,
+  Uno_C_rdata$concordance - 
+    qnorm(1 - alpha/2) * sqrt(Uno_C_rdata$var),
+  Uno_C_rdata$concordance + 
+    qnorm(1 - alpha/2) * sqrt(Uno_C_rdata$var),
+
+  Uno_C_rdata1b$concordance - 
+    qnorm(1 - alpha/2) * sqrt(Uno_C_rdata1b$var),
+  Uno_C_rdata1b$concordance + 
+    qnorm(1 - alpha/2) * sqrt(Uno_C_rdata1b$var),
+  
+  harrell_C_vdata$concordance,
+  harrell_C_vdata$concordance - 
+    qnorm(1 - alpha/2) * sqrt(harrell_C_vdata$var),
+  harrell_C_vdata$concordance + 
+    qnorm(1 - alpha/2) * sqrt(harrell_C_vdata$var),
+  
+  harrell_C_vdata1b$concordance,
+  harrell_C_vdata1b$concordance - 
+    qnorm(1 - alpha/2) * sqrt(harrell_C_vdata1b$var),
+  harrell_C_vdata1b$concordance + 
+    qnorm(1 - alpha/2) * sqrt(harrell_C_vdata1b$var),
+  
+  Uno_C_vdata$concordance,
+  Uno_C_vdata$concordance - 
+    qnorm(1 - alpha/2) * sqrt(Uno_C_vdata$var),
+  Uno_C_vdata$concordance + 
+    qnorm(1 - alpha/2) * sqrt(Uno_C_vdata$var),
+  
+  Uno_C_vdata1b$concordance, 
+  Uno_C_vdata1b$concordance - 
+    qnorm(1 - alpha/2) * sqrt(Uno_C_vdata1b$var),
+  Uno_C_vdata1b$concordance + 
+    qnorm(1 - alpha/2) * sqrt(Uno_C_vdata1b$var)
           
       )
-cmat  <- matrix(temp, nrow=3, byrow=TRUE,
-               dimnames=list(c("Apparent","Apparent + PGR" ,"GBSG", "Validate GBSG"),
-                             c("Harrell", "Uno")))
-round(cmat,3)
+cmat  <- matrix(temp, nrow=2, byrow=TRUE,
+               dimnames=list(c("Harrell C", "Uno C"),
+                             c("", "Apparent", "", 
+                               "","Apparent + PGR", "",
+                               "", "External", "", 
+                               "", "External + PGR", "")))
+
+cmat <- round(cmat, 2) # Digit
+res_C_lab <- rep(c("Estimate", "Lower .95 ", "Upper .95"), 4)
+res_C <- rbind(res_C_lab,cmat)
+rownames(res_C) <- c("", "Harrell C", "Uno C")
+
 
 # Time-dependent AUC (in Table 3 called Uno's TD AUC at 5 years) ###
 # Uno's time-dependent Area Under the Curve
@@ -1004,37 +1049,7 @@ source(here::here("Functions/stdca.R"))
 if (!require("pacman")) install.packages("pacman")
 library(pacman)
 pacman::p_load(survival,
-               Hmisc,
-               here)
-
-# Data set up and management
-rdata <- readRDS(here::here("Data/rdata.rds"))
-vdata <- readRDS(here::here("Data/vdata.rds"))
-
-# Winzorise PGR to the 99th percentile to deal with very large influential values;
-p99 <- quantile(rdata$pgr, probs = .99)
-rdata$pgr2 <- pmin(rdata$pgr, p99)
-vdata$pgr2 <- pmin(vdata$pgr, p99)
-
-# Save in the date the restricted cubic spline term using Hmisc::rcspline.eval() package
-# Development set
-rcs3_pgr <- rcspline.eval(rdata$pgr2, knots = c(0, 41, 486))
-attr(rcs3_pgr, "dim") <- NULL
-attr(rcs3_pgr, "knots") <- NULL
-rdata$pgr3 <- rcs3_pgr
-
-# Validation set
-rcs3_pgr <- rcspline.eval(vdata$pgr2, knots = c(0, 41, 486))
-attr(rcs3_pgr, "dim") <- NULL
-attr(rcs3_pgr, "knots") <- NULL
-vdata$pgr3 <- rcs3_pgr
-
-# Consider the first 5-year epoch in the development set
-edata <- survSplit(Surv(ryear, status) ~ .,
-  data = rdata, cut = 5,
-  episode = "epoch"
-)
-edata1 <- edata[edata$epoch == 1, ]
+               Hmisc)
 
 # Fit the model without PGR
 efit1 <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade,
@@ -1044,9 +1059,6 @@ efit1 <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade,
 efit1b <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade + pgr2 + pgr3,
   data = edata1, x = T, y = T)
 
-# Save validation data censored at 5 years
-evdata <- survSplit(Surv(ryear, status) ~ ., data = vdata, cut = 5, episode = "epoch")
-evdata1 <- evdata[evdata$epoch == 1, ]
 
 # Add predicted survival at 5 years in the development set
 edata1$predsurv5 <- predictSurvProb(efit1, newdata = edata1, times = 5) # predicted survival
@@ -1059,6 +1071,7 @@ evdata1$predsurv5_1b <- predictSurvProb(efit1b, newdata = evdata1, times = 5)
 ###########################
 # Decision curve analysis #
 ###########################
+
 # Development data
 # Predicted probability calculation
 edata1$mort5_efit1 <- 1 - edata1$predsurv5
