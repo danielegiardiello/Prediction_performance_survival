@@ -559,8 +559,10 @@ Uno_C_vdata1b <-concordance(Surv(ryear, rfs) ~ lp_1b,
                            gbsg5, 
                            reverse=TRUE,
                            timewt="n/G2")
+```
 
 
+```{r, concordance_table,warning=FALSE,echo=FALSE}
 temp <- c(
   harrell_C_rdata$concordance,
   harrell_C_rdata$concordance - 
@@ -622,7 +624,10 @@ res_C_lab <- rep(c("Estimate", "Lower .95 ", "Upper .95"), 4)
 res_C <- rbind(res_C_lab,cmat)
 rownames(res_C) <- c("", "Harrell C", "Uno C")
 
+res_C
+```
 
+```{r, AUC,warning=FALSE,echo=FALSE}
 # Time-dependent AUC (in Table 3 called Uno's TD AUC at 5 years) ###
 # Uno's time-dependent Area Under the Curve
 # Apparent
@@ -746,54 +751,23 @@ library(pacman)
 pacman::p_load(survival,
                Hmisc)
 
-# Data set up and management
-rdata <- readRDS(here::here("Data/rdata.rds"))
-vdata <- readRDS(here::here("Data/vdata.rds"))
-
-# Winzorise PGR to the 99th percentile to deal with very large influential values;
-p99 <- quantile(rdata$pgr, probs = .99)
-rdata$pgr2 <- pmin(rdata$pgr, p99)
-vdata$pgr2 <- pmin(vdata$pgr, p99)
-
-# Save in the date the restricted cubic spline term using Hmisc::rcspline.eval() package
-# Development set
-rcs3_pgr <- rcspline.eval(rdata$pgr2, knots = c(0, 41, 486))
-attr(rcs3_pgr, "dim") <- NULL
-attr(rcs3_pgr, "knots") <- NULL
-rdata$pgr3 <- rcs3_pgr
-
-# Validation set
-rcs3_pgr <- rcspline.eval(vdata$pgr2, knots = c(0, 41, 486))
-attr(rcs3_pgr, "dim") <- NULL
-attr(rcs3_pgr, "knots") <- NULL
-vdata$pgr3 <- rcs3_pgr
-
-# Consider the first 5-year epoch in the development set
-edata <- survSplit(Surv(ryear, status) ~ .,
-  data = rdata, cut = 5,
-  episode = "epoch"
-)
-edata1 <- edata[edata$epoch == 1, ]
 
 # Fit the model without PGR
-efit1 <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade,
-  data = edata1, x = T, y = T)
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
+  data = rott5, x = T, y = T)
 
 # Fit the model with PGR
-efit1b <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade + pgr2 + pgr3,
-  data = edata1, x = T, y = T)
+efit1b <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade + pgr2 + pgr3,
+  data = rott5, x = T, y = T)
 
-# Save validation data censored at 5 years
-evdata <- survSplit(Surv(ryear, status) ~ ., data = vdata, cut = 5, episode = "epoch")
-evdata1 <- evdata[evdata$epoch == 1, ]
 
 # Add predicted survival at 5 years in the development set
-edata1$predsurv5 <- predictSurvProb(efit1, newdata = edata1, times = 5) # predicted survival
-edata1$predsurv5_1b <- predictSurvProb(efit1b, newdata = edata1, times = 5)
+rott5$predsurv5 <- predictSurvProb(efit1, newdata = rott5, times = 5) # predicted survival
+rott5$predsurv5_1b <- predictSurvProb(efit1b, newdata = rott5, times = 5)
 
-# Add predicted survival at 5 years in the validation set
-evdata1$predsurv5 <- predictSurvProb(efit1, newdata = evdata1, times = 5)
-evdata1$predsurv5_1b <- predictSurvProb(efit1b, newdata = evdata1, times = 5)
+# Add predicted survival at 5 ears in the validation set
+gbsg5$predsurv5 <- predictSurvProb(efit1, newdata = gbsg5, times = 5)
+gbsg5$predsurv5_1b <- predictSurvProb(efit1b, newdata = gbsg5, times = 5)
 
 #' Calculate the O/E ratio
 #'
@@ -809,7 +783,7 @@ evdata1$predsurv5_1b <- predictSurvProb(efit1b, newdata = evdata1, times = 5)
 
 OE.ratio.t <- function(tfup, event, pred.risk, thorizon, alpha = .05) {
   obs_t <- 1 - summary(survfit(Surv(tfup, event) ~ 1), times = thorizon)$surv
-  exp_t <- mean(pred.risk)
+  exp_t <- mean(pred.risk, na.rm = T)
 
   OE <- obs_t / exp_t
   OE.lower <- OE * exp(-qnorm(1 - alpha / 2) * sqrt(1 / sum(event)))
@@ -818,25 +792,25 @@ OE.ratio.t <- function(tfup, event, pred.risk, thorizon, alpha = .05) {
   names(res) <- c("Estimate", "Lower .95", "Upper .95")
   return(res)
 }
-
-OE.rdata <- round(OE.ratio.t(rdata$ryear,
-                             event = rdata$status, 
-                             pred.risk = 1 - edata1$predsurv5, 
+# O\E ratio f
+OE.rdata <- round(OE.ratio.t(tfup = rotterdam$ryear,
+                             event = rotterdam$rfs, 
+                             pred.risk = 1 - rott5$predsurv5, 
                              thorizon = 5), 2)
 
-OE.rdata1b <- round(OE.ratio.t(rdata$ryear, 
-                               event = rdata$status, 
-                               pred.risk = 1 - edata1$predsurv5_1b, 
+OE.rdata1b <- round(OE.ratio.t(tfup =  rotterdam$ryear, 
+                               event = rotterdam$rfs, 
+                               pred.risk = 1 - rott5$predsurv5_1b, 
                                thorizon = 5), 2)
 
-OE.vdata <- round(OE.ratio.t(vdata$ryear, 
-                             event = vdata$status, 
-                             pred.risk = 1 - evdata1$predsurv5, 
+OE.vdata <- round(OE.ratio.t(tfup = gbsg$ryear, 
+                             event = gbsg$rfs, 
+                             pred.risk = 1 - gbsg5$predsurv5, 
                              thorizon = 5), 2)
 
-OE.vdata1b <- round(OE.ratio.t(vdata$ryear, 
-                               event = vdata$status, 
-                               pred.risk = 1 - evdata1$predsurv5_1b, 
+OE.vdata1b <- round(OE.ratio.t(tfup = gbsg$ryear, 
+                               event = gbsg$rfs, 
+                               pred.risk = 1 - gbsg5$predsurv5_1b, 
                                thorizon = 5), 2)
 ```
 
@@ -863,7 +837,7 @@ res_OE
 
 ```
 
-The models PGR tend to slightly underpredict the risk of mortality in the validation data (OE: 1.11, 95%CI: 0.99-1.25 without PGR; OE: 1.08 95%CI: 0.96-1.21).  
+The models PGR tend to slightly under-predict the risk of mortality in the validation data. 
 
 ### 2.3.2 Calibration plot using restricted cubic splines
 Calibration plots of the external validation data with and without PGR are calculated and shown using restricted cubic splines.  
