@@ -47,16 +47,65 @@ pacman::p_load(
   timeROC
 )
 
-# COMMENT: Rotterdam data (rdata) is not the correct version. Terry,
-# can provide me the corrent version?
-# COMMENT: if you do not use GitHub and clone the repository / open a .Rproject
-# data must be downloaded locally and imported manually. 
-# Please modify the path to your path.
-rdata <- readRDS(here::here("Data/rdata.rds"))
-vdata <- readRDS(here::here("Data/vdata.rds"))
+options(show.signif.stars = FALSE)  # display statistical intelligence
+palette("Okabe-Ito")  # color-blind friendly  (needs R 4.0)
+
+# source("brier.R")    #  my own check on Brier scores
+# COMMENT: Terry should sent it
+
+# Recurrence free survival (RFS) is the time until the earlier of
+#  recurrence or death
+names(rotterdam)
+rotterdam$ryear <- rotterdam$rtime/365.25  # time in years
+rotterdam$rfs <- with(rotterdam, pmax(recur, death))
+
+
+# variables used in the analysis
+pgr99 <- quantile(rotterdam$pgr, .99) # there is a large outlier of 5000
+rotterdam$pgr2 <- pmin(rotterdam$pgr, pgr99) # Winsorized value
+rotterdam$csize <- rotterdam$size           # categorized size
+rotterdam$cnode <- cut(rotterdam$nodes, c(-1,0, 3, 50),
+                       c("0", "1-3", ">3"))   # categorized node
+
+# Save in the data the restricted cubic spline term using Hmisc::rcspline.eval() package
+rcs3_pgr <- rcspline.eval(rotterdam$pgr2, knots = c(0, 41, 486))
+attr(rcs3_pgr, "dim") <- NULL
+attr(rcs3_pgr, "knots") <- NULL
+rotterdam$pgr3 <- rcs3_pgr
+
+
+names(gbsg)
+gbsg$ryear <- gbsg$rfstime/365.25
+gbsg$rfs   <- gbsg$status           # the GBSG data contains RFS
+gbsg$cnode <- cut(gbsg$nodes, c(-1,0, 3, 50),
+                       c("0", "1-3", ">3"))   # categorized node
+gbsg$csize <- cut(gbsg$size,  c(-1, 20, 50, 500), #categorized size
+                  c("<=20", "20-50", ">50"))
+gbsg$pgr2 <- pmin(gbsg$pgr, pgr99) # Winsorized value
+
+
+# Restricted cubic spline for PGR
+rcs3_pgr <- rcspline.eval(gbsg$pgr2, knots = c(0, 41, 486))
+attr(rcs3_pgr, "dim") <- NULL
+attr(rcs3_pgr, "knots") <- NULL
+gbsg$pgr3 <- rcs3_pgr
+
+
+# Much of the analysis will focus on the first 5 years: create
+#  data sets that are censored at 5
+temp <- survSplit(Surv(ryear, rfs) ~ ., data = rotterdam, cut=5,
+                  episode="epoch")
+rott5 <- subset(temp, epoch==1)  # only the first 5 years
+temp <- survSplit(Surv(ryear, rfs) ~ ., data = gbsg, cut=5,
+                  episode ="epoch")
+gbsg5 <- subset(temp, epoch==1)
+
+# Relevel
+rott5$cnode <- relevel(rotterdam$cnode, "1-3")
+gbsg5$cnode <- relevel(gbsg$cnode, "1-3")
 ```
 
-We loaded the development (rdata) and the validation data (vdata) from .rds format.
+We loaded the development (rotterdam) and the validation data (gbsg) from survival package.
 The Rotterdam breast cancer data was used to predict the risk of recurrence or death using size, stage and tumor size as predictors. These three predictors were used in the Nottingham Prognostic Index, one of the most popular index to determine prognosis following surgery of breast cancer.  
 The Germany Breast Cancer Study Group data was used as an external validation of the model developed in the Rotterdam breast cancer data. The prediction model will be then extended using the progesterone (PGR) marker measured at primary surgery.  
 The improvement in prediction performance will be evaluated internally in the Rotterdam data (development data) and in German Breast Cancer Study data (validation data).  
@@ -70,27 +119,15 @@ In many studies, especially in medicine, the main outcome under assessment is th
 First, we draw the survival and the censoring curves of the development and validation data
 ```{r, surv, fig.align='center'}
 
-# COMMENT: I tried to repeat the same R code multiple times to make "stand-alone" paragraphs # and sub-paragraphs
-
 # Libraries needed
 if (!require("pacman")) install.packages("pacman")
 library(pacman)
 pacman::p_load(survival,
                here)
 
-# Data set up
-# COMMENT: here as well change the directory if you work locally
-rdata <- readRDS(here::here("Data/rdata.rds"))
-vdata <- readRDS(here::here("Data/vdata.rds"))
-
-# COMMENT: I used it internally, please adapt any time or just ignore
-# rdata <- readRDS("C:/Users/dgiardiello/Documents/GitHub/Prediction_performance_survival/Data/rdata.rds")
-# vdata <- readRDS("C:/Users/dgiardiello/Documents/GitHub/Prediction_performance_survival/Data/vdata.rds")
-
-
 # Development set
-sfit1 <- survfit(Surv(ryear, status == 1) ~ 1, data = rdata) # survival
-sfit2 <- survfit(Surv(ryear, status == 0) ~ 1, rdata) # censoring
+sfit1 <- survfit(Surv(ryear, rfs == 1) ~ 1, data = rotterdam) # survival
+sfit2 <- survfit(Surv(ryear, rfs == 0) ~ 1, data = rotterdam) # censoring
 
 par(xaxs = "i", yaxs = "i", las = 1)
 plot(sfit1, conf.int = FALSE, lwd = 2, xlab = "Years", bty = "n")
@@ -99,8 +136,8 @@ legend(11, .9, c("Death", "Censoring"), col = 1:2, lwd = 2, bty = "n")
 title("Development set")
 
 # Validation set
-sfit3 <- survfit(Surv(ryear, status == 1) ~ 1, data = vdata) # survival
-sfit4 <- survfit(Surv(ryear, status == 0) ~ 1, vdata) # censoring
+sfit3 <- survfit(Surv(ryear, rfs == 1) ~ 1, data = gbsg) # survival
+sfit4 <- survfit(Surv(ryear, rfs == 0) ~ 1, data = gbsg) # censoring
 
 par(xaxs = "i", yaxs = "i", las = 1)
 plot(sfit3, conf.int = FALSE, lwd = 2, xlab = "Years", bty = "n", xlim = c(0, 8))
@@ -108,10 +145,10 @@ lines(sfit4, conf.int = FALSE, col = 2, lwd = 2)
 legend("bottomleft", c("Death", "Censoring"), col = 1:2, lwd = 2, bty = "n")
 title("Validation set")
 ```
-A number of 2982 patients were included to develop the risk prediction model for survival with a median follow-up of 9 years.
+A number of 2982 patients were included to develop the risk prediction model for survival with a median follow-up of 9.25 years.
 The median survival in the development data was 8 years with the corresponding 95% confidence intervals (CIs) of 7 and 9 years.
-The 5-year survival was 59% (95% CI: 58-61%). 
-A number of 686 patients were selected to externally validate the risk prediction model.The median survival in the validation data was 4 years. The median survival was 5 years while the 5-year survival was 49% (95% CI: 45-54%).
+The 5-year survival was 56% (95% CI: 54-58%). 
+A number of 686 patients were selected to externally validate the risk prediction model.The median survival in the validation data was 4.5 years and the 5-year survival was 49% (95% CI: 45-54%).
 
 
 ### 1.2 Secondary investigation - check non linearity of continuous predictors
@@ -130,36 +167,14 @@ pacman::p_load(survival,
                Hmisc,
                here)
 
-# Data set up
-rdata <- readRDS(here::here("Data/rdata.rds"))
-vdata <- readRDS(here::here("Data/vdata.rds"))
-
-# Winzorise PGR to the 99th percentile to deal with very large influential values;
-p99 <- quantile(rdata$pgr, probs = .99)
-rdata$pgr2 <- pmin(rdata$pgr, p99)
-vdata$pgr2 <- pmin(vdata$pgr, p99)
-
-pfit <-  coxph(Surv(ryear, status) ~ rcs(pgr2, knots=c(0, 41, 486)), rdata)
+pfit <-  coxph(Surv(ryear, rfs) ~ rcs(pgr2, knots=c(0, 41, 486)), rotterdam)
 par(las = 1, xaxs = "i", yaxs = "i")
 termplot(pfit, se=TRUE, col.term=1, col.se=1,
     xlab="PGR", ylab="Linear predictor", bty = "n")
 legend(350, .25, c("rcs, knots at 0, 41, 486)"),
        col=1, lwd=1, bty='n')
 
-# Save in the date the restricted cubic spline term using Hmisc::rcspline.eval() package
-# Development set
-rcs3_pgr <- rcspline.eval(rdata$pgr2, knots = c(0, 41, 486))
-attr(rcs3_pgr, "dim") <- NULL
-attr(rcs3_pgr, "knots") <- NULL
-rdata$pgr3 <- rcs3_pgr
-rm(rcs3_pgr)
-
-# Validation set
-rcs3_pgr <- rcspline.eval(vdata$pgr2, knots = c(0, 41, 486))
-attr(rcs3_pgr, "dim") <- NULL
-attr(rcs3_pgr, "knots") <- NULL
-vdata$pgr3 <- rcs3_pgr
-rm(rcs3_pgr)
+# The restricted cubic spline were saved previously: see R code above.
 ```
 
 ### 1.3 Model development - first check - the proportional hazard (PH) assumption
@@ -173,14 +188,12 @@ library(pacman)
 pacman::p_load(survival,
                here)
 
-# Data set up and management
-rdata <- readRDS(here::here("Data/rdata.rds"))
-
 # Fit model in the development data
-fit1_cox <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade, 
-                  data = rdata, x = T, y = T)
+fit1_cox <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade, 
+                  data = rotterdam, x = T, y = T)
 
 # Test the proportional hazard assumption
+options(scipen = 6)
 zp1 <- cox.zph(fit1_cox, transform = "identity")
 zp1$table # table output
 
@@ -204,25 +217,22 @@ library(pacman)
 pacman::p_load(survival,
                here)
 
-# Data set up and management
-rdata <- readRDS(here::here("Data/rdata.rds"))
-
 # Development
-edata <- survSplit(Surv(ryear, status) ~ .,
-  data = rdata, cut = c(5, 10),
+edata <- survSplit(Surv(ryear, rfs) ~ .,
+  data = rotterdam, cut = c(5, 10),
   episode = "epoch"
 )
 
 # First period (0-5] years
-efit1 <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
   data = edata[edata$epoch == 1, ], x = T, y = T
 )
 # Second period (5-10] years
-efit2 <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade,
+efit2 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
   data = edata[edata$epoch == 2, ], x = T, y = T
   )
 # Third period (> 10 years)
-efit3 <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade,
+efit3 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
   data = edata[edata$epoch == 3, ], x = T, y = T
 )
 
@@ -237,7 +247,7 @@ rownames(res_efit) <- c("Epoch 1: 0-5 years",
 res_efit
 
 # Number of events per period
-tt1 <- table(edata$epoch, edata$status, dnn = c("Epoch", "Status"))
+tt1 <- table(edata$epoch, edata$rfs, dnn = c("Epoch", "Status"))
 rownames(tt1) <- c("Epoch 1: 0-5 years", "Epoch 2: 5-10 years", "Epoch 3: >10 years")
 colnames(tt1) <- c("Censored", "Event")
 tt1
@@ -245,19 +255,10 @@ tt1
 
 A drastic change in the size coefficients across all epochs is apparent,
 along with a major reduction in the nodes coefficient in epoch 3. As an ameleoration of this we will refit the model using only the first epoch, which includes most of the recurrences and deaths.  
-We applied the administrative censoring at 5 years in the development data and we assessed the prediction performance of the prognostic model at 5 years. The 5-year horizon was chosen because it is also a common prediction time horizon in clinical practice.  The hazards in the development data seem not totally proportional within 5 years but minor deviation of proportionality were considered acceptable. 
-In R the summary function creates a more detailed report of a fit.  
-Possible alternatives to address the violation of proportional hazards are:
-
- + a stratified Cox proportional hazard models for the predictor(s) that  violates the proportional hazard. The offending predictor will be absorbed into the baseline (as a strata), and then use the full follow-up. 
- In this scenario, it seems that the size predictor violates the proportional hazard assumption. So, three baseline hazards will be non-parametrically estimated. For prediction, the absolute risks will be calculated considering the different baseline hazards. The hazard ratio for size will not be estimated since it is incorporated in the baseline;
- 
-+ fitting the model with interaction between the offending predictor (in this case size) and the logarithm of the time. This complicates the interpretability of the model and risk prediction might be not fully estimated for new patients at the time of breast cancer diagnosis since size interacts with the time which is unknown for new patients.
-
-If we ignored the non-proportional hazards entirely, the prediction performance of the model may lead to increase bias in estimating the risk especially in terms of calibration performances.
+We applied the administrative censoring at 5 years in the development data and we assessed the prediction performance of the prognostic model at 5 years. The hazards in the development data seem not totally proportional within 5 years but minor deviation of proportionality were considered acceptable. 
 
 ### 1.4 Model development - fit the risk prediction models
-We develop the risk prediction model in the development data considering the first 5-year follow-up to minimize the violation of proportional hazard including size, nodel and grade. The second model also includes the progesterone level modeled using a 3-knot restricted cubic spline.  
+We develop the risk prediction model in the development data considering the first 5-year follow-up to minimize the violation of proportional hazard including size, node and grade. The second model also includes the progesterone level modeled using a 3-knot restricted cubic spline.  
 We also administratively censored the validation data at 5 years.
 
 ```{r, model_development, fig.align='center'}
@@ -268,57 +269,21 @@ pacman::p_load(survival,
               pec,
               here)
 
-# Data set up and management
-rdata <- readRDS(here::here("Data/rdata.rds"))
-vdata <- readRDS(here::here("Data/vdata.rds"))
-
-# Winzorise PGR to the 99th percentile to deal with very large influential values;
-p99 <- quantile(rdata$pgr, probs = .99)
-rdata$pgr2 <- pmin(rdata$pgr, p99)
-vdata$pgr2 <- pmin(vdata$pgr, p99)
-
-# Save in the date the restricted cubic spline term using Hmisc::rcspline.eval() package
-# Development set
-rcs3_pgr <- rcspline.eval(rdata$pgr2, knots = c(0, 41, 486))
-attr(rcs3_pgr, "dim") <- NULL
-attr(rcs3_pgr, "knots") <- NULL
-rdata$pgr3 <- rcs3_pgr
-rm(rcs3_pgr)
-
-# Validation set
-rcs3_pgr <- rcspline.eval(vdata$pgr2, knots = c(0, 41, 486))
-attr(rcs3_pgr, "dim") <- NULL
-attr(rcs3_pgr, "knots") <- NULL
-vdata$pgr3 <- rcs3_pgr
-rm(rcs3_pgr)
-
-# Consider the first 5-year epoch in the development set
-edata <- survSplit(Surv(ryear, status) ~ .,
-  data = rdata, cut = 5,
-  episode = "epoch")
-
-edata1 <- edata[edata$epoch == 1, ]
 
 # Fit the model without PGR
-efit1 <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade,
-  data = edata1, x = T, y = T)
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
+  data = rott5, x = T, y = T)
 efit1
 
 # Fit the model with PGR
-efit1b <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade + pgr2 + pgr3,
-  data = edata1, x = T, y = T)
+efit1b <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade + pgr2 + pgr3,
+  data = rott5, x = T, y = T)
 efit1b
 
-edata1$lp <- predict(efit1) # linear predictor
-edata1$predsurv5 <- predictSurvProb(efit1, newdata = edata1, times = 5) # predicted survival
-edata1$lp_1b <- predict(efit1b)
-edata1$predsurv5_1b <- predictSurvProb(efit1b, newdata = edata1, times = 5)
-# COMMENTS: can we use pec::predictSurvProb() to estimate the predicted risk?
-# I checked and it is reliable.
-
-# Save in the validation data
-evdata <- survSplit(Surv(ryear, status) ~ ., data = vdata, cut = 5, episode = "epoch")
-evdata1 <- evdata[evdata$epoch == 1, ]
+rott5$lp <- predict(efit1) # linear predictor
+rott5$predsurv5 <- predictSurvProb(efit1, newdata = rott5, times = 5) # predicted survival
+rott5$lp_1b <- predict(efit1b)
+rott5$predsurv5_1b <- predictSurvProb(efit1b, newdata = rott5, times = 5)
 ```
 
 The coefficients of the models indicated that higher size, higher number of positive lymph nodes and higher grade is more associate with poorer prognosis. The association of the progesterone biomarker and the outcome is non-linear as investigated previously.
@@ -361,46 +326,14 @@ pacman::p_load(survival,
                dynpred,
                here)
 
-# Data set up and management
-rdata <- readRDS(here::here("Data/rdata.rds"))
-vdata <- readRDS(here::here("Data/vdata.rds"))
-
-# Winzorise PGR to the 99th percentile to deal with very large influential values;
-p99 <- quantile(rdata$pgr, probs = .99)
-rdata$pgr2 <- pmin(rdata$pgr, p99)
-vdata$pgr2 <- pmin(vdata$pgr, p99)
-
-# Save in the date the restricted cubic spline term using Hmisc::rcspline.eval() package
-# Development set
-rcs3_pgr <- rcspline.eval(rdata$pgr2, knots = c(0, 41, 486))
-attr(rcs3_pgr, "dim") <- NULL
-attr(rcs3_pgr, "knots") <- NULL
-rdata$pgr3 <- rcs3_pgr
-
-# Validation set
-rcs3_pgr <- rcspline.eval(vdata$pgr2, knots = c(0, 41, 486))
-attr(rcs3_pgr, "dim") <- NULL
-attr(rcs3_pgr, "knots") <- NULL
-vdata$pgr3 <- rcs3_pgr
-
-# Consider the first 5-year epoch in the development set
-edata <- survSplit(Surv(ryear, status) ~ .,
-  data = rdata, cut = 5,
-  episode = "epoch"
-)
-edata1 <- edata[edata$epoch == 1, ]
 
 # Fit the model without PGR
-efit1 <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade,
-  data = edata1, x = T, y = T)
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
+  data = rott5, x = T, y = T)
 
 # Fit the model with PGR
-efit1b <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade + pgr2 + pgr3,
-  data = edata1, x = T, y = T)
-
-# Save validation data censored at 5 years
-evdata <- survSplit(Surv(ryear, status) ~ ., data = vdata, cut = 5, episode = "epoch")
-evdata1 <- evdata[evdata$epoch == 1, ]
+efit1b <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade + pgr2 + pgr3,
+  data = rott5, x = T, y = T)
 
 
 # Bootstrap
@@ -409,12 +342,12 @@ vboot <- list()
 B <- 10  # Number of bootstrap samples
 set.seed(2021)
 for (j in 1:B) {
-rboot[[j]] <- edata1[sample(nrow(edata1), 
-                           size = nrow(edata1), 
+rboot[[j]] <- rott5[sample(nrow(rott5), 
+                           size = nrow(rott5), 
                            replace = TRUE),]
 
-vboot[[j]] <- evdata1[sample(nrow(evdata1), 
-                           size = nrow(evdata1), 
+vboot[[j]] <- gbsg5[sample(nrow(gbsg5), 
+                           size = nrow(gbsg5), 
                            replace = TRUE),]
 }
 
@@ -425,13 +358,10 @@ vboot[[j]] <- evdata1[sample(nrow(evdata1),
 # using external data. I tried to modify dynpred::pecox() 
 # but it uses dynpred::pe() implemented in C so it is not possible. Do you have suggestions? # Should we get in touch with Hein Putter since he is the creator of dynpred?
 
-a <- pecox(formula = Surv(ryear, status) ~ csize + cnode + cgrade, 
-      censformula = Surv(ryear, 1 - status) ~ 1,
-      data = edata1, FUN = "Brier", tout = 5, progress = TRUE)
-
+# COMMENT: I will wait for brier function of Terry
 score_rdata1 <-
   Score(list("Cox development" = efit1),
-    formula = Surv(ryear, status) ~ 1, data = edata1, conf.int = TRUE, times = 4.95,
+    formula = Surv(ryear, rfs) ~ 1, data = rott5, conf.int = TRUE, times = 4.95,
     cens.model = "km", metrics = "brier",
     summary = "ipa"
   )
@@ -439,7 +369,7 @@ score_rdata1 <-
 # Brier Score and IPA in the development set (model with PGR)
 score_rdata1b <-
   Score(list("Cox development" = efit1b),
-    formula = Surv(ryear, status) ~ 1, data = edata1, conf.int = TRUE, times = 4.95,
+    formula = Surv(ryear, rfs) ~ 1, data = rott5, conf.int = TRUE, times = 4.95,
     cens.model = "km", metrics = "brier",
     summary = "ipa"
   )
@@ -447,7 +377,7 @@ score_rdata1b <-
 # Brier Score and IPA in the validation set (model without PGR)
 score_vdata1 <-
   Score(list("Cox development" = efit1),
-    formula = Surv(ryear, status) ~ 1, data = evdata1, conf.int = TRUE, times = 4.95,
+    formula = Surv(ryear, rfs) ~ 1, data = gbsg5, conf.int = TRUE, times = 4.95,
     cens.model = "km", metrics = "brier",
     summary = "ipa"
   )
@@ -455,7 +385,7 @@ score_vdata1 <-
 # Brier Score and IPA in the validation set (model with PGR)
 score_vdata1b <-
   Score(list("Cox development" = efit1b),
-    formula = Surv(ryear, status) ~ 1, data = evdata1, conf.int = TRUE, times = 4.95,
+    formula = Surv(ryear, rfs) ~ 1, data = gbsg5, conf.int = TRUE, times = 4.95,
     cens.model = "km", metrics = "brier",
     summary = "ipa"
   )
@@ -471,7 +401,7 @@ score_vboot_1b <- c() # Bootstrap IPA validation set for model with PGR
 
 for (j in 1:B) {
   score_rboot_1[j] <-  Score(list("Cox development" = efit1), 
-                         formula = Surv(ryear, status) ~ 1,
+                         formula = Surv(ryear, rfs) ~ 1,
                          data = rboot[[j]], 
                          conf.int = FALSE, 
                          times = 4.95, 
@@ -480,7 +410,7 @@ for (j in 1:B) {
                          summary = "ipa")$Brier[[1]]$IPA[2]
   
    score_rboot_1b[j] <- Score(list("Cox development" = efit1b), 
-                         formula = Surv(ryear, status) ~ 1,
+                         formula = Surv(ryear, rfs) ~ 1,
                          data = rboot[[j]], 
                          conf.int = FALSE, 
                          times = 4.95, 
@@ -489,7 +419,7 @@ for (j in 1:B) {
                          summary = "ipa")$Brier[[1]]$IPA[2]
    
     score_vboot_1[j] <-  Score(list("Cox development" = efit1), 
-                         formula = Surv(ryear, status) ~ 1,
+                         formula = Surv(ryear, rfs) ~ 1,
                          data = vboot[[j]], 
                          conf.int = FALSE, 
                          times = 4.95, 
@@ -498,7 +428,7 @@ for (j in 1:B) {
                          summary = "ipa")$Brier[[1]]$IPA[2]
   
    score_vboot_1b[j] <- Score(list("Cox development" = efit1b), 
-                         formula = Surv(ryear, status) ~ 1,
+                         formula = Surv(ryear, rfs) ~ 1,
                          data = vboot[[j]], 
                          conf.int = FALSE, 
                          times = 4.95, 
@@ -544,7 +474,7 @@ nrow = 2,
 ncol = 12, 
 byrow = T, 
 dimnames = list(
-  c("Brier", "IPA"),
+  c("Brier", "Scaled Brier"),
   c("", "Apparent", "", "", "Apparent + PGR", "",
     "", "External", "", "", "External + PGR", ""))
 )
@@ -552,7 +482,7 @@ dimnames = list(
 res_ov <- round(res_ov, 2) # Digit
 res_ov_lab <- rep(c("Estimate", "Lower .95 ", "Upper .95"), 4)
 res_ov <- rbind(res_ov_lab,res_ov)
-rownames(res_ov) <- c("", "Brier", "IPA")
+rownames(res_ov) <- c("", "Brier", "Scaled Brier")
 res_ov
 ```
 
@@ -560,8 +490,22 @@ As expected the overall performance measures were lower in the external validati
 
 ### 2.2 Discrimination measures
 Discrimination is the ability to differentiate between subjects who have the outcome and subjects who do not.
-In prognostic modelling, discrimination reflects separation between survival curves for individuals or groups.
-We propose to calculate Tte Uno's time-dependent AUC measure of discrimination at a specific time horizon _t_.  
+Concordance can be assessed over several different time intervals:
+
+* the entire range of the data
+* a 5 year window corresponding to our target assessment point
+
+Clearly the last of these is most relevant
+
+This is easy to compute using the concordance function in the survival
+package.
+There is some uncertainty in the literature about the original Harrell
+formulation verus Uno's suggestion to re-weight the time scale by the
+factor $1/G^2(t)$ where $G$ is the censoring distribution.
+There is more detailed information in the concordance vignette found in the
+survival package.
+
+We also propose to calculate Uno's time-dependent AUC at a specific time horizon _t_.  
 More details are in the paper and in the references below.   
 The time horizon to calculate the time-dependent measures was set to 5 years.
 Values close to 1 indicate good discrimination ability, while values close to 0.5 indicated poor discrimination ability.  
@@ -574,80 +518,73 @@ library(pacman)
 pacman::p_load(survival,
                Hmisc,
                pec,
-               dnypred,
-               here)
-
-# Data set up and management
-rdata <- readRDS(here::here("Data/rdata.rds"))
-vdata <- readRDS(here::here("Data/vdata.rds"))
-
-# Winzorise PGR to the 99th percentile to deal with very large influential values;
-p99 <- quantile(rdata$pgr, probs = .99)
-rdata$pgr2 <- pmin(rdata$pgr, p99)
-vdata$pgr2 <- pmin(vdata$pgr, p99)
-
-# Save in the date the restricted cubic spline term using Hmisc::rcspline.eval() package
-# Development set
-rcs3_pgr <- rcspline.eval(rdata$pgr2, knots = c(0, 41, 486))
-attr(rcs3_pgr, "dim") <- NULL
-attr(rcs3_pgr, "knots") <- NULL
-rdata$pgr3 <- rcs3_pgr
-
-# Validation set
-rcs3_pgr <- rcspline.eval(vdata$pgr2, knots = c(0, 41, 486))
-attr(rcs3_pgr, "dim") <- NULL
-attr(rcs3_pgr, "knots") <- NULL
-vdata$pgr3 <- rcs3_pgr
-
-# Consider the first 5-year epoch in the development set
-edata <- survSplit(Surv(ryear, status) ~ .,
-  data = rdata, cut = 5,
-  episode = "epoch"
-)
-edata1 <- edata[edata$epoch == 1, ]
+               timeROC)
 
 # Fit the model without PGR
-efit1 <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade,
-  data = edata1, x = T, y = T)
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
+  data = rott5, x = T, y = T)
 
 # Fit the model with PGR
-efit1b <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade + pgr2 + pgr3,
-  data = edata1, x = T, y = T)
+efit1b <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade + pgr2 + pgr3,
+  data = rott5, x = T, y = T)
 
-# Save validation data censored at 5 years
-evdata <- survSplit(Surv(ryear, status) ~ ., data = vdata, cut = 5, episode = "epoch")
-evdata1 <- evdata[evdata$epoch == 1, ]
 
 # Add linear predictor n the development set
-edata1$lp <- predict(efit1) # linear predictor
-edata1$lp_1b <- predict(efit1b)
+rott5$lp <- predict(efit1) # linear predictor
+rott5$lp_1b <- predict(efit1b)
 
 # Add linear predictor in the validation set
-evdata1$lp <- predict(efit1, newdata = evdata1)
-evdata1$lp_1b <- predict(efit1b, newdata = evdata1)
+gbsg5$lp <- predict(efit1, newdata = gbsg5)
+gbsg5$lp_1b <- predict(efit1b, newdata = gbsg5)
 
-# Bootstrap
-rboot <- list()
-vboot <- list()
-B <- 10  # Number of bootstrap samples
-set.seed(2021)
-for (j in 1:B) {
-rboot[[j]] <- edata1[sample(nrow(edata1), 
-                           size = nrow(edata1), 
-                           replace = TRUE),]
 
-vboot[[j]] <- evdata1[sample(nrow(evdata1), 
-                           size = nrow(evdata1), 
-                           replace = TRUE),]
-}
+# Harrell and Uno's concordance index 
+harrell_C_rdata <- concordance(efit1)
+harrell_C_rdata1b <- concordance(efit1b)
+Uno_C_rdata <- concordance(efit1, timewt="n/G2")
+Uno_C_rdata1b <- concordance(efit1b, timewt="n/G2")
+
+harrell_C_vdata <- concordance(Surv(ryear, rfs) ~ lp, 
+                               gbsg5, 
+                               reverse=TRUE)
+harrell_C_vdata1b <- concordance(Surv(ryear, rfs) ~ lp_1b, 
+                                 gbsg5, 
+                                 reverse=TRUE)
+Uno_C_vdata <- concordance(Surv(ryear, rfs) ~ lp, 
+                           gbsg5, 
+                           reverse=TRUE,
+                           timewt="n/G2")
+
+Uno_C_vdata1b <-concordance(Surv(ryear, rfs) ~ lp_1b, 
+                           gbsg5, 
+                           reverse=TRUE,
+                           timewt="n/G2")
+
+
+temp <- c(Uno_C_rdata$concordance,
+          Uno_C_rdata$concordance - 
+            qnorm(1 - alpha/2) * sqrt(Uno_C_rdata$var),
+          Uno_C_rdata$concordance + 
+            qnorm(1 - alpha/2) * sqrt(Uno_C_rdata$var),
+          
+          Uno_C_rdata1b$concordance - 
+            qnorm(1 - alpha/2) * sqrt(Uno_C_rdata1b$var),
+           Uno_C_rdata1b$concordance + 
+            qnorm(1 - alpha/2) * sqrt(Uno_C_rdata1b$var),
+          
+      )
+cmat  <- matrix(temp, nrow=3, byrow=TRUE,
+               dimnames=list(c("Apparent","Apparent + PGR" ,"GBSG", "Validate GBSG"),
+                             c("Harrell", "Uno")))
+round(cmat,3)
 
 # Time-dependent AUC (in Table 3 called Uno's TD AUC at 5 years) ###
 # Uno's time-dependent Area Under the Curve
 # Apparent
 Uno_rdata1 <-
   timeROC(
-    T = edata1$ryear, delta = edata1$status,
-    marker = predict(efit1, newdata = edata1),
+    T = rott5$ryear, delta = rott5$rfs,
+    marker = predict(efit1, newdata = rott5),
     cause = 1, weighting = "marginal", times = 4.95,
     iid = TRUE
   )
@@ -655,8 +592,8 @@ Uno_rdata1 <-
 # External validation
 Uno_vdata1 <-
   timeROC(
-    T = evdata1$ryear, delta = evdata1$status,
-    marker = predict(efit1, newdata = evdata1),
+    T = gbsg5$ryear, delta = gbsg5$rfs,
+    marker = predict(efit1, newdata = gbsg5),
     cause = 1, weighting = "marginal", times = 4.95,
     iid = TRUE
   )
@@ -664,8 +601,8 @@ Uno_vdata1 <-
 # Apparent with pgr
 Uno_rdata1b <-
   timeROC(
-    T = edata1$ryear, delta = edata1$status,
-    marker = predict(efit1b, newdata = edata1),
+    T = rott5$ryear, delta = rott5$rfs,
+    marker = predict(efit1b, newdata = rott5),
     cause = 1, weighting = "marginal", times = 4.95,
     iid = TRUE
   )
@@ -673,8 +610,8 @@ Uno_rdata1b <-
 # External validation with pgr
 Uno_vdata1b <-
   timeROC(
-    T = evdata1$ryear, delta = evdata1$status,
-    marker = predict(efit1b, newdata = evdata1),
+    T = gbsg5$ryear, delta = gbsg5$rfs,
+    marker = predict(efit1b, newdata = gbsg5),
     cause = 1, weighting = "marginal", times = 4.95,
     iid = TRUE
   )
@@ -762,8 +699,7 @@ In the development data the OE should be (close to) 1.
 if (!require("pacman")) install.packages("pacman")
 library(pacman)
 pacman::p_load(survival,
-               Hmisc,
-               here)
+               Hmisc)
 
 # Data set up and management
 rdata <- readRDS(here::here("Data/rdata.rds"))
@@ -893,48 +829,7 @@ if (!require("pacman")) install.packages("pacman")
 library(pacman)
 pacman::p_load(survival,
                Hmisc,
-               here)
-
-# Data set up and management
-rdata <- readRDS(here::here("Data/rdata.rds"))
-vdata <- readRDS(here::here("Data/vdata.rds"))
-
-# Winzorise PGR to the 99th percentile to deal with very large influential values;
-p99 <- quantile(rdata$pgr, probs = .99)
-rdata$pgr2 <- pmin(rdata$pgr, p99)
-vdata$pgr2 <- pmin(vdata$pgr, p99)
-
-# Save in the date the restricted cubic spline term using Hmisc::rcspline.eval() package
-# Development set
-rcs3_pgr <- rcspline.eval(rdata$pgr2, knots = c(0, 41, 486))
-attr(rcs3_pgr, "dim") <- NULL
-attr(rcs3_pgr, "knots") <- NULL
-rdata$pgr3 <- rcs3_pgr
-
-# Validation set
-rcs3_pgr <- rcspline.eval(vdata$pgr2, knots = c(0, 41, 486))
-attr(rcs3_pgr, "dim") <- NULL
-attr(rcs3_pgr, "knots") <- NULL
-vdata$pgr3 <- rcs3_pgr
-
-# Consider the first 5-year epoch in the development set
-edata <- survSplit(Surv(ryear, status) ~ .,
-  data = rdata, cut = 5,
-  episode = "epoch"
-)
-edata1 <- edata[edata$epoch == 1, ]
-
-# Fit the model without PGR
-efit1 <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade,
-  data = edata1, x = T, y = T)
-
-# Fit the model with PGR
-efit1b <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade + pgr2 + pgr3,
-  data = edata1, x = T, y = T)
-
-# Save validation data censored at 5 years
-evdata <- survSplit(Surv(ryear, status) ~ ., data = vdata, cut = 5, episode = "epoch")
-evdata1 <- evdata[evdata$epoch == 1, ]
+               rms)
 
 ####################
 # Calibration plot #
