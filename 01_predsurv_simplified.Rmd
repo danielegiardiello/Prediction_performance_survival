@@ -43,7 +43,6 @@ pacman::p_load(
   survival,
   rms,
   pec,
-  dynpred,
   riskRegression,
   timeROC
 )
@@ -122,8 +121,7 @@ First, we draw the survival and the censoring curves of the development and vali
 # Libraries needed
 if (!require("pacman")) install.packages("pacman")
 library(pacman)
-pacman::p_load(survival,
-               here)
+pacman::p_load(survival)
 
 # Development set
 sfit1 <- survfit(Surv(ryear, rfs == 1) ~ 1, data = rotterdam) # survival
@@ -159,13 +157,11 @@ The user can specify the positions of the knots instead of using the default cal
 To deal with very large influential value, we winzorize progesterone level to the 90<sup>th</sup>  percentile.
 
 ```{r,ff, warning=FALSE, fig.align='center'}
-
 # Libraries needed
 if (!require("pacman")) install.packages("pacman")
 library(pacman)
 pacman::p_load(survival,
-               Hmisc,
-               here)
+               Hmisc)
 
 pfit <-  coxph(Surv(ryear, rfs) ~ rcs(pgr2, knots=c(0, 41, 486)), rotterdam)
 par(las = 1, xaxs = "i", yaxs = "i")
@@ -205,9 +201,10 @@ for (i in 1:3) {
 par(oldpar)
 ```
 
+The statistical tests showed strong evidence of non-proportionality. Since the number of death is large the formal tests are quite sensitive, however, and it was important to also examine the graphs. These showed an estimated coefficient as a function of time. 
+
 #### 1.3.1  Model development - addressing the proportional hazard (PH) assumption
-The statistical tests show strong evidence of non-proportionality. Since the number of death is large the formal tests are quite sensitive, however, and it is important to also examine the graphs.  
-These show an estimated coefficient as a function of time. As a further follow-up we will divide the data into 3 epochs of 0-5, 5-10, and 10+ years, fitting a separate model to each.
+As a further follow-up we will divide the data into 3 epochs of 0-5, 5-10, and 10+ years, fitting a separate model to each.
 
 ```{r, epoch,warning=FALSE}
 # Libraries needed
@@ -303,13 +300,14 @@ Here we aim to assess the prediction performance of a risk prediction model with
 ### 2.1 Overall performance measures
 We calculate the Brier Score and the Index of Prediction Accuracy (IPA, the scaled Brier) as a overall performance measure.  
 
-We calculate the overall performance measures: Brier score, IPA and the corresponding confidence intervals.
+We calculate the overall performance measures: Brier score, Scaled Brier (IPA) and the corresponding confidence intervals.
 
 ```{r, overall, warning=FALSE}
 # COMMENTS:
 # IPA 1 - Brier model \ Brier null
 # COMMENT: Terry: riskRegression() does not calculate exactly Brier score
 # (tied censoring and survival issue)
+# COMMENT: Terry will send or publish in survival package survival::brier() function
 
 ######
 # Libraries needed
@@ -332,7 +330,7 @@ efit1b <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade + pgr2 + pgr3,
 # Bootstrap
 rboot <- list()
 vboot <- list()
-B <- 10  # Number of bootstrap samples
+B <- 10  # Number of bootstrap samples, please increase if you neeed
 set.seed(2021)
 for (j in 1:B) {
 rboot[[j]] <- rott5[sample(nrow(rott5), 
@@ -346,7 +344,6 @@ vboot[[j]] <- gbsg5[sample(nrow(gbsg5),
 
 
 # Brier Score and IPA in the development set (model without PGR)
-## Intermezzo: use dynpred::pecox()
 # COMMENT: dynpred::pecox() does not allow to assess Brier
 # using external data. I tried to modify dynpred::pecox() 
 # but it uses dynpred::pe() implemented in C so it is not possible. Do you have suggestions? # Should we get in touch with Hein Putter since he is the creator of dynpred?
@@ -384,7 +381,7 @@ score_vdata1b <-
   )
 
 
-# Scaled Brier / IPA confidence intervals
+# Scaled Brier / IPA bootstrap confidence intervals
 # COMMENT: computational time is too long to compute them when the number of bootstrap replications is high
 B <- length(rboot)
 score_rboot_1 <- c() # Bootstrap IPA development set for model without PGR
@@ -499,7 +496,7 @@ There is more detailed information in the concordance vignette found in the
 survival package.
 
 We also propose to calculate Uno's time-dependent AUC at a specific time horizon _t_.  
-More details are in the paper and in the references below.   
+More explanations and details are in the paper.  
 The time horizon to calculate the time-dependent measures was set to 5 years.
 Values close to 1 indicate good discrimination ability, while values close to 0.5 indicated poor discrimination ability.  
 We used the time horizon at 4.95 and not 5 years since controls are considered patients at risk after the time horizon and we administratively censored at 5 years to minimize the violation of PH assumption (see paragraph 1.3).
@@ -531,8 +528,7 @@ gbsg5$lp <- predict(efit1, newdata = gbsg5)
 gbsg5$lp_1b <- predict(efit1b, newdata = gbsg5)
 
 
-# Harrell and Uno's concordance index 
-
+### Harrell and Uno's concordance index 
 ## Development data
 # Harrell's C
 harrell_C_rdata <- concordance(efit1)
@@ -626,6 +622,9 @@ rownames(res_C) <- c("", "Harrell C", "Uno C")
 
 res_C
 ```
+COMMENT: please comment the results and differences between Harrell and Uno's concordance
+index (see also the chapter of Terry's book)
+
 
 ```{r, AUC,warning=FALSE,echo=FALSE}
 # Time-dependent AUC (in Table 3 called Uno's TD AUC at 5 years) ###
@@ -835,6 +834,7 @@ res_OE <- rbind(res_OE_lab,res_OE)
 rownames(res_OE) <- c("", "Uno AUC")
 res_OE
 
+# COMMENT: we can propose the Poisson approach instead of the above calculation
 ```
 
 The models PGR tend to slightly under-predict the risk of mortality in the validation data. 
@@ -857,23 +857,24 @@ pacman::p_load(survival,
 ###############################
 ## External data without PGR  #
 ###############################
+
 # Fit model with rms::cph() since it is useful to get confidence intervals of prediction
-efit1_cph <- cph(formula = Surv(ryear, status) ~ csize + cnode + cgrade, 
-                 data = edata1, x = T, y = T, surv = T)
-evdata1$predmort5 <- 1 - survest(efit1_cph, newdata = evdata1, times = 5)$surv
-# evdata1$predmort5 <- 1- predictSurvProb(efit1, newdata = evdata1, times = 5)
-evdata1$predmort5.cll <- log(-log(1 - evdata1$predmort5))
+efit1_cph <- cph(formula = Surv(ryear, rfs) ~ csize + cnode + grade, 
+                 data = rott5, x = T, y = T, surv = T)
+gbsg5$predmort5 <- 1 - survest(efit1_cph, newdata = gbsg5, times = 5)$surv
+# gbsg5$predmort5 <- 1- predictSurvProb(efit1, newdata = gbsg5, times = 5)
+gbsg5$predmort5.cll <- log(-log(1 - gbsg5$predmort5))
 
 # Estimate
-vcalibrate.efit1 <- cph(Surv(ryear, status) ~ rcs(predmort5.cll, 3),
+vcalibrate.efit1 <- cph(Surv(ryear, rfs) ~ rcs(predmort5.cll, 3),
   x = T, y = T,
-  data = evdata1, 
+  data = gbsg5, 
   surv = T
 ) 
 
 # Create a grid of values according to the predicted risk distribution
-predict.grid <- seq(quantile(evdata1$predmort5, prob = 0.01), 
-                    quantile(evdata1$predmort5, prob = 0.99), 
+predict.grid <- seq(quantile(gbsg5$predmort5, prob = 0.01, na.rm = TRUE), 
+                    quantile(gbsg5$predmort5, prob = 0.99, na.rm = TRUE), 
                     length = 100)
 
 predict.grid.cll <- log(-log(1 - predict.grid))
@@ -926,18 +927,18 @@ title("A External data without PGR", adj = 0)
 ############################
 
 # Model with cph to get the confidence intervals of the prediction
-efit1b_cph <- cph(formula = Surv(ryear, status) ~ csize + cnode + cgrade + pgr2 + pgr3, 
-                 data = edata1, x = T, y = T, surv = T)
-evdata1$predmort5_1b <- 1 - survest(efit1b_cph, newdata = evdata1, times = 5)$surv
-evdata1$predmort5.cll_1b <- log(-log(1 - evdata1$predmort5_1b))
+efit1b_cph <- cph(formula = Surv(ryear, rfs) ~ csize + cnode + grade + pgr2 + pgr3, 
+                 data = rott5, x = T, y = T, surv = T)
+gbsg5$predmort5_1b <- 1 - survest(efit1b_cph, newdata = gbsg5, times = 5)$surv
+gbsg5$predmort5.cll_1b <- log(-log(1 - gbsg5$predmort5_1b))
 
 # Estimate
-vcalibrate.efit1b <- cph(Surv(ryear, status) ~ rcs(predmort5.cll_1b, 3),
-  x = T, y = T, data = evdata1, surv = T
+vcalibrate.efit1b <- cph(Surv(ryear, rfs) ~ rcs(predmort5.cll_1b, 3),
+  x = T, y = T, data = gbsg5, surv = T
 )
 
-predict.grid <- seq(quantile(evdata1$predmort5_1b, prob = 0.01), 
-                    quantile(evdata1$predmort5_1b, prob = 0.99), 
+predict.grid <- seq(quantile(gbsg5$predmort5_1b, prob = 0.01, na.rm = TRUE), 
+                    quantile(gbsg5$predmort5_1b, prob = 0.99, na.rm = TRUE), 
                     length = 100)
 
 predict.grid.cll <- log(-log(1 - predict.grid))
@@ -1012,6 +1013,10 @@ For survival data *TP* and *FP* is calculated as follows:
 Given some thresholds, the model/strategy with higher net benefit represents the one that potentially improves  clinical decision making. However, poor discrimination and calibration lead to lower net benefit.
 
 ```{r, function_stdca, message=FALSE,warning=FALSE, fig.align='center',include=FALSE}
+if (!require("pacman")) install.packages("pacman")
+library(pacman)
+pacman::p_load(here)
+
 # Run the function to calculate the net benefit and the elements needed to develop decision curve analysis
 source(here::here("Functions/stdca.R"))
 # COMMENT: please change the directory
@@ -1026,21 +1031,21 @@ pacman::p_load(survival,
                Hmisc)
 
 # Fit the model without PGR
-efit1 <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade,
-  data = edata1, x = T, y = T)
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
+  data = rott5, x = T, y = T)
 
 # Fit the model with PGR
-efit1b <- coxph(Surv(ryear, status) ~ csize + cnode + cgrade + pgr2 + pgr3,
-  data = edata1, x = T, y = T)
+efit1b <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade + pgr2 + pgr3,
+  data = rott5, x = T, y = T)
 
 
 # Add predicted survival at 5 years in the development set
-edata1$predsurv5 <- predictSurvProb(efit1, newdata = edata1, times = 5) # predicted survival
-edata1$predsurv5_1b <- predictSurvProb(efit1b, newdata = edata1, times = 5)
+rott5$predsurv5 <- predictSurvProb(efit1, newdata = rott5, times = 5) # predicted survival
+rott5$predsurv5_1b <- predictSurvProb(efit1b, newdata = rott5, times = 5)
 
 # Add predicted survival at 5 years in the validation set
-evdata1$predsurv5 <- predictSurvProb(efit1, newdata = evdata1, times = 5)
-evdata1$predsurv5_1b <- predictSurvProb(efit1b, newdata = evdata1, times = 5)
+gbsg5$predsurv5 <- predictSurvProb(efit1, newdata = gbsg5, times = 5)
+gbsg5$predsurv5_1b <- predictSurvProb(efit1b, newdata = gbsg5, times = 5)
 
 ###########################
 # Decision curve analysis #
@@ -1048,25 +1053,25 @@ evdata1$predsurv5_1b <- predictSurvProb(efit1b, newdata = evdata1, times = 5)
 
 # Development data
 # Predicted probability calculation
-edata1$mort5_efit1 <- 1 - edata1$predsurv5
+rott5$mort5_efit1 <- 1 - rott5$predsurv5
 
 # Extended model with PGR
 # Predicted probability calculation
-edata1$mort5_efit1b <- 1 - edata1$predsurv5_1b 
+rott5$mort5_efit1b <- 1 - rott5$predsurv5_1b 
 
 # Run decision curve analysis
 
 # Development data
 # Model without PGR
-edata1 <- as.data.frame(edata1)
+rott5 <- as.data.frame(rott5)
 dca_rdata_1 <- stdca(
-  data = edata1, outcome = "status", ttoutcome = "ryear",
+  data = rott5, outcome = "rfs", ttoutcome = "ryear",
   timepoint = 5, predictors = "mort5_efit1", xstop = 1.0,
   ymin = -0.01, graph = FALSE
 )
 # Model with PGR
 dca_rdata_1b <- stdca(
-  data = edata1, outcome = "status", ttoutcome = "ryear",
+  data = rott5, outcome = "rfs", ttoutcome = "ryear",
   timepoint = 5, predictors = "mort5_efit1b", xstop = 1.0,
   ymin = -0.01, graph = FALSE
 )
@@ -1101,25 +1106,25 @@ title("A Development data", adj = 0, cex = 1.5)
 # External data
 # Validation data
 # Predicted probability calculation
-evdata1$mort5_model1 <- 1 - predictSurvProb(efit1, newdata = evdata1, times = 5)
+gbsg5$mort5_model1 <- 1 - predictSurvProb(efit1, newdata = gbsg5, times = 5)
 
 # Extended model with PGR
 # Predicted probability calculation
-evdata1$mort5_model1b <- 1 - predictSurvProb(efit1b, newdata = evdata1, times = 5)
+gbsg5$mort5_model1b <- 1 - predictSurvProb(efit1b, newdata = gbsg5, times = 5)
 
 # Run decision curve analysis
 
 # Development data
 # Model without PGR
-evdata1 <- as.data.frame(evdata1)
+gbsg5 <- as.data.frame(gbsg5)
 dca_vdata_model1 <- stdca(
-  data = evdata1, outcome = "status", ttoutcome = "ryear",
+  data = gbsg5, outcome = "rfs", ttoutcome = "ryear",
   timepoint = 5, predictors = "mort5_model1", xstop = 1.0,
   ymin = -0.01, graph = FALSE
 )
 # Model with PGR
 dca_vdata_model1b <- stdca(
-  data = evdata1, outcome = "status", ttoutcome = "ryear",
+  data = gbsg5, outcome = "rfs", ttoutcome = "ryear",
   timepoint = 5, predictors = "mort5_model1b", xstop = 1,
   ymin = -0.01, graph = FALSE
 )
@@ -1151,41 +1156,15 @@ legend("topright",
 title("B External data", adj = 0, cex = 1.5)
 ```
 
-Based on previous research we used a range of thresholds from 14% to 23% for adjuvant chemotherapy. If we choose a threshold of 20% the model had a net benefit of 0.262 in the development data using the basic model. This means that the model would identify 26 patients per 100 who will have recurrent breast cancer or die within 5 years since diagnosis and thus adjuvant chemotherapy is really needed.   
+Based on previous research we used a range of thresholds from 14% to 23% for adjuvant chemotherapy. If we choose a threshold of 20% the model had a potential net benefit of 0.294 in the development data using the basic model. This means that the model would identify 29 patients per 100 who will have recurrent breast cancer or die within 5 years since diagnosis and thus adjuvant chemotherapy is potentially needed.   
 The decision curve shows that the net benefit would be much larger for higher threshold values, i.e., patients accepting higher risks of recurrence compared to the treat all strategy. The same interpretation may be used in the validation data:
-  choosing a threshold of 20% the basic model had a net benefit of 0.385 for the basic and the extended model.  
-Moreover, net benefit can be defined in terms of reduction of avoidable interventions (e.g adjuvant chemotherapy per 100 patients) by:
+  choosing a threshold of 20% the basic model had a net benefit of 0.384 for the basic and the extended model.  
+Moreover, potential net benefit can be defined in terms of reduction of avoidable interventions (e.g adjuvant chemotherapy per 100 patients) by:
   
 <img src="https://render.githubusercontent.com/render/math?math=%5Chuge%7B%5Cfrac%7BNB_%7Bmodel%7D%20-%20NB_%7Ball%7D%7D%7B(p_t%2F%20(1-p_t))%7D*100%7D%0A">  
   
   where *NB*<sub>model</sub> is the net benefit of the prediction model, *NB*<sub>all</sub> is the net benefit of the strategy treat all and $p_{t}$ is the risk threshold.
 
-
-## References
-+ Overall measures   
-Reference: https://diagnprognres.biomedcentral.com/articles/10.1186/s41512-018-0029-2*/ \
-R Vignette: https://cran.r-project.org/web/packages/riskRegression/vignettes/IPA.html#fn.1 \
-
-+ Discrimination measures   
-References: \
-https://www.jstor.org/stable/27639883 \
-https://onlinelibrary.wiley.com/doi/10.1002/sim.5958 \
-
-+ Calibration \
-https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3933449/pdf/nihms542648.pdf \
-https://onlinelibrary.wiley.com/doi/full/10.1002/sim.8281   \
-https://onlinelibrary.wiley.com/doi/full/10.1002/sim.8570   \
-
-+ Clinical utility (decision curves)  
-R/SAS/STATA code and references: 
-  https://www.mskcc.org/departments/epidemiology-biostatistics/biostatistics/decision-curve-analysis \
-More guidelines about net benefit assessment and interpretation \
-https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6261531/ \
-https://diagnprognres.biomedcentral.com/articles/10.1186/s41512-019-0064-7 \
-
-+ Other useful references \
-https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6728752/ \
-https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7100774/ \
 
 ## Reproducibility ticket
 
