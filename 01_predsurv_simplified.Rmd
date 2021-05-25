@@ -460,19 +460,23 @@ res_ov <- matrix(unlist(c(
   quantile(score_vboot_1b, probs = alpha / 2),
   quantile(score_vboot_1b, probs = 1 - alpha / 2)
 )),
-nrow = 2, 
-ncol = 12, 
+nrow = 8, 
+ncol = 3, 
 byrow = T, 
 dimnames = list(
-  c("Brier", "Scaled Brier"),
-  c("", "Apparent", "", "", "Apparent + PGR", "",
-    "", "External", "", "", "External + PGR", ""))
+  c("Brier - Development data - model without PGR", 
+    "Scaled Brier - Development data - model without PGR",
+    "Brier - Development data - model with PGR", 
+    "Scaled Brier - Development data - model with PGR",
+    "Brier - Validation data - model without PGR", 
+    "Scaled Brier - Validation data - model without PGR",
+    "Brier - Validation data - model with PGR", 
+    "Scaled Brier - Validation data - model with PGR"),
+  c("Estimate", "Lower .95 ", "Upper .95"))
 )
 
+
 res_ov <- round(res_ov, 2) # Digit
-res_ov_lab <- rep(c("Estimate", "Lower .95 ", "Upper .95"), 4)
-res_ov <- rbind(res_ov_lab,res_ov)
-rownames(res_ov) <- c("", "Brier", "Scaled Brier")
 res_ov
 ```
 
@@ -566,18 +570,20 @@ temp <- c(
   harrell_C_rdata$concordance + 
     qnorm(1 - alpha/2) * sqrt(harrell_C_rdata$var),
   
-  harrell_C_rdata1b$concordance,
-  harrell_C_rdata1b$concordance - 
-    qnorm(1 - alpha/2) * sqrt(harrell_C_rdata1b$var),
-  harrell_C_rdata1b$concordance + 
-    qnorm(1 - alpha/2) * sqrt(harrell_C_rdata1b$var),
   
   Uno_C_rdata$concordance,
   Uno_C_rdata$concordance - 
     qnorm(1 - alpha/2) * sqrt(Uno_C_rdata$var),
   Uno_C_rdata$concordance + 
     qnorm(1 - alpha/2) * sqrt(Uno_C_rdata$var),
-
+  
+  harrell_C_rdata1b$concordance,
+  harrell_C_rdata1b$concordance - 
+    qnorm(1 - alpha/2) * sqrt(harrell_C_rdata1b$var),
+  harrell_C_rdata1b$concordance + 
+    qnorm(1 - alpha/2) * sqrt(harrell_C_rdata1b$var),
+  
+  Uno_C_rdata1b$concordance, 
   Uno_C_rdata1b$concordance - 
     qnorm(1 - alpha/2) * sqrt(Uno_C_rdata1b$var),
   Uno_C_rdata1b$concordance + 
@@ -588,12 +594,7 @@ temp <- c(
     qnorm(1 - alpha/2) * sqrt(harrell_C_vdata$var),
   harrell_C_vdata$concordance + 
     qnorm(1 - alpha/2) * sqrt(harrell_C_vdata$var),
-  
-  harrell_C_vdata1b$concordance,
-  harrell_C_vdata1b$concordance - 
-    qnorm(1 - alpha/2) * sqrt(harrell_C_vdata1b$var),
-  harrell_C_vdata1b$concordance + 
-    qnorm(1 - alpha/2) * sqrt(harrell_C_vdata1b$var),
+
   
   Uno_C_vdata$concordance,
   Uno_C_vdata$concordance - 
@@ -601,25 +602,37 @@ temp <- c(
   Uno_C_vdata$concordance + 
     qnorm(1 - alpha/2) * sqrt(Uno_C_vdata$var),
   
+  harrell_C_vdata1b$concordance,
+  harrell_C_vdata1b$concordance - 
+    qnorm(1 - alpha/2) * sqrt(harrell_C_vdata1b$var),
+  harrell_C_vdata1b$concordance + 
+    qnorm(1 - alpha/2) * sqrt(harrell_C_vdata1b$var),
+  
   Uno_C_vdata1b$concordance, 
   Uno_C_vdata1b$concordance - 
     qnorm(1 - alpha/2) * sqrt(Uno_C_vdata1b$var),
   Uno_C_vdata1b$concordance + 
     qnorm(1 - alpha/2) * sqrt(Uno_C_vdata1b$var)
           
-      )
-cmat  <- matrix(temp, nrow=2, byrow=TRUE,
-               dimnames=list(c("Harrell C", "Uno C"),
-                             c("", "Apparent", "", 
-                               "","Apparent + PGR", "",
-                               "", "External", "", 
-                               "", "External + PGR", "")))
+)
+res_C  <- matrix(temp, 
+                nrow = 8, 
+                ncol = 3, 
+                byrow = TRUE,
+                dimnames = list(
+  c("Harrell C - Development data - model without PGR", 
+    "Uno C - Development data - model without PGR",
+    "Harrell C - Development data - model with PGR", 
+    "Uno C  - Development data - model with PGR",
+    "Harrell C - Validation data - model without PGR", 
+    "Uno C - Validation data - model without PGR",
+    "Harrell C - Validation data - model with PGR", 
+    "Uno C - Validation data - model with PGR"),
+  
+  c("Estimate", "Lower .95", "Upper .95"))
+)
 
-cmat <- round(cmat, 2) # Digit
-res_C_lab <- rep(c("Estimate", "Lower .95 ", "Upper .95"), 4)
-res_C <- rbind(res_C_lab,cmat)
-rownames(res_C) <- c("", "Harrell C", "Uno C")
-
+res_C <- round(res_C, 2) # Digit
 res_C
 ```
 COMMENT: please comment the results and differences between Harrell and Uno's concordance
@@ -693,21 +706,22 @@ res_discr <- matrix(c(
   Uno_vdata1b$AUC["t=4.95"] +
     qnorm(1 - alpha / 2) * Uno_vdata1b$inference$vect_sd_1["t=4.95"]
 ),
-nrow = 1, ncol = 12, byrow = T,
-dimnames = list(
-  c("Uno AUC"),
-    c("", "Apparent", "", "", "Apparent + PGR", "",
-      "", "External", "", "", "External + PGR", ""))
+  nrow = 4, ncol = 3, byrow = T, 
+  dimnames = list( 
+    c(
+      "Uno AUC - Development data - model without PGR",
+      "Uno AUC - Development data - model with PGR",
+      "Uno AUC - Validation data - model without PGR",
+      "Uno AUC - Validation data - model with PGR"),
+  
+  c("Estimate", "Lower .95", "Upper .95"))
 )
 
 res_discr <- round(res_discr, k)
-res_discr_lab <- rep(c("Estimate", "Lower .95 ", "Upper .95"), 4)
-res_discr <- rbind(res_discr_lab,res_discr)
-rownames(res_discr) <- c("", "Uno AUC")
 res_discr
 ```
 
-The time-dependent AUCs at 5 years were in the external validation were between 0.68 and 0.72 showing moderate discrimination. The additional information of the PGR marker increased the discrimination by 0.04.
+The time-dependent AUCs at 5 years were in the external validation were between 0.70 and 0.73 showing moderate discrimination. The additional information of the PGR marker increased the discrimination by 0.03.
 
 
 ### 2.3 Calibration
@@ -820,18 +834,19 @@ res_OE <- matrix(c(
   OE.vdata,
   OE.vdata1b
 ),
-nrow = 1, ncol = 12, byrow = T,
+nrow = 4, ncol = 3, byrow = T,
 dimnames = list(
-  c("O/E ratio"),
-  c("", "Apparent", "", "", "Apparent + PGR", "",
-    "", "External", "", "", "External + PGR", ""))
+   c(
+      "O/E ratio - Development data - model without PGR",
+      "O/E ratioE ratio - Development data - model with PGR",
+      "O/E ratio - Validation data - model without PGR",
+      "O/E ratio - Validation data - model with PGR"),
+  
+  c("Estimate", "Lower .95", "Upper .95"))
 )
 
 
 res_OE <- round(res_OE, 2)
-res_OE_lab <- rep(c("Estimate", "Lower .95 ", "Upper .95"), 4)
-res_OE <- rbind(res_OE_lab,res_OE)
-rownames(res_OE) <- c("", "Uno AUC")
 res_OE
 
 # COMMENT: we can propose the Poisson approach instead of the above calculation
