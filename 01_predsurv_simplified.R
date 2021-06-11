@@ -205,7 +205,7 @@ vcal <- cph(Surv(ryear, rfs) ~ rcs(pred.cll, 3),
             data = gbsg5
 ) 
 
-dat_cph <- cbind.data.frame(
+dat_cal <- cbind.data.frame(
   "obs" = 1 - survest(vcal, 
                       times = 5, 
                       newdata = gbsg5)$surv,
@@ -220,7 +220,7 @@ dat_cph <- cbind.data.frame(
   "pred" = gbsg5$pred
 )
 
-dat_cph <- dat_cph[order(dat_cph$pred), ]
+dat_cal <- dat_cal[order(dat_cal$pred), ]
 
 par(xaxs = "i", yaxs = "i", las = 1)
 plot(
@@ -247,7 +247,7 @@ lines(dat_cal$pred,
 abline(0, 1, lwd = 2, lty = 2, col = "red")
 
 # Numerical measures
-absdiff_cph <- abs(dat_cph$pred - dat_cph$obs)
+absdiff_cph <- abs(dat_cal$pred - dat_cal$obs)
 
 numsum_cph <- c(
   "ICI" = mean(absdiff_cph),
