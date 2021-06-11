@@ -105,12 +105,12 @@ gbsg5$lp <- predict(efit1, newdata = gbsg5)
 # Harrell's C
 harrell_C_gbsg5 <- concordance(Surv(ryear, rfs) ~ lp, 
                                gbsg5, 
-                               reverse=TRUE)
+                               reverse = TRUE)
 # Uno's C
-Uno_C_gbsg5<- concordance(Surv(ryear, rfs) ~ lp, 
+Uno_C_gbsg5 <- concordance(Surv(ryear, rfs) ~ lp, 
                            gbsg5, 
-                           reverse=TRUE,
-                           timewt="n/G2")
+                           reverse = TRUE,
+                           timewt = "n/G2")
 alpha <- .05
 res_C <- matrix(
   c(
