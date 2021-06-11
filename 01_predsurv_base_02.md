@@ -142,9 +142,8 @@ such data in oncology and other medical research.
 
 We develop the risk prediction model in the development data considering
 the first 5-year follow-up to minimize the violation of proportional
-hazard including size, node and grade. The second model also includes
-the progesterone level modeled using a 3-knot restricted cubic spline.  
-We also administratively censored the validation data at 5 years.
+hazard including size, node and grade. We also administratively censored
+the validation data at 5 years.
 
 ``` r
 # Libraries needed
