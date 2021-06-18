@@ -72,7 +72,7 @@ gbsg5 <- subset(temp, epoch==1)
 rott5$cnode <- relevel(rotterdam$cnode, "1-3")
 gbsg5$cnode <- relevel(gbsg$cnode, "1-3")
 
-
+ta
 
 # Model development -------------------------------------
 
@@ -123,7 +123,7 @@ res_C <- matrix(
   Uno_C_gbsg5$concordance,
   Uno_C_gbsg5$concordance - 
     qnorm(1 - alpha/2) * sqrt(Uno_C_gbsg5$var),
-  Uno_C_vdata$concordance + 
+  Uno_C_gbsg5$concordance + 
     qnorm(1 - alpha/2) * sqrt(Uno_C_gbsg5$var)
   ), 
   nrow = 2,
@@ -152,7 +152,7 @@ Uno_AUC_res <- c(
   "Uno AUC" = unname(Uno_gbsg5$AUC[2]),
   "2.5 %" = unname(Uno_gbsg5$AUC["t=4.95"] -
     qnorm(1 - alpha / 2) * Uno_gbsg5$inference$vect_sd_1["t=4.95"]),
-  "97. 5 %" = unname(Uno_vdata1$AUC["t=4.95"] +
+  "97. 5 %" = unname(Uno_gbsg5$AUC["t=4.95"] +
     qnorm(1 - alpha / 2) * Uno_gbsg5$inference$vect_sd_1["t=4.95"])
 )
 
@@ -261,7 +261,7 @@ numsum_cph
 
 source("Functions/stdca.R")
 gbsg5 <- as.data.frame(gbsg5)
-dca_gsbg5 <- stdca(
+dca_gbsg5 <- stdca(
   data = gbsg5, outcome = "rfs", ttoutcome = "ryear",
   timepoint = 5, predictors = "pred", xstop = 1.0,
   ymin = -0.01, graph = FALSE
@@ -269,8 +269,8 @@ dca_gsbg5 <- stdca(
 
 # Decision curves plot
 par(xaxs = "i", yaxs = "i", las = 1)
-plot(dca_gsbg5$net.benefit$threshold,
-     dca_gsbg5$net.benefit$pred,
+plot(dca_gbsg5$net.benefit$threshold,
+     dca_gbsg5$net.benefit$pred,
      type = "l", 
      lwd = 2, 
      lty = 1,
@@ -282,13 +282,13 @@ plot(dca_gsbg5$net.benefit$threshold,
      cex.lab = 1.2, 
      cex.axis = 1
 )
-lines(dca_gsbg5$net.benefit$threshold,
-      dca_gsbg5$net.benefit$none, 
+lines(dca_gbsg5$net.benefit$threshold,
+      dca_gbsg5$net.benefit$none, 
       type = "l", 
       lwd = 2, 
       lty = 4)
-lines(dca_gsbg5$net.benefit$threshold,
-      dca_gsbg5$net.benefit$all,
+lines(dca_gbsg5$net.benefit$threshold,
+      dca_gbsg5$net.benefit$all,
       type = "l", 
       lwd = 2, 
       col = "darkgray")
