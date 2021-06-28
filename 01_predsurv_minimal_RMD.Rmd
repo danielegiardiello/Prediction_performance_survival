@@ -486,6 +486,7 @@ score_gbsg5 <-
 
 # Extra: bootstrap confidence intervals for IPA ------
 B <- 100
+horizon <- 4.95
 boots_ls <- lapply(seq_len(B), function(b) {
   
   # Resample validation data
@@ -511,13 +512,6 @@ boots_ls <- lapply(seq_len(B), function(b) {
 })
 
 df_boots <- do.call(rbind.data.frame, boots_ls)
-
-
-# Summarise ipa
-c(
-  "ipa_5y" = score_gbsg5$Brier$score[model == "cox_validation"][["IPA"]], 
-  quantile(df_boots$ipa, probs = c(0.025, 0.975))
-)
 
 ```
 
