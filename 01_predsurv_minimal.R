@@ -250,7 +250,7 @@ numsum_cph
 # Overall performance ---------------------------------------
 # COMMENT: I will wait for brier function created by Terry
 score_gbsg5 <-
-  Score(list("Cox development" = efit1),
+  Score(list("cox" = efit1),
         formula = Surv(ryear, rfs) ~ 1, 
         data = gbsg5, 
         conf.int = TRUE, 
