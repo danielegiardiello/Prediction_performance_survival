@@ -352,5 +352,7 @@ title("Validation data")
 # find "efit1" with "efit1_pgr"
 # from paragraph "Overall performances" on. 
 
+# When use apparent validation, be careful to use the correct labels in the plot!
+
 
 
