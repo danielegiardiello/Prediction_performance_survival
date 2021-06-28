@@ -81,6 +81,9 @@ efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
                x = T, 
                y = T)
 
+# The model with additional PGR marker
+efit1_pgr  <- update(efit1, . ~ . + pgr2 + pgr3)
+
 
 # Overall performance ---------------------------------------
 # COMMENT: I will wait for brier function created by Terry
@@ -261,7 +264,7 @@ numsum_cph
 
 # Clinical utility --------------------------------
 
-# Minimal version (better to use Daniele's function):
+# Minimal version (better to use stdca function in the repository):
 # source("Functions/stdca.R")
 
 # 1. Set grid of thresholds
@@ -344,17 +347,10 @@ title("Validation data")
 
 # NOTES ---------------------------
 # 1. To run the apparent validation find "gbsg5" with "rott5"
-# from paragram "Overall performances" on. 
+# from paragraph "Overall performances" on. 
 # 2. To run the model with the PGR as additional biomarker
-# Find: 
-# " efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
-# data = rott5, 
-# x = T, 
-# y = T) "
-# Replace with:
-# " efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade + pgr2 + pgr3,
-# data = rott5, 
-# x = T, 
-# y = T) "
+# find "efit1" with "efit1_pgr"
+# from paragraph "Overall performances" on. 
+
 
 
