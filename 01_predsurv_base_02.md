@@ -741,7 +741,7 @@ sessioninfo::session_info()
     ##  collate  English_United States.1252  
     ##  ctype    English_United States.1252  
     ##  tz       Europe/Berlin               
-    ##  date     2021-06-11                  
+    ##  date     2021-06-28                  
     ## 
     ## - Packages -------------------------------------------------------------------
     ##  package        * version    date       lib source        
