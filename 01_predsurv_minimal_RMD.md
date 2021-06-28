@@ -10,13 +10,13 @@ Performance assessment of survival prediction models - simplified code
         models](#11-model-development---fit-the-risk-prediction-models)
 -   [Goal 2 - Assessing performance in survival prediction
     models](#goal-2---assessing-performance-in-survival-prediction-models)
-    -   [2.1 Overall performance
-        measures](#21-overall-performance-measures)
-    -   [2.2 Discrimination measures](#22-discrimination-measures)
-    -   [2.3 Calibration](#23-calibration)
-    -   [2.3.1 Observed Expected ratio](#231-observed-expected-ratio)
-    -   [2.3.2 Calibration plot using restricted cubic
-        splines](#232-calibration-plot-using-restricted-cubic-splines)
+    -   [2.1 Discrimination measures](#21-discrimination-measures)
+    -   [2.2 Calibration](#22-calibration)
+    -   [2.2.1 Observed Expected ratio](#221-observed-expected-ratio)
+    -   [2.2.2 Calibration plot using restricted cubic
+        splines](#222-calibration-plot-using-restricted-cubic-splines)
+    -   [2.3 Overall performance
+        measures](#23-overall-performance-measures)
 -   [Goal 3 - Clinical utility](#goal-3---clinical-utility)
 -   [Additional notes](#additional-notes)
 -   [Reproducibility ticket](#reproducibility-ticket)
@@ -217,76 +217,7 @@ prediction model with time-to-event outcome in case all individual data
 are available and in case of only the model equation of a fixed time
 horizon (i.e. at 5 years) is provided including the baseline survival.
 
-### 2.1 Overall performance measures
-
-We calculate the Brier Score and the Index of Prediction Accuracy (IPA,
-the scaled Brier) as a overall performance measure.
-
-We calculate the overall performance measures: Brier score, Scaled Brier
-(IPA) and the corresponding confidence intervals.
-
-``` r
-# COMMENT: Terry will send or publish in survival package survival::brier() 
-
-# Libraries needed
-if (!require("pacman")) install.packages("pacman")
-library(pacman)
-pacman::p_load(survival,
-               Hmisc,
-               pec)
-
-# Fit the model without PGR
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
-  data = rott5, 
-  x = T, 
-  y = T)
-
-# Bootstrap
-vboot <- list()
-B <- 10  # Number of bootstrap samples, please increase if you neeed
-set.seed(2021)
-for (j in 1:B) {
-vboot[[j]] <- gbsg5[sample(nrow(gbsg5), 
-                           size = nrow(gbsg5), 
-                           replace = TRUE),]
-}
-
-
-# Brier Score and IPA in the validation set (model without PGR)
-score_gbsg5 <-
-  Score(list("Cox development" = efit1),
-    formula = Surv(ryear, rfs) ~ 1, 
-    data = gbsg5, 
-    conf.int = TRUE, 
-    times = 4.95,
-    cens.model = "km", 
-    metrics = "brier",
-    summary = "ipa"
-)
-
-
-# Scaled Brier / IPA bootstrap confidence intervals
-# COMMENT: computational time is too long to compute them when the number of bootstrap replications is high
-B <- length(vboot)
-score_vboot_1 <- c() # Bootstrap IPA validation set for model without PGR
-
-for (j in 1:B) {
-    score_vboot_1[j] <-  Score(list("Cox development" = efit1), 
-                          formula = Surv(ryear, rfs) ~ 1,
-                          data = vboot[[j]], 
-                          conf.int = FALSE, 
-                          times = 4.95, 
-                          cens.model = "km", 
-                          metrics = "brier",
-                         summary = "ipa")$Brier[[1]]$IPA[2]
-}
-```
-
-    ##                                Estimate Lower .95  Upper .95
-    ## Brier - Validation data            0.22       0.20      0.24
-    ## Scaled Brier - Validation data     0.12       0.08      0.17
-
-### 2.2 Discrimination measures
+### 2.1 Discrimination measures
 
 Discrimination is the ability to differentiate between subjects who have
 the outcome and subjects who do not. Concordance can be assessed over
@@ -363,7 +294,7 @@ Uno’s concordance index (see also the chapter of Terry’s book)
 The time-dependent AUCs at 5 years were in the external validation was
 0.70.
 
-### 2.3 Calibration
+### 2.2 Calibration
 
 Calibration is the agreement between observed outcomes and predicted
 probabilities. For example, in survival models, a predicted survival
@@ -406,7 +337,7 @@ Calibration is measured by:
 Other calibration measures are proposed in the literature. More details
 are provided in the references at the end of the document.
 
-### 2.3.1 Observed Expected ratio
+### 2.2.1 Observed Expected ratio
 
 We calculate the observed/ expected ratio (OE) at 5 years in the
 development and validation data. In the development data the OE should
@@ -463,7 +394,7 @@ OE_summary
 The models PGR tend to slightly under-predict the risk of mortality in
 the validation data.
 
-### 2.3.2 Calibration plot using restricted cubic splines
+### 2.2.2 Calibration plot using restricted cubic splines
 
 Calibration plots of the external validation data with and without PGR
 are calculated and shown using restricted cubic splines.  
@@ -561,6 +492,75 @@ numsum_cph
 Calibration plot identified good calibration although probabilities of
 recurrence were slightly underestimated especially for the lowest and
 the highest values of the observed probabilities of recurrence.
+
+### 2.3 Overall performance measures
+
+We calculate the Brier Score and the Index of Prediction Accuracy (IPA,
+the scaled Brier) as a overall performance measure.
+
+We calculate the overall performance measures: Brier score, Scaled Brier
+(IPA) and the corresponding confidence intervals.
+
+``` r
+# COMMENT: Terry will send or publish in survival package survival::brier() 
+
+# Libraries needed
+if (!require("pacman")) install.packages("pacman")
+library(pacman)
+pacman::p_load(survival,
+               Hmisc,
+               pec)
+
+# Fit the model without PGR
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
+  data = rott5, 
+  x = T, 
+  y = T)
+
+# Bootstrap
+vboot <- list()
+B <- 10  # Number of bootstrap samples, please increase if you neeed
+set.seed(2021)
+for (j in 1:B) {
+vboot[[j]] <- gbsg5[sample(nrow(gbsg5), 
+                           size = nrow(gbsg5), 
+                           replace = TRUE),]
+}
+
+
+# Brier Score and IPA in the validation set (model without PGR)
+score_gbsg5 <-
+  Score(list("Cox development" = efit1),
+    formula = Surv(ryear, rfs) ~ 1, 
+    data = gbsg5, 
+    conf.int = TRUE, 
+    times = 4.95,
+    cens.model = "km", 
+    metrics = "brier",
+    summary = "ipa"
+)
+
+
+# Scaled Brier / IPA bootstrap confidence intervals
+# COMMENT: computational time is too long to compute them when the number of bootstrap replications is high
+B <- length(vboot)
+score_vboot_1 <- c() # Bootstrap IPA validation set for model without PGR
+
+for (j in 1:B) {
+    score_vboot_1[j] <-  Score(list("Cox development" = efit1), 
+                          formula = Surv(ryear, rfs) ~ 1,
+                          data = vboot[[j]], 
+                          conf.int = FALSE, 
+                          times = 4.95, 
+                          cens.model = "km", 
+                          metrics = "brier",
+                         summary = "ipa")$Brier[[1]]$IPA[2]
+}
+```
+
+    ##                                Estimate Lower .95  Upper .95
+    ## Brier - Validation data            0.22       0.20      0.24
+    ## Scaled Brier - Validation data     0.12       0.08      0.17
 
 ## Goal 3 - Clinical utility
 
