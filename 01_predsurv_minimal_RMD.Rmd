@@ -539,6 +539,9 @@ dimnames = list(
 
 res_ov <- round(res_ov, 2) # Digit
 res_ov
+# NOTE: asymptotic confidence intervals can also be calculated since
+# the are provided using riskRegression::Score(.., iid = TRUE).
+# However, Terry should provide his own function to calculate Brier.
 ```
 
 
