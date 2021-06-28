@@ -85,21 +85,6 @@ efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
 efit1_pgr  <- update(efit1, . ~ . + pgr2 + pgr3)
 
 
-# Overall performance ---------------------------------------
-# COMMENT: I will wait for brier function created by Terry
-score_gbsg5 <-
-  Score(list("Cox development" = efit1),
-    formula = Surv(ryear, rfs) ~ 1, 
-    data = gbsg5, 
-    conf.int = TRUE, 
-    times = 4.95,
-    cens.model = "km", 
-    metrics = "brier",
-    summary = "ipa"
-  )
-
-score_gbsg5$Brier$score 
-
 # Discrimination ---------------------------------------
 
 # Add linear predictor in the validation set
@@ -262,6 +247,22 @@ numsum_cph <- c(
 numsum_cph
 
 
+# Overall performance ---------------------------------------
+# COMMENT: I will wait for brier function created by Terry
+score_gbsg5 <-
+  Score(list("Cox development" = efit1),
+        formula = Surv(ryear, rfs) ~ 1, 
+        data = gbsg5, 
+        conf.int = TRUE, 
+        times = 4.95,
+        cens.model = "km", 
+        metrics = "brier",
+        summary = "ipa"
+  )
+
+score_gbsg5$Brier$score 
+
+
 # Clinical utility --------------------------------
 
 # Minimal version (better to use stdca function in the repository):
@@ -347,10 +348,10 @@ title("Validation data")
 
 # NOTES ---------------------------
 # 1. To run the apparent validation find "gbsg5" with "rott5"
-# from paragraph "Overall performances" on. 
+# from paragraph "Discrimination" on. 
 # 2. To run the model with the PGR as additional biomarker
 # find "efit1" with "efit1_pgr"
-# from paragraph "Overall performances" on. 
+# from paragraph "Discrimination" on. 
 
 # When use apparent validation, be careful to use the correct labels in the plot!
 
