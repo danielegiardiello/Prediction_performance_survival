@@ -668,6 +668,8 @@ Moreover, potential net benefit can be defined in terms of reduction of avoidabl
   where *NB*<sub>model</sub> is the net benefit of the prediction model, *NB*<sub>all</sub> is the net benefit of the strategy treat all and $p_{t}$ is the risk threshold.
 
 
+## Additional notes
+
 ## Reproducibility ticket
 
 ```{r repro_ticket, echo=TRUE}
