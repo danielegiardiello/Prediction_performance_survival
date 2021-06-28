@@ -133,6 +133,9 @@ efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
   y = T)
 efit1
 
+# The model with additional PGR marker
+efit1_pgr  <- update(efit1, . ~ . + pgr2 + pgr3)
+
 ```
 
 The coefficients of the models indicated that higher size, higher number of positive lymph nodes and higher grade is more associate with poorer prognosis. The association of the progesterone biomarker and the outcome is non-linear as investigated previously.
@@ -670,11 +673,11 @@ Moreover, potential net benefit can be defined in terms of reduction of avoidabl
 
 ## Additional notes
 
-1. To run the apparent validation find "gbsg5" with "rott5"
-from paragraph "Overall performances" on. 
-2. To run the model with the PGR as additional biomarker
-find "efit1" with "efit1_pgr"
-from paragraph "Overall performances" on.
+1. To run the apparent validation find in any performance measure calculation
+   find "gbsg5" and replace with "rott5";  
+
+2. To run validation of the extended model in any performance find "efit1" 
+   and replace with "efit1_pgr".  
 
 ## Reproducibility ticket
 
