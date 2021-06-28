@@ -72,7 +72,7 @@ gbsg5 <- subset(temp, epoch==1)
 rott5$cnode <- relevel(rotterdam$cnode, "1-3")
 gbsg5$cnode <- relevel(gbsg$cnode, "1-3")
 
-ta
+
 
 # Model development -------------------------------------
 
@@ -81,6 +81,8 @@ efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
                x = T, 
                y = T)
 
+
+# Overall performance ---------------------------------------
 # COMMENT: I will wait for brier function created by Terry
 score_gbsg5 <-
   Score(list("Cox development" = efit1),
@@ -259,38 +261,100 @@ numsum_cph
 
 # Clinical utility --------------------------------
 
-source("Functions/stdca.R")
-gbsg5 <- as.data.frame(gbsg5)
-dca_gbsg5 <- stdca(
-  data = gbsg5, outcome = "rfs", ttoutcome = "ryear",
-  timepoint = 5, predictors = "pred", xstop = 1.0,
-  ymin = -0.01, graph = FALSE
-)
+# Minimal version (better to use Daniele's function):
+# source("Functions/stdca.R")
 
-# Decision curves plot
-par(xaxs = "i", yaxs = "i", las = 1)
-plot(dca_gbsg5$net.benefit$threshold,
-     dca_gbsg5$net.benefit$pred,
-     type = "l", 
-     lwd = 2, 
-     lty = 1,
-     xlab = "Threshold probability in %", 
-     ylab = "Net Benefit",
-     xlim = c(0, 1), 
-     ylim = c(-0.10, 0.60), 
-     bty = "n",
-     cex.lab = 1.2, 
-     cex.axis = 1
+# 1. Set grid of thresholds
+thresholds <- seq(0, 1.0, by = 0.01)
+# 2. Calculate Aelen johansen for all patients exceeding threshold (i.e. treat-all)
+horizon <- 5
+survfit_all <- summary(
+  survfit(Surv(ryear, rfs) ~ 1, data = gbsg5), 
+  times = horizon
 )
-lines(dca_gbsg5$net.benefit$threshold,
-      dca_gbsg5$net.benefit$none, 
-      type = "l", 
-      lwd = 2, 
-      lty = 4)
-lines(dca_gbsg5$net.benefit$threshold,
-      dca_gbsg5$net.benefit$all,
-      type = "l", 
-      lwd = 2, 
-      col = "darkgray")
+f_all <- 1 - survfit_all$surv
+
+# 3. Calculate Net Benefit across all thresholds
+list_nb <- lapply(thresholds, function(ps) {
+  
+  # Treat all
+  NB_all <- f_all - (1 - f_all) * (ps / (1 - ps))
+  
+  # Based on threshold
+  p_exceed <- mean(gbsg5$pred > ps)
+  survfit_among_exceed <- try(
+    summary(
+      survfit(Surv(ryear, rfs) ~ 1, data = gbsg5[gbsg5$pred > ps, ]), 
+      times = horizon
+    ), silent = TRUE
+  )
+  
+  # If a) no more observations above threshold, or b) among subset exceeding..
+  # ..no indiv has event time >= horizon, then NB = 0
+  if (class(survfit_among_exceed) == "try-error") {
+    NB <- 0
+  } else {
+    f_given_exceed <- 1 - survfit_among_exceed$surv
+    TP <- f_given_exceed * p_exceed
+    FP <- (1 - f_given_exceed) * p_exceed
+    NB <- TP - FP * (ps / (1 - ps))
+  }
+  
+  # Return together
+  df_res <- data.frame("threshold" = ps, "NB" = NB, "treat_all" = NB_all)
+  return(df_res)
+})
+
+
+# Combine into data frame
+df_nb <- do.call(rbind.data.frame, list_nb)
+head(df_nb)
+
+# Make basic decision curve plot
+par(
+  xaxs = "i", 
+  yaxs = "i", 
+  las = 1, 
+  mar = c(6.1, 5.8, 4.1, 2.1), 
+  mgp = c(4.25, 1, 0)
+)
+plot(
+  df_nb$threshold, 
+  df_nb$NB,
+  type = "l", 
+  lwd = 2,
+  ylim = c(-0.1, 0.6),
+  xlim = c(0, 1), 
+  xlab = "",
+  ylab = "Net Benefit",
+  bty = "n", 
+)
+lines(df_nb$threshold, df_nb$treat_all, type = "l", col = "darkgray", lwd = 2)
+abline(h = 0, lty = 2, lwd = 2)
+legend(
+  "topright", 
+  c("Treat all", "Treat none", "Prediction model"),
+  lwd = c(2, 2, 2), 
+  lty = c(1, 2, 1), 
+  col = c("darkgray", "black", "black"), 
+  bty = "n"
+)
+mtext("Threshold probability", 1, line = 2)
+title("Validation data")
+
+# NOTES ---------------------------
+# 1. To run the apparent validation find "gbsg5" with "rott5"
+# from paragram "Overall performances" on. 
+# 2. To run the model with the PGR as additional biomarker
+# Find: 
+# " efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
+# data = rott5, 
+# x = T, 
+# y = T) "
+# Replace with:
+# " efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade + pgr2 + pgr3,
+# data = rott5, 
+# x = T, 
+# y = T) "
 
 
