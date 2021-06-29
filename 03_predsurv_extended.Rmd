@@ -59,9 +59,8 @@ pacman::p_load(
   gridExtra,
   webshot
 )
-
-
 ```
+
 The two primary datasets from the Rotterdam study and the
 German Breast Cancer Study Group (GBSG) are 
 included as example data sets in the survival package.
@@ -466,6 +465,39 @@ gbsg5_boot <- gbsg5_boot %>% mutate(
 
 ```
 
+```{r, int_val, echo=FALSE, warning=FALSE}
+source(here::here('Functions/internal_cv.R'))
+```
+
+```{r, int_val_calc, echo=FALSE, warning=FALSE}
+# Models 
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
+  data = rott5, x = T, y = T
+)
+# Additional marker
+efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
+
+int_val <- bootstrap_cv(db = rott5, 
+                        B = 50,
+                        time = "ryear",
+                        status = "rfs",
+                        formula_model = "Surv(ryear, rfs) ~ csize + 
+                        cnode + 
+                        grade",
+                        formula_ipcw = "Surv(ryear, rfs) ~ 1",
+                        pred.time = 4.95)
+
+int_val_pgr <- bootstrap_cv(db = rott5, 
+                        B = 10,
+                        time = "ryear",
+                        status = "rfs",
+                        formula_model = "Surv(ryear, rfs) ~ csize + 
+                        cnode + 
+                        grade + pgr2 + pgr3",
+                        formula_ipcw = "Surv(ryear, rfs) ~ 1",
+                        pred.time = 4.95)
+```
+
 ```{r, overall_table, echo=FALSE}
 # Table overall measures
 alpha <- .05
@@ -475,13 +507,22 @@ res_ov <- matrix(unlist(c(
   score_rott5$Brier$score[model == "cox_development"][["lower"]],
   score_rott5$Brier$score[model == "cox_development"][["upper"]],
   
+  int_val["Brier corrected"],
+  NA,
+  NA,
+  
   score_rott5_pgr$Brier$score[model == "cox_development"][["Brier"]],
   score_rott5_pgr$Brier$score[model == "cox_development"][["lower"]],
   score_rott5_pgr$Brier$score[model == "cox_development"][["upper"]],
   
+  int_val_pgr["Brier corrected"],
+  NA,
+  NA,
+  
   score_gbsg5$Brier$score[model == "cox_validation"][["Brier"]],
   score_gbsg5$Brier$score[model == "cox_validation"][["lower"]],
   score_gbsg5$Brier$score[model == "cox_validation"][["upper"]],
+  
   
   score_gbsg5_pgr$Brier$score[model == "cox_validation"][["Brier"]],
   score_gbsg5_pgr$Brier$score[model == "cox_validation"][["lower"]],
@@ -491,9 +532,17 @@ res_ov <- matrix(unlist(c(
   quantile(rott5_boot$IPA, probs = alpha / 2),
   quantile(rott5_boot$IPA, probs = 1 - alpha / 2),
   
+  int_val["IPA corrected"],
+  NA,
+  NA,
+  
   score_rott5_pgr$Brier$score[model == "cox_development"][["IPA"]],
   quantile(rott5_boot$IPA_pgr, probs = alpha / 2),
   quantile(rott5_boot$IPA_pgr, probs = 1 - alpha / 2),
+  
+  int_val_pgr["IPA corrected"],
+  NA,
+  NA,
   
   score_gbsg5$Brier$score[model == "cox_validation"][["IPA"]],
   quantile(gbsg5_boot$IPA, probs = alpha / 2),
@@ -503,104 +552,95 @@ res_ov <- matrix(unlist(c(
   quantile(gbsg5_boot$IPA_pgr, probs = alpha / 2),
   quantile(gbsg5_boot$IPA_pgr, probs = 1 - alpha / 2)
 )),
-nrow = 2, ncol = 12, byrow = T, dimnames = list(
+nrow = 2, ncol = 18, byrow = T, dimnames = list(
   c("Brier", "IPA"),
-  rep(c("Estimate", "Lower .95 ", "Upper .95"), 4)
+  rep(c("Estimate", "Lower .95 ", "Upper .95"), 6)
 )
 )
 
 res_ov <- round(res_ov, 2) # Digits
 kable(res_ov) %>%
   kable_styling("striped", position = "center") %>%
-  add_header_above(c(" " = 1, "Apparent" = 3, "Apparent + PGR" = 3, "External" = 3, "External + PGR" = 3))
+  add_header_above(c(" " = 1, 
+                     "Apparent" = 3, 
+                     "Internal" = 3, 
+                     "Apparent + PGR" = 3, 
+                     "Internal + PGR" = 3, 
+                     "External" = 3, 
+                     "External + PGR" = 3))
 ```
 
 As expected the overall performance measures were lower in the external validation. Including information about PGR slightly improved the overall performance.
 
 ### 2.2 Discrimination measures
+
+NOTE: to be adjusted see the original paper
 Discrimination is the ability to differentiate between subjects who have the outcome and subjects who do not.
 In prognostic modelling, discrimination reflects separation between survival curves for individuals or groups.
-The following discrimination measures are proposed:
-+ Harrell
-+ Uno's C-index: evaluates discrimination ability for the entire follow-up time;  
-+ Uno's time-dependent Area Under the ROC curve (AUC): evaluates discrimination at a fixed time horizon;  
 
+Concordance can be assessed over several different time intervals:
 
-Values close to 1 indicate good discrimination ability, while values close to 0.5 indicated poor discrimination ability.   
+* the entire range of the data
+* a 5 year window corresponding to our target assessment point
 
+Clearly the last of these is most relevant
+
+This is easy to compute using the concordance function in the survival
+package.
+There is some uncertainty in the literature about the original Harrell
+formulation verus Uno's suggestion to re-weight the time scale by the
+factor $1/G^2(t)$ where $G$ is the censoring distribution.
+There is more detailed information in the concordance vignette found in the
+survival package.
+  
 We used the time horizon at 4.95 and not 5 years since controls are considered patients at risk after the time horizon and we administratively censored at 5 years to minimize the violation of PH assumption (see paragraph 1.3).  
 
 The Uno's C-index provides a measure of an overall discrimination over the follow-up time. The Uno's time-dependent AUC measures discrimination at a specific time horizon *t* defining cases and controls of censored data at a fixed time horizon *t*.
-The Uno's C-index provided in the function subfolder (file UnoC.R) takes a lot of computational time. We suggested as fast alternative cindex() in the package pec. The cindex was proposed by Gerds and Wolbers: for details, see references below or using help(cindex). The code for Uno's C-index is present in the RMarkdown associated source code. 
+
 
 More details are in the paper and in the references.
 
-```{r, function_UnoC,include=FALSE}
-source(here::here('Functions/UnoC.R'))
-```
+```{r, concordance, message=FALSE,warning=FALSE, fig.align='center',include=FALSE,echo=FALSE, eval=FALSE}
 
-```{r, UnoC, message=FALSE,warning=FALSE, fig.align='center',include=FALSE,echo=FALSE, eval=FALSE}
-# Apparent
-UnoC_rdata1 <- Uno_C(
-  tfup = edata1$ryear,
-  status = edata1$status,
-  linear.predictor = edata1$lp,
-  pred.surv = edata1$predsurv5, thorizon = 4.95
+# Models 
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
+  data = rott5, x = T, y = T
 )
-# External validation
-UnoC_vdata1 <- Uno_C(
-  tfup = evdata1$ryear,
-  status = evdata1$status,
-  linear.predictor = evdata1$lp,
-  pred.surv = evdata1$predsurv5, thorizon = 4.95
-)
-# Apparent + PGR
-UnoC_rdata1b <- Uno_C(
-  tfup = edata1$ryear,
-  status = edata1$status,
-  linear.predictor = edata1$lp_1b,
-  pred.surv = edata1$predsurv5_1b, thorizon = 4.95
-)
+# Additional marker
+efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
 
-# External + PGR
-UnoC_vdata1b <- Uno_C(
-  tfup = evdata1$ryear,
-  status = evdata1$status,
-  linear.predictor = evdata1$lp_1b,
-  pred.surv = evdata1$predsurv5_1b, thorizon = 4.95
-)
+## Save elements needed to estimate concordance indexes
+# Development data 
+rott5$lp <- predict(efit1, newdata = rott5)
+rott5$lp_pgr <- predict(efit1_pgr, newdata = rott5)
 
+# Validation data 
+gbsg5$lp <- predict(efit1, newdata = gbsg5)
+gbsg5$lp_pgr <- predict(efit1_pgr, newdata = gbsg5)
 
-# Bootstraping Uno's C-index to calculate the bootstrap percentile confidence intervals
-UnoC_boot1 <- function(split) {
-  Uno_C(
-    tfup = analysis(split)$ryear,
-    status = analysis(split)$status,
-    linear.predictor = analysis(split)$lp,
-    pred.surv = analysis(split)$predsurv5, thorizon = 4.95
-  )
-}
+# Harrell C - development
+harrell_C_rott5 <- concordance(Surv(ryear, rfs) ~ lp, 
+                               rott5, 
+                               reverse = TRUE)
 
-UnoC_boot1b <- function(split) {
-  Uno_C(
-    tfup = analysis(split)$ryear,
-    status = analysis(split)$status,
-    linear.predictor = analysis(split)$lp_1b,
-    pred.surv = analysis(split)$predsurv5_1b, thorizon = 4.95
-  )
-}
+harrell_C_rott5_pgr <- concordance(Surv(ryear, rfs) ~ lp_pgr, 
+                               rott5, 
+                               reverse = TRUE)
 
-# Run time-dependent AUC in the bootstrapped development and validation data
-# to calculate the non-parametric CI through percentile bootstrap
-eboot <- eboot %>% mutate(
-  UnoC1 = map_dbl(splits, UnoC_boot1),
-  UnoC1b = map_dbl(splits, UnoC_boot1b)
-)
-# saveRDS(eboot,'eboot.rds')
-vboot <- vboot %>% mutate(
-  UnoC1 = map_dbl(splits, UnoC_boot1),
-  UnoC1b = map_dbl(splits, UnoC_boot1b)
-)
+# Harrell C - validation
+harrell_C_gbsg5 <- concordance(Surv(ryear, rfs) ~ lp, 
+                               gbsg5, 
+                               reverse = TRUE)
+
+harrell_C_gbsg5_pgr <- concordance(Surv(ryear, rfs) ~ lp_pgr, 
+                               gbsg5, 
+                               reverse = TRUE)
+
+# Uno's C
+Uno_C_gbsg5 <- concordance(Surv(ryear, rfs) ~ lp, 
+                           gbsg5, 
+                           reverse = TRUE,
+                           timewt = "n/G2")
 
 ```
 
@@ -630,31 +670,6 @@ res_unoC <- matrix(c(
 
 
 ```{r, AUC, message=FALSE, warning=FALSE}
-c_rdata1 <- unlist(cindex(efit1)$AppCindex)
-c_vdata1 <- unlist(cindex(efit1, data = evdata1)$AppCindex)
-c_rdata1b <- unlist(cindex(efit1b)$AppCindex)
-c_vdata1b <- unlist(cindex(efit1, data = evdata1)$AppCindex)
-
-c_boot <- function(split) {
-  unlist(cindex(efit1, data = analysis(split))$AppCindex)
-}
-
-c_boot_1b <- function(split) {
-  unlist(cindex(efit1b, data = analysis(split))$AppCindex)
-}
-
-# cindex bootstrap
-# Development data
-eboot <- eboot %>% mutate(
-  c1 = map_dbl(splits, c_boot),
-  c1b = map_dbl(splits, c_boot_1b)
-)
-
-# Validation data
-vboot <- vboot %>% mutate(
-  c1 = map_dbl(splits, c_boot),
-  c1b = map_dbl(splits, c_boot_1b)
-)
 
 # Time-dependent AUC (in Table 3 called Uno's TD AUC at 5 years) ###
 # Uno's time-dependent Area Under the Curve
