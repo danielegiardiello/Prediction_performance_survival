@@ -78,10 +78,77 @@ bootstrap_cv <- function(db, B = 10,
       boot_data,
       ~ coxph(frm_model, data = ., x = T, y = T)
     ),
+    
     cox_apparent = map(
       orig_data,
       ~ coxph(frm_model, data = ., x = T, y = T)
     ),
+    
+    Harrell_C_app =
+      map2_dbl(
+      orig_data, cox_apparent,
+      ~ concordance(Surv(.x[[time]], .x[[status]]) 
+                    ~ predict(.y, newdata = .x),
+                    reverse = TRUE)$concordance
+    ),
+    
+    Harrell_C_orig =
+      map2_dbl(
+        orig_data, cox_boot,
+        ~ concordance(Surv(.x[[time]], .x[[status]]) 
+                      ~ predict(.y, newdata = .x),
+                      reverse = TRUE)$concordance
+      ),
+    
+    Harrell_C_boot =
+      map2_dbl(
+        boot_data, cox_boot,
+        ~ concordance(Surv(.x[[time]],.x[[status]]) 
+                      ~ predict(.y, newdata = .x),
+                      reverse = TRUE)$concordance
+      ),
+    
+    Harrell_C_diff = map2_dbl(
+      Harrell_C_boot, Harrell_C_orig,
+      function(a, b) {
+        a - b
+      }
+    ),
+    
+    Uno_C_app =
+      map2_dbl(
+        orig_data, cox_apparent,
+        ~ concordance(Surv(.x[[time]], .x[[status]]) 
+                      ~ predict(.y, newdata = .x),
+                      reverse = TRUE,
+                      timewt = "n/G2")$concordance
+      ),
+    
+    Uno_C_orig =
+      map2_dbl(
+        orig_data, cox_boot,
+        ~ concordance(Surv(.x[[time]], .x[[status]]) 
+                      ~ predict(.y, newdata = .x),
+                      reverse = TRUE,
+                      timewt = "n/G2")$concordance
+      ),
+    
+    Uno_C_boot =
+      map2_dbl(
+        boot_data, cox_boot,
+        ~ concordance(Surv(.x[[time]],.x[[status]]) 
+                      ~ predict(.y, newdata = .x),
+                      reverse = TRUE,
+                      timewt = "n/G2")$concordance
+      ),
+    
+    Uno_C_diff = map2_dbl(
+      Uno_C_boot, Uno_C_orig,
+      function(a, b) {
+        a - b
+      }
+    ),
+    
     AUC_app = map2_dbl(
       orig_data, cox_apparent,
       ~ timeROC(
@@ -91,6 +158,7 @@ bootstrap_cv <- function(db, B = 10,
         iid = FALSE
       )$AUC[[2]]
     ),
+    
     AUC_orig = map2_dbl(
       orig_data, cox_boot,
       ~ timeROC(
@@ -100,6 +168,7 @@ bootstrap_cv <- function(db, B = 10,
         iid = FALSE
       )$AUC[[2]]
     ),
+    
     AUC_boot = map2_dbl(
       boot_data, cox_boot,
       ~ timeROC(
@@ -109,12 +178,14 @@ bootstrap_cv <- function(db, B = 10,
         iid = FALSE
       )$AUC[[2]]
     ),
+    
     AUC_diff = map2_dbl(
       AUC_boot, AUC_orig,
       function(a, b) {
         a - b
       }
     ),
+    
     Score_app = map2(
       orig_data, cox_apparent,
       ~ Score(list("Cox" = .y),
@@ -125,6 +196,7 @@ bootstrap_cv <- function(db, B = 10,
         summary = "ipa"
       )$Brier[[1]]
     ),
+    
     Brier_app = map_dbl(Score_app, ~ .x$Brier[[2]]),
     IPA_app = map_dbl(Score_app, ~ .x$IPA[[2]]),
     Score_orig = map2(
@@ -137,6 +209,7 @@ bootstrap_cv <- function(db, B = 10,
         summary = "ipa"
       )$Brier[[1]]
     ),
+    
     Brier_orig = map_dbl(Score_orig, ~ .x$Brier[[2]]),
     IPA_orig = map_dbl(Score_orig, ~ .x$IPA[[2]]),
     Score_boot = map2(
@@ -149,6 +222,7 @@ bootstrap_cv <- function(db, B = 10,
         summary = "ipa"
       )$Brier[[1]]
     ),
+    
     Brier_boot = map_dbl(Score_boot, ~ .x$Brier[[2]]),
     IPA_boot = map_dbl(Score_boot, ~ .x$IPA[[2]]),
     Brier_diff = map2_dbl(
@@ -157,6 +231,7 @@ bootstrap_cv <- function(db, B = 10,
         a - b
       }
     ),
+    
     IPA_diff = map2_dbl(
       IPA_boot, IPA_orig,
       function(a, b) {
@@ -169,7 +244,12 @@ bootstrap_cv <- function(db, B = 10,
   AUC_corrected <- b$AUC_app[1] - mean(b$AUC_diff)
   Brier_corrected <- b$Brier_app[1] - mean(b$Brier_diff)
   IPA_corrected <- b$IPA_app[1] - mean(b$IPA_diff)
-  res <- c(AUC_corrected, Brier_corrected, IPA_corrected)
-  names(res) <- c("AUC corrected", "Brier corrected", "IPA corrected")
+  Harrell_C_corrected <- b$Harrell_C_app[1] - mean(b$Harrell_C_diff)
+  Uno_C_corrected <- b$Uno_C_app[1] - mean(b$Uno_C_diff)
+  res <- c("AUC corrected" = AUC_corrected, 
+           "Brier corrected" = Brier_corrected, 
+           "IPA corrected" = IPA_corrected, 
+           "Harrell C corrected" = Harrell_C_corrected,
+           "Uno C corrected" = Uno_C_corrected)
   return(res)
 }
