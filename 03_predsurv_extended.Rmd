@@ -4,7 +4,7 @@ always_allow_html: true
 output: 
   github_document:
     toc: true
-    toc_depth: 4
+    toc_depth: 5
   keep_text: true
   pandoc_args: --webtex
 ---
@@ -880,6 +880,7 @@ kable(res_AUC) %>%
 
 ```
 
+NOTE: add brief comments concordance
 The time-dependent AUCs at 5 years were in the external validation were between 0.68 and 0.72 showing moderate discrimination. The additional information of the PGR marker increased the discrimination by 0.04.
 
 The discrimination ability may be evaluated over the time since diagnosis through a plot showing the AUC over the time (years) in the development and validation set in the basic and extended model. Since the calculation of the AUC and the standard errors in the development set is computationally demanding, we showed only the plot in the validation data. However, we provided the R code (as a comment) for the development data.
@@ -998,43 +999,41 @@ The discrimination performance is higher in the extended model compared to the m
 ### 2.3 Calibration
 Calibration is the agreement between observed outcomes and predicted probabilities.
 For example, in survival models, a predicted survival probability at a fixed time horizon _t_ of 80% is considered reliable if it can be expected that 80 out of 100 will survive among patients received a predicted survival probability of 80%.
+Calibration can be assessed at a fixed time point (e.g. at 5 years), and globally (considering the entire range of the data).
+In addition, different level of calibration assessment can be estimated according to the level of information available in the data. 
 
-Calibration is measured by:
+At a fixed time point t, mean calibration can be assessed using:
++ globally: considering the entire range of the data;
 
-+ Calibration in-the-large: lower or higher than zero indicates that prediction is systematically too high or low, respectively;
+Since different level of information may be available, different level of calibration can be estimated:  mean, weak, and moderate calibration.
+
++ Mean calibration can be estimated:  
+
+  + at a fixed time point:
+    + using the Observed and Expected ratio at time t;  
+    + using the difference between the log cumulative hazard from Cox model        with cloglog transformation of predicted probabilities as offset and         the mean of cloglog transformation.  
+    
+  + global:  
+    + using the exponential of Poisson model intercept, exp(a)=(O/E), with         log of cumulative hazard as offset.  
+
++ Weak calibration can be estimated:
+  + at a fixed time point  
+    + using slope as the coefficient of cloglog transformation of             predicted probabilities in Cox model. Possible to determine intercept        after adjusting for slope.   
+    
+  + global:  
+    + using slope as the coefficient of PI in Poisson model with log of            baseline cumulative hazard as offset.  
+
++ Moderate calibration can estimated:
+  + at a fixed time point:  
+    + using flexible calibration curve, complemented with ICI, E50, E90.  
+
+  + global: 
+    + using flexible calibration curve (requires development dataset or            baseline hazard at multiple time points).  
+
   
-+ Calibration slope: below (above) 1.0 indicate over (under) estimation of risk by the model;
-  
-+ Calibration plot: it is a graphical representation of calibration in-the-large and calibration. It shows:
-      
-  + on the *x-axis* the predicted survival (or risk) probabilities at a fixed time horizon (e.g. at 5 years);
-      
-  + on the *y-axis* the observed survival (or risk) probabilities at a fixed time horizon (e.g. at 5 years);
-      
-  + The 45-degree line indicates the good overall calibration. 
-      Points below the 45-degree line indicates that the model overestimate the observed risk. 
-      If points are above the 45-degree line, the model underestimate the observed risk;
-      The observed probabilities estimated by the Kaplan-Meier curves (in case of survival) or by the complementary of the Kaplan-Meier curves (in case of risk in absence of competing risks) are represented in terms of percentiles of the predicted survival (risk) probabilities.
-      
-+ Integrated Calibration Index (ICI): it is the weighted difference between smoothed observed proportions and predicted probabilities
-in which observations are weighted by the empirical density function of the predicted probabilities;  
 
-+ E50, E90 and Emax denote the median, the 90th percentile and the maximum absolute difference between observed and predicted probabilities of the outcome at time *t*;  
-
-+ Kaplan-Meier curves may be used as calibration assessment when the baseline hazard function is not reported and a development paper reported only Kaplan-Meier curves for risk groups of the predictor index (PI). The PI is the combination of the coefficients estimated in the development data multiplied by the predictors in the validation data. Basically, if the survival curves for risk groups agree well visually between development and validation data, then good calibration may be implied. However, this is not strict comparison between observed and predicted values since a model-based approach was not used;  
-
-When individual data information are both available for the development and the validation set, all calibration measures can be calculated and reported.  
-When model equation of survival at a specific time horizon *t* is provided including the baseline hazard (or survival) and the coefficients,
-calibration-in-the-large can be calculated as the ratio between the observed and the expected number of events at time *t* (known as OE ratio). Calibration slope, calibration plot, ICI, E50, E90 and Emax may be also calculated and reported.    
-The calibration plot, ICI, E50, E90, Emax may be evaluated using different technique as restricted cubic splines or hazard regression. Here we show the calibration plots and the calibration measures using the restricted cubic splines technique. For hazard regression, please see the references at the end of the document.
-
-#### 2.3.1 Calibration-in-the-large and calibration slope
-Mean calibration (known also as calibration-in-the-large) requires the log of the baseline hazards to be calculated. However,
-a Cox regression model does not allow its direct estimation because it does not provide a model intercept (i.e. the log baseline hazard).  
-Recently, it was proposed to use a Poisson model for estimation of calibration-in-the-large  and calibration slope in the external dataset (Crowson et al, 2016). Briefly, a Cox model with pre-fixed baseline hazard is exactly equivalent to a Poisson regression. In addition, the likelihood of survival models is proportional to the likelihood of the Poisson models. More details are provided in the book 'Dynamic prediction in clinical survival analysis' (Hans van Houwelingen & Hein Putter, 2011), chapter 4 pages 57-69.  
-We calculate the log of the cumulative hazard for each patient in the external dataset and enter this variable as an offset in a Poisson model (i.e. its coefficient = 1). The intercept of the model represents the calibration-in-the-large with an ideal value of 0.
-In summary, calibration in-the-large indicates if prediction is systematically too high or low and calibration slope indicates (over/under)estimation of risk by the model;
-  
+#### 2.3.1 Mean calibration
+Please add some explanations. 
 
 ```{r, cal, message=FALSE, warning=FALSE}
 # Apparent calibration measures (calibration in-the-large and calibration slope) without pgr
