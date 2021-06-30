@@ -467,6 +467,7 @@ gbsg5_boot <- gbsg5_boot %>% mutate(
 
 ```{r, int_val, echo=FALSE, warning=FALSE}
 source(here::here('Functions/internal_cv.R'))
+# See legend of the argument in the Functions folder
 ```
 
 ```{r, int_val_calc, echo=FALSE, warning=FALSE}
@@ -478,7 +479,7 @@ efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
 efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
 
 int_val <- bootstrap_cv(db = rott5, 
-                        B = 50,
+                        B = 10,
                         time = "ryear",
                         status = "rfs",
                         formula_model = "Surv(ryear, rfs) ~ csize + 
@@ -552,9 +553,12 @@ res_ov <- matrix(unlist(c(
   quantile(gbsg5_boot$IPA_pgr, probs = alpha / 2),
   quantile(gbsg5_boot$IPA_pgr, probs = 1 - alpha / 2)
 )),
-nrow = 2, ncol = 18, byrow = T, dimnames = list(
-  c("Brier", "IPA"),
-  rep(c("Estimate", "Lower .95 ", "Upper .95"), 6)
+  nrow = 2, 
+  ncol = 18, 
+  byrow = T, 
+  dimnames = list(
+    c("Brier", "IPA"),
+    rep(c("Estimate", "Lower .95 ", "Upper .95"), 6)
 )
 )
 
@@ -636,76 +640,179 @@ harrell_C_gbsg5_pgr <- concordance(Surv(ryear, rfs) ~ lp_pgr,
                                gbsg5, 
                                reverse = TRUE)
 
-# Uno's C
+# Uno's C - development
+Uno_C_rott5 <- concordance(Surv(ryear, rfs) ~ lp, 
+                           rott5, 
+                           reverse = TRUE,
+                           timewt = "n/G2")
+
+Uno_C_rott5_pgr <- concordance(Surv(ryear, rfs) ~ lp_pgr, 
+                           rott5, 
+                           reverse = TRUE,
+                           timewt = "n/G2")
+
+# Uno's C - validation
 Uno_C_gbsg5 <- concordance(Surv(ryear, rfs) ~ lp, 
+                           gbsg5, 
+                           reverse = TRUE,
+                           timewt = "n/G2")
+
+Uno_C_gbsg5_pgr <- concordance(Surv(ryear, rfs) ~ lp_pgr, 
                            gbsg5, 
                            reverse = TRUE,
                            timewt = "n/G2")
 
 ```
 
+
+
 ```{r, res_UnoC,echo=FALSE,include=FALSE,eval=FALSE}
 alpha <- .05
 k <- 2
-res_unoC <- matrix(c(
-  UnoC_rdata1,
-  quantile(eboot$UnoC1, probs = alpha / 2),
-  quantile(eboot$UnoC1, probs = 1 - alpha / 2),
-  UnoC_rdata1b,
-  quantile(eboot$UnoC1b, probs = alpha / 2),
-  quantile(eboot$UnoC1b, probs = 1 - alpha / 2),
-  UnoC_vdata1,
-  quantile(vboot$UnoC1, probs = alpha / 2),
-  quantile(vboot$UnoC1, probs = 1 - alpha / 2),
-  UnoC_vdata1b,
-  quantile(vboot$UnoC1b, probs = alpha / 2),
-  quantile(vboot$UnoC1b, probs = 1 - alpha / 2),
-  nrow = 1, ncol = 12, byrow = T,
+res_C <- matrix(c(
+  harrell_C_rott5$concordance,
+  harrell_C_rott5$concordance - 
+    qnorm(1 - alpha / 2) * sqrt(harrell_C_rott5$var) ,
+  harrell_C_rott5$concordance + 
+    qnorm(1 - alpha / 2) * sqrt(harrell_C_rott5$var),
+  
+  int_val["Harrell C corrected"],
+  NA,
+  NA,
+  
+  harrell_C_rott5_pgr$concordance,
+  harrell_C_rott5_pgr$concordance - 
+    qnorm(1 - alpha / 2) * sqrt(harrell_C_rott5_pgr$var) ,
+  harrell_C_rott5_pgr$concordance + 
+    qnorm(1 - alpha / 2) * sqrt(harrell_C_rott5_pgr$var),
+  
+  int_val_pgr["Harrell C corrected"],
+  NA,
+  NA,
+  
+  harrell_C_gbsg5$concordance,
+  harrell_C_gbsg5$concordance - 
+    qnorm(1 - alpha / 2) * sqrt(harrell_C_gbsg5$var) ,
+  harrell_C_gbsg5$concordance + 
+    qnorm(1 - alpha / 2) * sqrt(harrell_C_gbsg5$var),
+  
+  harrell_C_gbsg5_pgr$concordance,
+  harrell_C_gbsg5_pgr$concordance - 
+    qnorm(1 - alpha / 2) * sqrt(harrell_C_gbsg5_pgr$var) ,
+  harrell_C_gbsg5_pgr$concordance + 
+    qnorm(1 - alpha / 2) * sqrt(harrell_C_gbsg5_pgr$var),
+  
+  Uno_C_rott5$concordance,
+  harrell_C_rott5$concordance - 
+    qnorm(1 - alpha / 2) * sqrt(harrell_C_rott5$var) ,
+  harrell_C_rott5$concordance + 
+    qnorm(1 - alpha / 2) * sqrt(harrell_C_rott5$var),
+  
+  int_val["Harrell C corrected"],
+  NA,
+  NA,
+  
+  Uno_C_rott5_pgr$concordance,
+  Uno_C_rott5_pgr$concordance - 
+    qnorm(1 - alpha / 2) * sqrt(Uno_C_rott5_pgr$var) ,
+  Uno_C_rott5_pgr$concordance + 
+    qnorm(1 - alpha / 2) * sqrt(Uno_C_rott5_pgr$var),
+  
+  int_val_pgr["Uno C corrected"],
+  NA,
+  NA,
+  
+ 
+  Uno_C_gbsg5$concordance,
+  Uno_C_gbsg5$concordance - 
+    qnorm(1 - alpha / 2) * sqrt(Uno_C_gbsg5$var) ,
+  Uno_C_gbsg5$concordance + 
+    qnorm(1 - alpha / 2) * sqrt(Uno_C_gbsg5$var),
+  
+  Uno_C_gbsg5_pgr$concordance,
+  Uno_C_gbsg5_pgr$concordance - 
+    qnorm(1 - alpha / 2) * sqrt(Uno_C_gbsg5_pgr$var) ,
+  Uno_C_gbsg5_pgr$concordance + 
+    qnorm(1 - alpha / 2) * sqrt(Uno_C_gbsg5_pgr$var)
+),
+  
+  nrow = 2,
+  ncol = 18,
+  byrow = T,
+  
   dimnames = list(
-    c("Uno C"),
-    rep(c("Estimate", "Lower .95 ", "Upper .95"), 4)
+    c("Harrell C", "Uno C"),
+    rep(c("Estimate", "Lower .95 ", "Upper .95"), 6)
   )
-))
+)
+
+res_C <- round(res_C, 2) # Digits
+kable(res_C) %>%
+  kable_styling("striped", position = "center") %>%
+  add_header_above(c(" " = 1, 
+                     "Apparent" = 3, 
+                     "Internal" = 3, 
+                     "Apparent + PGR" = 3, 
+                     "Internal + PGR" = 3, 
+                     "External" = 3, 
+                     "External + PGR" = 3))
 ```
 
 
 ```{r, AUC, message=FALSE, warning=FALSE}
 
+# Models 
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
+  data = rott5, x = T, y = T
+)
+# Additional marker
+efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
+
 # Time-dependent AUC (in Table 3 called Uno's TD AUC at 5 years) ###
 # Uno's time-dependent Area Under the Curve
-# Apparent
-Uno_rdata1 <-
+# Development
+Uno_rott5 <-
   timeROC(
-    T = edata1$ryear, delta = edata1$status,
-    marker = predict(efit1, newdata = edata1),
-    cause = 1, weighting = "marginal", times = 4.95,
+    T = rott5$ryear, 
+    delta = rott5$rfs,
+    marker = predict(efit1, newdata = rott5),
+    cause = 1, 
+    weighting = "marginal", 
+    times = 4.95,
     iid = TRUE
   )
 
-# External validation
-Uno_vdata1 <-
+Uno_rott5_pgr <-
   timeROC(
-    T = evdata1$ryear, delta = evdata1$status,
-    marker = predict(efit1, newdata = evdata1),
-    cause = 1, weighting = "marginal", times = 4.95,
+    T = rott5$ryear, 
+    delta = rott5$rfs,
+    marker = predict(efit1_pgr, newdata = rott5),
+    cause = 1, 
+    weighting = "marginal", 
+    times = 4.95,
     iid = TRUE
   )
 
-# Apparent with pgr
-Uno_rdata1b <-
+# Validation
+Uno_gbsg5 <-
   timeROC(
-    T = edata1$ryear, delta = edata1$status,
-    marker = predict(efit1b, newdata = edata1),
-    cause = 1, weighting = "marginal", times = 4.95,
+    T = gbsg5$ryear, 
+    delta = gbsg5$rfs,
+    marker = predict(efit1, newdata = gbsg5),
+    cause = 1, 
+    weighting = "marginal", 
+    times = 4.95,
     iid = TRUE
   )
 
-# External validation with pgr
-Uno_vdata1b <-
+Uno_gbsg5_pgr <-
   timeROC(
-    T = evdata1$ryear, delta = evdata1$status,
-    marker = predict(efit1b, newdata = evdata1),
-    cause = 1, weighting = "marginal", times = 4.95,
+    T = gbsg5$ryear, 
+    delta = gbsg5$rfs,
+    marker = predict(efit1_pgr, newdata = gbsg5),
+    cause = 1, 
+    weighting = "marginal", 
+    times = 4.95,
     iid = TRUE
   )
 # NOTE: if you have a lot of data n > 2000, standard error computation may be really long.
@@ -716,51 +823,61 @@ Uno_vdata1b <-
 # Save results
 alpha <- .05
 k <- 2
-res_discr <- matrix(c(
-  c_rdata1,
-  quantile(eboot$c1, probs = alpha / 2),
-  quantile(eboot$c1, probs = 1 - alpha / 2),
-  c_rdata1b,
-  quantile(eboot$c1b, probs = alpha / 2),
-  quantile(eboot$c1b, probs = 1 - alpha / 2),
-  c_vdata1,
-  quantile(vboot$c1, probs = alpha / 2),
-  quantile(vboot$c1, probs = 1 - alpha / 2),
-  c_vdata1b,
-  quantile(vboot$c1b, probs = alpha / 2),
-  quantile(vboot$c1b, probs = 1 - alpha / 2),
-  Uno_rdata1$AUC["t=4.95"],
-  Uno_rdata1$AUC["t=4.95"] -
-    qnorm(1 - alpha / 2) * Uno_rdata1$inference$vect_sd_1["t=4.95"],
-  Uno_rdata1$AUC["t=4.95"] +
-    qnorm(1 - alpha / 2) * Uno_rdata1$inference$vect_sd_1["t=4.95"],
-  Uno_rdata1b$AUC["t=4.95"],
-  Uno_rdata1b$AUC["t=4.95"] -
-    qnorm(1 - alpha / 2) * Uno_rdata1b$inference$vect_sd_1["t=4.95"],
-  Uno_rdata1b$AUC["t=4.95"] +
-    qnorm(1 - alpha / 2) * Uno_rdata1b$inference$vect_sd_1["t=4.95"],
-  Uno_vdata1$AUC["t=4.95"],
-  Uno_vdata1$AUC["t=4.95"] -
-    qnorm(1 - alpha / 2) * Uno_vdata1$inference$vect_sd_1["t=4.95"],
-  Uno_vdata1$AUC["t=4.95"] +
-    qnorm(1 - alpha / 2) * Uno_vdata1$inference$vect_sd_1["t=4.95"],
-  Uno_vdata1b$AUC["t=4.95"],
-  Uno_vdata1b$AUC["t=4.95"] -
-    qnorm(1 - alpha / 2) * Uno_vdata1b$inference$vect_sd_1["t=4.95"],
-  Uno_vdata1b$AUC["t=4.95"] +
-    qnorm(1 - alpha / 2) * Uno_vdata1b$inference$vect_sd_1["t=4.95"]
+res_AUC <- matrix(c(
+ 
+  Uno_rott5$AUC["t=4.95"],
+  Uno_rott5$AUC["t=4.95"] -
+    qnorm(1 - alpha / 2) * Uno_rott5$inference$vect_sd_1["t=4.95"],
+  Uno_rott5$AUC["t=4.95"] +
+    qnorm(1 - alpha / 2) * Uno_rott5$inference$vect_sd_1["t=4.95"],
+  
+  int_val["AUC corrected"],
+  NA,
+  NA,
+  
+  Uno_rott5_pgr$AUC["t=4.95"],
+  Uno_rott5_pgr$AUC["t=4.95"] -
+    qnorm(1 - alpha / 2) * Uno_rott5_pgr$inference$vect_sd_1["t=4.95"],
+  Uno_rott5_pgr$AUC["t=4.95"] +
+    qnorm(1 - alpha / 2) * Uno_rott5_pgr$inference$vect_sd_1["t=4.95"],
+  
+  int_val_pgr["AUC corrected"],
+  NA,
+  NA,
+  
+  Uno_gbsg5$AUC["t=4.95"],
+  Uno_gbsg5$AUC["t=4.95"] -
+    qnorm(1 - alpha / 2) * Uno_gbsg5$inference$vect_sd_1["t=4.95"],
+  Uno_gbsg5$AUC["t=4.95"] +
+    qnorm(1 - alpha / 2) * Uno_gbsg5$inference$vect_sd_1["t=4.95"],
+  
+  Uno_gbsg5_pgr$AUC["t=4.95"],
+  Uno_gbsg5_pgr$AUC["t=4.95"] -
+    qnorm(1 - alpha / 2) * Uno_gbsg5_pgr$inference$vect_sd_1["t=4.95"],
+  Uno_gbsg5_pgr$AUC["t=4.95"] +
+    qnorm(1 - alpha / 2) * Uno_gbsg5_pgr$inference$vect_sd_1["t=4.95"]
 ),
-nrow = 2, ncol = 12, byrow = T,
-dimnames = list(
-  c("Gerds C", "Uno AUC"),
-  rep(c("Estimate", "Lower .95 ", "Upper .95"), 4)
-)
-)
 
-res_discr <- round(res_discr, k)
-kable(res_discr) %>%
+  nrow = 1, 
+  ncol = 18, 
+  byrow = T,
+
+  dimnames = list(
+    c("Uno AUC"),
+    rep(c("Estimate", "Lower .95 ", "Upper .95"), 6)
+)
+)
+res_AUC <- round(res_AUC, 2) # Digits
+kable(res_AUC) %>%
   kable_styling("striped", position = "center") %>%
-  add_header_above(c(" " = 1, "Apparent" = 3, "Apparent + PGR" = 3, "External" = 3, "External + PGR" = 3))
+  add_header_above(c(" " = 1, 
+                     "Apparent" = 3, 
+                     "Internal" = 3, 
+                     "Apparent + PGR" = 3, 
+                     "Internal + PGR" = 3, 
+                     "External" = 3, 
+                     "External + PGR" = 3))
+
 ```
 
 The time-dependent AUCs at 5 years were in the external validation were between 0.68 and 0.72 showing moderate discrimination. The additional information of the PGR marker increased the discrimination by 0.04.
@@ -768,97 +885,112 @@ The time-dependent AUCs at 5 years were in the external validation were between 
 The discrimination ability may be evaluated over the time since diagnosis through a plot showing the AUC over the time (years) in the development and validation set in the basic and extended model. Since the calculation of the AUC and the standard errors in the development set is computationally demanding, we showed only the plot in the validation data. However, we provided the R code (as a comment) for the development data.
 
 ```{r, plotAUC, fig.align='center'}
+
+# Models 
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
+  data = rott5, x = T, y = T
+)
+# Additional marker
+efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
+
 # NOTE: it takes long time to be computed
 # Apparent without PGR
-# AUC_apparent_model1<-
-#    timeROC(T=rdata$ryear, delta=rdata$status,
-#            marker=predict(efit1,newdata=rdata),
+# AUC_rott5<-
+#    timeROC(T=rott5$ryear, 
+#            delta=rott5$rfs,
+#            marker=predict(efit1,newdata=rott5),
 #            cause=1,weighting='marginal',
-#            times=quantile(rdata$ryear,probs=seq(0.01,0.85,0.02)),
+#            times=quantile(rott5$ryear,probs=seq(0.01,0.85,0.02)),
 #           iid=TRUE)
-# saveRDS(AUC_apparent_model1,file='AUC_apparent_model1.rds')
 
 # Apparent with PGR
-# AUC_apparent_model1b<-
-#    timeROC(T=rdata$ryear, delta=rdata$status,
-#           marker=predict(efit1b,newdata=rdata),
-#           cause=1,weighting='marginal',
-#           times=quantile(rdata$ryear,probs=seq(0.01,0.85,0.02)),
-#           iid=TRUE)
-# saveRDS(AUC_apparent_model1b,file='AUC_apparent_model1b.rds')
+# AUC_rott5_pgr <-
+#    timeROC(T=rott5$ryear, 
+#            delta=rott5$rfs,
+#            marker=predict(efit1_pgr,newdata=rott5),
+#            cause=1,weighting='marginal',
+#            times=quantile(rott5$ryear,probs=seq(0.01,0.85,0.02)),
+#            iid=TRUE)
 
 # Validation without PGR
-AUC_val_model1 <-
+AUC_gbsg5 <-
   timeROC(
-    T = evdata1$ryear, delta = evdata1$status,
-    marker = predict(efit1, newdata = evdata1),
+    T = gbsg5$ryear, 
+    delta = gbsg5$rfs,
+    marker = predict(efit1, newdata = gbsg5),
     cause = 1, weighting = "marginal",
-    times = quantile(evdata1$ryear, probs = seq(0.02, 0.82, 0.02)),
+    times = quantile(gbsg5$ryear, probs = seq(0.02, 0.82, 0.02)),
     iid = TRUE
   )
 
 # Validation with PGR
-AUC_val_model1b <-
+AUC_gbsg5_pgr <-
   timeROC(
-    T = evdata1$ryear, delta = evdata1$status,
-    marker = predict(efit1b, newdata = evdata1),
+    T = gbsg5$ryear, 
+    delta = gbsg5$rfs,
+    marker = predict(efit1_pgr, newdata = gbsg5),
     cause = 1, weighting = "marginal",
-    times = quantile(evdata1$ryear, probs = seq(0.02, 0.82, 0.02)),
+    times = quantile(gbsg5$ryear, probs = seq(0.02, 0.82, 0.02)),
     iid = TRUE
   )
 
-# saveRDS(AUC_apparent_model2,file='AUC_apparent_model2.rds')
 
 # Calculate the confidence intervals
-# AUC_apparent_model1$lower<-AUC_apparent_model1$AUC-qnorm(0.975)*AUC_apparent_model1$inference$vect_sd_1
-# AUC_apparent_model1$upper<-AUC_apparent_model1$AUC+qnorm(0.975)*AUC_apparent_model1$inference$vect_sd_1
+# AUC_rott5$lower <- AUC_rott5$AUC - qnorm(0.975) * AUC_rott5$inference$vect_sd_1
+# AUC_rott5$upper <- AUC_rott5$AUC + qnorm(0.975) * AUC_rott5$inference$vect_sd_1
 #
-# AUC_apparent_model1b$lower<-AUC_apparent_model1b$AUC-qnorm(0.975)*AUC_apparent_model1b$inference$vect_sd_1
-# AUC_apparent_model1b$upper<-AUC_apparent_model1b$AUC+qnorm(0.975)*AUC_apparent_model1b$inference$vect_sd_1
+# AUC_rott5_pgr$lower <- AUC_rott5_pgr$AUC - qnorm(0.975)*AUC_rott5_pgr$inference$vect_sd_1
+# AUC_rott5_pgr$upper <- AUC_rott5_pgr$AUC + qnorm(0.975) * AUC_rott5_pgr$inference$vect_sd_1
 
-AUC_val_model1$lower <- AUC_val_model1$AUC - qnorm(0.975) * AUC_val_model1$inference$vect_sd_1
-AUC_val_model1$upper <- AUC_val_model1$AUC + qnorm(0.975) * AUC_val_model1$inference$vect_sd_1
+AUC_gbsg5$lower <- AUC_gbsg5$AUC - qnorm(0.975) * AUC_gbsg5$inference$vect_sd_1
+AUC_gbsg5$upper <- AUC_gbsg5$AUC + qnorm(0.975) * AUC_gbsg5$inference$vect_sd_1
 
-AUC_val_model1b$lower <- AUC_val_model1b$AUC - qnorm(0.975) * AUC_val_model1b$inference$vect_sd_1
-AUC_val_model1b$upper <- AUC_val_model1b$AUC + qnorm(0.975) * AUC_val_model1b$inference$vect_sd_1
+AUC_gbsg5_pgr$lower <- AUC_gbsg5_pgr$AUC - qnorm(0.975) * AUC_gbsg5_pgr$inference$vect_sd_1
+AUC_gbsg5_pgr$upper <- AUC_gbsg5_pgr$AUC + qnorm(0.975) * AUC_gbsg5_pgr$inference$vect_sd_1
 
-# par(las=1,xaxs='i',yaxs='i')
-# plot(AUC_apparent_model1$times,AUC_apparent_model1$AUC,type='l',bty='n',
-#      xlim=c(0,10),ylim=c(0,1),lwd=2,xlab='Time (years)',ylab='AUC',lty=2)
-# polygon(c(AUC_apparent_model1$times,rev(AUC_apparent_model1$times)),
-#         c(AUC_apparent_model1$lower,rev(AUC_apparent_model1$upper)),
-#         col = rgb(160,160,160,maxColorValue = 255,alpha=100),
-#         border = FALSE)
-# lines(AUC_apparent_model1$times,AUC_apparent_model1$AUC,col='black',lwd=2, lty=2)
-# polygon(c(AUC_apparent_model1b$times,rev(AUC_apparent_model1b$times)),
-#         c(AUC_apparent_model1b$lower,rev(AUC_apparent_model1b$upper)),
-#         col = rgb(96,96,96,maxColorValue = 255,alpha=100),
-#         border = FALSE)
-# lines(AUC_apparent_model1b$times,AUC_apparent_model1b$AUC,col='black',lwd=2,lty=1)
-# abline(h=0.5)
-# legend('bottomright',c('NPI','NPI + PGR'), lwd=2,lty=c(2,1),bty='n')
-# title('A Development data (n=2982)', adj=0)
 
 par(las = 1, xaxs = "i", yaxs = "i")
-plot(AUC_val_model1$times, AUC_val_model1$AUC,
-  type = "l", bty = "n",
-  xlim = c(0, 5), ylim = c(0, 1), lwd = 2, xlab = "Time (years)", ylab = "AUC", lty = 2
+plot(AUC_gbsg5$times, 
+     AUC_gbsg5$AUC,
+     type = "l", 
+     bty = "n",
+     xlim = c(0, 5), 
+     ylim = c(0, 1), 
+     lwd = 2, 
+     xlab = "Time (years)", 
+     ylab = "AUC", 
+     lty = 2
 )
-polygon(c(AUC_val_model1$times, rev(AUC_val_model1$times)),
-  c(AUC_val_model1$lower, rev(AUC_val_model1$upper)),
+polygon(c(AUC_gbsg5$times, 
+          rev(AUC_gbsg5$times)),
+        c(AUC_gbsg5$lower, 
+          rev(AUC_gbsg5$upper)),
   col = rgb(160, 160, 160, maxColorValue = 255, alpha = 100),
   border = FALSE
 )
-lines(AUC_val_model1$times, AUC_val_model1$AUC, col = "black", lwd = 2, lty = 2)
-polygon(c(AUC_val_model1b$times, rev(AUC_val_model1b$times)),
-  c(AUC_val_model1b$lower, rev(AUC_val_model1b$upper)),
+lines(AUC_gbsg5$times, 
+      AUC_gbsg5$AUC, 
+      col = "black", 
+      lwd = 2, 
+      lty = 2)
+polygon(c(AUC_gbsg5_pgr$times, 
+          rev(AUC_gbsg5_pgr$times)),
+  c(AUC_gbsg5_pgr$lower, 
+    rev(AUC_gbsg5_pgr$upper)),
   col = rgb(96, 96, 96, maxColorValue = 255, alpha = 100),
   border = FALSE
 )
-lines(AUC_val_model1b$times, AUC_val_model1b$AUC, col = "black", lwd = 2, lty = 1)
+lines(AUC_gbsg5_pgr$times, 
+      AUC_gbsg5_pgr$AUC, 
+      col = "black", 
+      lwd = 2, 
+      lty = 1)
 abline(h = 0.5)
-legend("bottomright", c("Original model", "Original model + PGR"), lwd = 2, lty = c(2, 1), bty = "n")
-title("B External data (n=686)", adj = 0)
+legend("bottomright", 
+       c("Original model", "Original model + PGR"), 
+       lwd = 2, lty = c(2, 1), 
+       bty = "n")
+title("B GBSG data (n=686)", adj = 0)
 ```
 
 The discrimination performance is higher in the extended model compared to the model without PGR over the entire follow-up.
