@@ -880,7 +880,7 @@ kable(res_AUC) %>%
 
 ```
 
-NOTE: add brief comments concordance
+NOTE: add brief comments about concordance
 The time-dependent AUCs at 5 years were in the external validation were between 0.68 and 0.72 showing moderate discrimination. The additional information of the PGR marker increased the discrimination by 0.04.
 
 The discrimination ability may be evaluated over the time since diagnosis through a plot showing the AUC over the time (years) in the development and validation set in the basic and extended model. Since the calculation of the AUC and the standard errors in the development set is computationally demanding, we showed only the plot in the validation data. However, we provided the R code (as a comment) for the development data.
@@ -1030,10 +1030,11 @@ Since different level of information may be available, different level of calibr
   + global: 
     + using flexible calibration curve (requires development dataset or            baseline hazard at multiple time points).  
 
+More detailed explanations are available in the paper.
   
-
 #### 2.3.1 Mean calibration
-Please add some explanations. 
+##### 2.3.1.1  Mean calibration - fixed time point
+
 
 ```{r, cal, message=FALSE, warning=FALSE}
 # Apparent calibration measures (calibration in-the-large and calibration slope) without pgr
