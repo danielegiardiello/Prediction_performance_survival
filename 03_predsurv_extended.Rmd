@@ -1075,13 +1075,15 @@ f.val.offset.pgr <- coxph(Surv(gbsg5$ryear, gbsg5$rfs) ~ offset(lp.val_pgr))
 sf <- survfit(f.val.offset, conf.type = "log-log") 
 sf_pgr <- survfit(f.val.offset.pgr, conf.type = "log-log") 
 log.H <- log(-log(tail(sf$surv[sf$time == horizon], 1)))  
-log.H_pgr <- log(-log(tail(sf_pgr$surv[sf$time == horizon], 1)))  
+log.H.upper <- log(-log(tail(sf$upper,1)))
+log.H_pgr <- log(-log(tail(sf_pgr$surv[sf$time == horizon], 1)))
+log.H.upper_pgr <- log(-log(tail(sf_pgr$upper,1)))
 
 int <- log.H - mean(lp.val)  
 int.se <- (log.H - log.H.upper)/qnorm(.975)
 
 int_pgr <- log.H_pgr - mean(lp.val_pgr)  
-int.se_pgr <- (log.H_pgr - log.H.upper)/qnorm(.975)
+int.se_pgr <- (log.H_pgr - log.H.upper_pgr)/qnorm(.975)
 ```
 
 ```{r, res_OE, message=FALSE, warning=FALSE, echo=FALSE}
@@ -1141,14 +1143,14 @@ lp5_pgr <- predict(efit1_pgr, newdata = gbsg5, type = "lp")
 pfit1 <- glm(rfs ~ offset(log(p)), 
              family = poisson, 
              data = gbsg5,
-             subset = (expect5 > 0))
+             subset = (p > 0))
 logbase <- p - lp5
 
 # With pgr
 pfit1_pgr <- glm(rfs ~ offset(log(p_pgr)), 
              family = poisson, 
              data = gbsg5,
-             subset = (expect5 > 0))
+             subset = (p > 0))
 logbase_pgr <- p_pgr - lp5_pgr
 
 
@@ -1160,7 +1162,7 @@ int_summary_pgr <- summary(pfit1_pgr)$coefficients
 # summary(pfit2)
 ```
 
-```{r, res_Poisson, echo=FALSE,message=FALSE,warning=FALSE}
+```{r, res_Poisson_int, echo=FALSE,message=FALSE,warning=FALSE}
 alpha <- 0.05
 res_cal <- matrix(c(
     int_summary[1],
@@ -1239,7 +1241,7 @@ slope.se_pgr <- sqrt(vcov(f.val_pgr)[[1, 1]])
 # int.se <- (log.H-log.H.upper)/qnorm(.975)
 ```
 
-```{r, res_OE, message=FALSE, warning=FALSE, echo=FALSE}
+```{r, res_cal, message=FALSE, warning=FALSE, echo=FALSE}
 alpha <- 0.05
 res_cal <- matrix(c(
                 slope,
@@ -1478,7 +1480,8 @@ plot(
   ylim = c(0, 1), 
   lwd = 2,
   xlab = "Predicted probability",
-  ylab = "Observed probability", bty = "n"
+  ylab = "Observed probability", 
+  bty = "n"
 )
 lines(dat_cal$pred_pgr, 
       dat_cal$lower_pgr, 
