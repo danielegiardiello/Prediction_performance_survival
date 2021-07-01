@@ -1038,6 +1038,13 @@ The observed is estimated using the complementary of the Kaplan-Meier curve at t
 The expected is estimated using the average predicted risk of the event at the fixed time point.
 
 ```{r, mean_cal_t, message=FALSE, warning=FALSE}
+# Models 
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
+  data = rott5, x = T, y = T
+)
+# Additional marker
+efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
+
 ##  Observed / Expected ratio at time t ------------
 # Observed: 1-Kaplan Meier at time (t)
 horizon <- 5
@@ -1057,16 +1064,25 @@ OE <- (1 - obj$surv) / mean(pred)
 OE_pgr <- (1 - obj$surv) / mean(pred_pgr)
 
 
-## Difference between the log cumulative hazard from Cox model with cloglog transformation of predicted probabilities as offset and the mean of cloglog transformation
+## Difference between the log cumulative hazard from Cox model with cloglog transformation of predicted probabilities as offset and the mean of cloglog transformation ------------------
 # NOTE: to be discussed if it is really needed
 
 lp.val <- log(-log(1 - pred))   # lp = cloglog
+lp.val_pgr <- log(-log(1 - pred_pgr)) 
 center <- mean(lp.val)  # center
+center_pgr <- mean(lp.val_pgr)  # center
 f.val.offset <- coxph(Surv(gbsg5$ryear, gbsg5$rfs) ~ offset(lp.val))  
+f.val.offset.pgr <- coxph(Surv(gbsg5$ryear, gbsg5$rfs) ~ offset(lp.val_pgr))
 sf <- survfit(f.val.offset, conf.type = "log-log") 
-log.H <- log(-log(tail(sf$surv[sf$time == horizon], 1)))  #
+sf_pgr <- survfit(f.val.offset.pgr, conf.type = "log-log") 
+log.H <- log(-log(tail(sf$surv[sf$time == horizon], 1)))  
+log.H_pgr <- log(-log(tail(sf_pgr$surv[sf$time == horizon], 1)))  
+
 int <- log.H - mean(lp.val)  
 int.se <- (log.H - log.H.upper)/qnorm(.975)
+
+int_pgr <- log.H_pgr - mean(lp.val_pgr)  
+int.se_pgr <- (log.H_pgr - log.H.upper)/qnorm(.975)
 ```
 
 ```{r, res_OE, message=FALSE, warning=FALSE, echo=FALSE}
@@ -1099,10 +1115,11 @@ kable(res_OE) %>%
 
 ```
 
-Observed and Expected ratio is 1.07 (95% CI: 0.95 - 1.20) for the basic model and 1.03 (95% CI: 0.92 - 1.16) for the extended model
+Observed and Expected ratio is 1.07 (95% CI: 0.95 - 1.20) for the basic model and 1.03 (95% CI: 0.92 - 1.16) for the extended model.
 
 ##### 2.3.1.2  Mean calibration - global assessment 
 The mean calibration for the entire data is calculated using the approach proposed by Crowson et al. to estimate calibration-in-the-large and slope using Poisson regression.
+For mean calibration, we show the calibration-in-the-large.
 
 ```{r, mean_cal, message=FALSE, warning=FALSE}
 # Models 
@@ -1114,7 +1131,7 @@ efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
 
 ## Calibration in the large and calibration slope -------------
 p <- predict(efit1, newdata = gbsg5, type = "expected")
-lp5    <- predict(efit1, newdata = gbsg5, type = "lp")  #linear predictor
+lp5  <- predict(efit1, newdata = gbsg5, type = "lp")  #linear predictor
 
 # With pgr
 p_pgr <- predict(efit1_pgr, newdata = gbsg5, type = "expected")
@@ -1136,27 +1153,8 @@ pfit1_pgr <- glm(rfs ~ offset(log(p_pgr)),
 logbase_pgr <- p_pgr - lp5_pgr
 
 
-
-# Calibration slope
-pfit2 <- glm(rfs ~ lp5 + offset(logbase), 
-             family = poisson, 
-             data = gbsg5,
-             subset= (expect5 > 0))
-
-pfit2_pgr <- glm(rfs ~ lp5_pgr + offset(logbase_pgr), 
-             family = poisson, 
-             data = gbsg5,
-             subset = (expect5 > 0))
-
-
 int_summary <- summary(pfit1)$coefficients
 int_summary_pgr <- summary(pfit1_pgr)$coefficients
-int_summary[1] + c(-1.96, 0, 1.96)* int_summary[2]
-
-slope_summary <- summary(pfit2)$coefficients
-slope_summary_pgr <- summary(pfit2_pgr)$coefficients
-slope_summary[2, 1] + c(-1.96, 0, 1.96)* slope_summary[2, 2]
-slope_summary_pgr[2, 1] + c(-1.96, 0, 1.96)* slope_summary_pgr[2, 2]
 
 # Look at the risk score itself
 # pfit2 <- update(pfit1, . ~ . + eta5)
@@ -1172,22 +1170,14 @@ res_cal <- matrix(c(
     
     int_summary_pgr[1],
     int_summary_pgr[1] - qnorm(1 - alpha / 2) * int_summary_pgr[2],
-    int_summary_pgr[1] + qnorm(1 - alpha / 2) * int_summary_pgr[2],
-    
-    slope_summary[2, 1],
-    slope_summary[2, 1] - qnorm(1 - alpha / 2) * slope_summary[2, 2],
-    slope_summary[2, 1] + qnorm(1 - alpha / 2) * slope_summary[2, 2],
-    
-    slope_summary_pgr[2, 1],
-    slope_summary_pgr[2, 1] - qnorm(1 - alpha / 2) * slope_summary_pgr[2, 2],
-    slope_summary_pgr[2, 1] + qnorm(1 - alpha / 2) * slope_summary_pgr[2, 2]
+    int_summary_pgr[1] + qnorm(1 - alpha / 2) * int_summary_pgr[2]
 ),
 
-  nrow = 2, 
+  nrow = 1, 
   ncol = 6, 
   byrow = T,
   dimnames = list(
-  c("Calibration in-the-large", "Calibration slope"),
+  c("Calibration in-the-large"),
   rep(c("Estimate", "Lower .95 ", "Upper .95"), 2)
 )
 )
@@ -1200,88 +1190,151 @@ kable(res_cal) %>%
                      "External" = 3, 
                      "External + PGR" = 3))
 ```
-Comments to be written
+Calibration-in-the-large was 0.09 and 0.05 in the basic and extended model, respectively. 
 
-#### 2.3.2 Calibration plot using restricted cubic splines
+#### 2.3.2 Weak calibration 
+##### 2.3.2.1 Weak calibration - fixed time point
+
+```{r, weak_cal_t, echo=TRUE,message=FALSE,warning=FALSE}
+# Models 
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
+  data = rott5, x = T, y = T
+)
+# Additional marker
+efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
+
+
+# Objects needed
+horizon <- 5 # time horizon for prediction
+
+# Predicted risk
+pred <- 1 - predictSurvProb(efit1, 
+                            newdata = gbsg5, 
+                            times = horizon)
+
+pred_pgr <- 1 - predictSurvProb(efit1_pgr, 
+                            newdata = gbsg5, 
+                            times = horizon)
+
+### Model with a slope and an intercept
+f.val <- coxph(Surv(gbsg5$ryear, gbsg5$rfs) ~ lp.val)  
+slope <- f.val$coefficients[1]
+slope.se <- sqrt(vcov(f.val)[[1, 1]])
+ 
+### same procedure to find the intercept, now with slope-adjusted lp
+f.val.offset <- coxph(Surv(gbsg5$ryear, gbsg5$rfs) ~ offset(slope*lp.val))
+sf <- survfit(f.val.offset, conf.type = "log-log")
+log.H <- log(-log(tail(sf$surv[sf$time <= horizon], 1)))   
+int <- log.H - mean(slope*lp.val)
+log.H.upper <- log(-log(tail(sf$upper,1)))
+int.se <- (log.H-log.H.upper)/qnorm(.975)
+```
+
+```{r, res_OE, message=FALSE, warning=FALSE, echo=FALSE}
+alpha <- 0.05
+res_cal <- matrix(c(
+                slope,
+                slope - qnorm( 1- alpha / 2) * slope.se,
+                slope + qnorm( 1- alpha / 2) * slope.se,
+                   ),
+                 
+                 nrow = 2,
+                 ncol = 6,
+                 byrow = T,
+                 dimnames = list(
+                   c("Calibration slope"),
+                   rep(c("Estimate", "Lower .95", "Upper .95"),2))
+)
+
+res_OE <- round(res_OE, 2)
+kable(res_OE) %>%
+  kable_styling("striped", position = "center") %>%
+  add_header_above(c(" " = 1, 
+                     "External" = 3, 
+                     "External + PGR" = 3))
+
+```
+
+##### 2.3.2.2 Weak calibration - global assessment
+The calibration for the entire data is calculated using the approach proposed by Crowson et al. to estimate calibration-in-the-large and slope using Poisson regression.
+For weak calibration, we show the calibration slope.
+
+```{r, weak_cal, message=FALSE, warning=FALSE}
+# Models 
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
+  data = rott5, x = T, y = T
+)
+# Additional marker
+efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
+
+## Calibration in the large and calibration slope -------------
+p <- predict(efit1, newdata = gbsg5, type = "expected")
+lp5 <- predict(efit1, newdata = gbsg5, type = "lp")  #linear predictor
+
+# With pgr
+p_pgr <- predict(efit1_pgr, newdata = gbsg5, type = "expected")
+lp5_pgr <- predict(efit1_pgr, newdata = gbsg5, type = "lp")  
+logbase <- p - lp5
+logbase_pgr <- p_pgr - lp5_pgr
+
+# Calibration slope
+pfit2 <- glm(rfs ~ lp5 + offset(logbase), 
+             family = poisson, 
+             data = gbsg5,
+             subset= (expect5 > 0))
+
+pfit2_pgr <- glm(rfs ~ lp5_pgr + offset(logbase_pgr), 
+             family = poisson, 
+             data = gbsg5,
+             subset = (expect5 > 0))
+
+
+slope_summary <- summary(pfit2)$coefficients
+slope_summary_pgr <- summary(pfit2_pgr)$coefficients
+
+# Look at the risk score itself
+# pfit2 <- update(pfit1, . ~ . + eta5)
+# summary(pfit2)
+```
+
+```{r, res_Poisson, echo=FALSE,message=FALSE,warning=FALSE}
+alpha <- 0.05
+res_cal <- matrix(c(
+    
+    slope_summary[2, 1],
+    slope_summary[2, 1] - qnorm(1 - alpha / 2) * slope_summary[2, 2],
+    slope_summary[2, 1] + qnorm(1 - alpha / 2) * slope_summary[2, 2],
+    
+    slope_summary_pgr[2, 1],
+    slope_summary_pgr[2, 1] - qnorm(1 - alpha / 2) * slope_summary_pgr[2, 2],
+    slope_summary_pgr[2, 1] + qnorm(1 - alpha / 2) * slope_summary_pgr[2, 2]
+),
+
+  nrow = 1, 
+  ncol = 6, 
+  byrow = T,
+  dimnames = list(
+  c("Calibration slope"),
+  rep(c("Estimate", "Lower .95 ", "Upper .95"), 2)
+)
+)
+
+k <- 2
+res_cal <- round(res_cal, k) # number of digits
+kable(res_cal) %>%
+  kable_styling("striped", position = "center") %>%
+  add_header_above(c(" " = 1,  
+                     "External" = 3, 
+                     "External + PGR" = 3))
+```
+
+Calibration slope was 1.37 and 1.40 for the basic and extended model, respectively.
+
+
 Calibration plots of the external validation data with and without PGR are calculated and shown using restricted cubic splines.  
 The interpretation of the calibration plot were provided in the section 2.3 of this document, in the corresponding paper and in the literature provided in the paper and at the end of this document. More details about the method are given in the references below.
 
-```{r, cal_rcs, fig.align='center'}
-## External data without PGR
-evdata1$predmort5 <- 1 - survest(s5, newdata = evdata1, times = 5)$surv
-# also the model (e.g. efit1) run using survival::coxph() may be used
-# and 1-pec::predictSurvProb() function can replace 1-rms::survest()
-evdata1$predmort5.cll <- log(-log(1 - evdata1$predmort5))
 
-# Estimate
-vcalibrate.efit1 <- cph(Surv(ryear, status) ~ rcs(predmort5.cll, 3),
-  x = T, y = T,
-  data = evdata1, surv = T
-) # better rms::cph?
-predict.grid <- seq(quantile(evdata1$predmort5, prob = 0.01), quantile(evdata1$predmort5, prob = 0.99), length = 100)
-predict.grid.cll <- log(-log(1 - predict.grid))
-predict.grid.df <- data.frame(predict.grid)
-predict.grid.cll.df <- data.frame(predict.grid.cll)
-names(predict.grid.df) <- "predmort5"
-names(predict.grid.cll.df) <- "predmort5.cll"
-
-# Plot
-pred.vcalibrate.efit1 <- 1 - survest(vcalibrate.efit1, newdata = predict.grid.cll.df, times = 5)$surv
-pred.vcalibrate.efit1.upper <- 1 - survest(vcalibrate.efit1, newdata = predict.grid.cll.df, times = 5)$lower
-pred.vcalibrate.efit1.lower <- 1 - survest(vcalibrate.efit1, newdata = predict.grid.cll.df, times = 5)$upper
-par(xaxs = "i", yaxs = "i", las = 1)
-plot(predict.grid, pred.vcalibrate.efit1,
-  type = "l", lty = 1, xlim = c(0, 1),
-  ylim = c(0, 1), lwd = 2,
-  xlab = "Predicted probability",
-  ylab = "Observed probability", bty = "n"
-)
-lines(predict.grid, pred.vcalibrate.efit1.lower, type = "l", lty = 2, lwd = 2)
-lines(predict.grid, pred.vcalibrate.efit1.upper, type = "l", lty = 2, lwd = 2)
-abline(0, 1, lwd = 2, lty = 2, col = "red")
-title("A External data without PGR", adj = 0)
-par(new = T)
-plot(density(evdata1$predmort5),
-  axes = F, xlab = NA, ylab = NA,
-  main = ""
-)
-
-## External data with PGR
-evdata1$predmort5 <- 1 - survest(s6, newdata = evdata1, times = 5)$surv
-evdata1$predmort5.cll <- log(-log(1 - evdata1$predmort5))
-
-# Estimate
-vcalibrate.efit1b <- cph(Surv(ryear, status) ~ rcs(predmort5.cll, 3),
-  x = T, y = T, data = evdata1, surv = T
-)
-predict.grid <- seq(quantile(evdata1$predmort5, prob = 0.01), quantile(evdata1$predmort5, prob = 0.99), length = 100)
-predict.grid.cll <- log(-log(1 - predict.grid))
-predict.grid.df <- data.frame(predict.grid)
-predict.grid.cll.df <- data.frame(predict.grid.cll)
-names(predict.grid.df) <- "predmort5"
-names(predict.grid.cll.df) <- "predmort5.cll"
-
-# Plot
-pred.vcalibrate.efit1b <- 1 - survest(vcalibrate.efit1b, newdata = predict.grid.cll.df, times = 5)$surv
-pred.vcalibrate.efit1b.lower <- 1 - survest(vcalibrate.efit1b, newdata = predict.grid.cll.df, times = 5)$upper
-pred.vcalibrate.efit1b.upper <- 1 - survest(vcalibrate.efit1b, newdata = predict.grid.cll.df, times = 5)$lower
-par(xaxs = "i", yaxs = "i", las = 1)
-plot(predict.grid, pred.vcalibrate.efit1b,
-  type = "l", lty = 1, xlim = c(0, 1),
-  ylim = c(0, 1), lwd = 2,
-  xlab = "Predicted probability of recurrence at 5 years",
-  ylab = "Observed probability of recurrence at 5 years", bty = "n"
-)
-lines(predict.grid, pred.vcalibrate.efit1b.lower, type = "l", lty = 2, lwd = 2)
-lines(predict.grid, pred.vcalibrate.efit1b.upper, type = "l", lty = 2, lwd = 2)
-abline(0, 1, lwd = 2, lty = 2, col = "red")
-title("B External data with PGR", adj = 0)
-par(new = T)
-plot(density(evdata1$predmort5),
-  axes = F, xlab = NA, ylab = NA,
-  main = ""
-)
-```
 
 
 Both plots identified good calibration although probabilities of recurrence were slightly underestimated especially for the lowest and the highest values of 
