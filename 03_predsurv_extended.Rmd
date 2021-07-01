@@ -949,7 +949,6 @@ AUC_gbsg5$upper <- AUC_gbsg5$AUC + qnorm(0.975) * AUC_gbsg5$inference$vect_sd_1
 AUC_gbsg5_pgr$lower <- AUC_gbsg5_pgr$AUC - qnorm(0.975) * AUC_gbsg5_pgr$inference$vect_sd_1
 AUC_gbsg5_pgr$upper <- AUC_gbsg5_pgr$AUC + qnorm(0.975) * AUC_gbsg5_pgr$inference$vect_sd_1
 
-
 par(las = 1, xaxs = "i", yaxs = "i")
 plot(AUC_gbsg5$times, 
      AUC_gbsg5$AUC,
@@ -1034,6 +1033,68 @@ More detailed explanations are available in the paper.
   
 #### 2.3.1 Mean calibration
 ##### 2.3.1.1  Mean calibration - fixed time point
+
+```{r, mean_cal_t, message=FALSE, warning=FALSE}
+##  Observed / Expected ratio at time t ------------
+# Observed: 1-Kaplan Meier at time (t)
+horizon <- 5
+obj <- summary(survfit(Surv(ryear, rfs) ~ 1, 
+                       data = gbsg5), 
+               times = horizon)
+
+pred <- 1 - predictSurvProb(efit1, 
+                            newdata = gbsg5, 
+                            times = horizon)
+
+pred_pgr <- 1 - predictSurvProb(efit1_pgr, 
+                            newdata = gbsg5, 
+                            times = horizon)
+
+OE <- (1 - obj$surv) / mean(pred)
+OE_pgr <- (1 - obj$surv) / mean(pred_pgr)
+
+
+## Difference between the log cumulative hazard from Cox model with cloglog transformation of predicted probabilities as offset and the mean of cloglog transformation
+# NOTE: to be discussed if it is really needed
+
+lp.val <- log(-log(1 - pred))   # lp = cloglog
+center <- mean(lp.val)  # center
+f.val.offset <- coxph(Surv(gbsg5$ryear, gbsg5$rfs) ~ offset(lp.val))  
+sf <- survfit(f.val.offset, conf.type = "log-log") 
+log.H <- log(-log(tail(sf$surv[sf$time == horizon], 1)))  #
+int <- log.H - mean(lp.val)  
+int.se <- (log.H - log.H.upper)/qnorm(.975)
+```
+
+```{r, res_OE, message=FALSE, warning=FALSE, echo=FALSE}
+alpha <- 0.05
+res_OE <- matrix(c(OE,
+                   OE * exp(-qnorm(1 - alpha / 2) * sqrt(1 / obj$n.event)),
+                   OE * exp(qnorm(1 - alpha / 2) * sqrt(1 / obj$n.event)),
+                   
+                   OE_pgr,
+                   OE_pgr 
+                   * exp(-qnorm(1 - alpha / 2) * sqrt(1 / obj$n.event)),
+                   OE_pgr 
+                   * exp(qnorm(1 - alpha / 2) * sqrt(1 / obj$n.event))
+                   ),
+                 
+                 nrow = 1,
+                 ncol = 6,
+                 byrow = T,
+                 dimnames = list(
+                   c("OE ratio"),
+                   rep(c("Estimate", "Lower .95", "Upper .95"),2))
+)
+
+res_OE <- round(res_OE, 2)
+kable(res_OE) %>%
+  kable_styling("striped", position = "center") %>%
+  add_header_above(c(" " = 1, 
+                     "External" = 3, 
+                     "External + PGR" = 3))
+
+```
 
 
 ```{r, cal, message=FALSE, warning=FALSE}
