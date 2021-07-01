@@ -561,7 +561,7 @@ df_boots <- do.call(rbind.data.frame, boots_ls)
 
     ##                                Estimate Lower .95  Upper .95
     ## Brier - Validation data            0.22       0.20      0.24
-    ## Scaled Brier - Validation data     0.12       0.03      0.17
+    ## Scaled Brier - Validation data     0.12       0.06      0.18
 
 ## Goal 3 - Clinical utility
 
@@ -724,7 +724,8 @@ where *NB*<sub>model</sub> is the net benefit of the prediction model,
 ## Additional notes
 
 1.  To run the apparent validation find in any performance measure
-    calculation find “gbsg5” and replace with “rott5”;
+    calculation find “gbsg5” and replace with “rott5” except for model
+    development part;
 
 2.  To run validation of the extended model in any performance find
     “efit1” and replace with “efit1\_pgr”.
