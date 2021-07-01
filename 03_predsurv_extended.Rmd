@@ -353,7 +353,7 @@ Some overall performance measures are proposed using survival data:
 + Scaled Brier score (also known as Index of prediction accuracy - IPA): it improves interpretability by scaling the Brier Score with the Brier of the null model.  
   
   
-First we save elements need to calculate the performance measures as the linear predictor and the predicted survival at 5 years in the development and validation data. Secondly, we create B bootstrap data to calculate percentile bootstrap confidence intervals needed for some performance measures.
+First we save elements need to calculate the performance measures as the linear predictor and the predicted survival at 5 years in the development and validation data. Secondly, we create B bootstrap data to calculate percentile bootstrap confidence intervals needed for scaled Brier score.
 
 
 ```{r, overall, warning=FALSE}
@@ -578,7 +578,7 @@ As expected the overall performance measures were lower in the external validati
 
 ### 2.2 Discrimination measures
 
-NOTE: to be adjusted see the original paper
+NOTE: to be adjusted in a consistent way with the paper
 Discrimination is the ability to differentiate between subjects who have the outcome and subjects who do not.
 In prognostic modelling, discrimination reflects separation between survival curves for individuals or groups.
 
@@ -661,7 +661,6 @@ Uno_C_gbsg5_pgr <- concordance(Surv(ryear, rfs) ~ lp_pgr,
                            gbsg5, 
                            reverse = TRUE,
                            timewt = "n/G2")
-
 ```
 
 
@@ -819,7 +818,7 @@ Uno_gbsg5_pgr <-
 # In that case, please use bootstrap percentile to calculate confidence intervals.
 ```
 
-```{r, discr_table, echo=FALSE}
+```{r, res_AUC, echo=FALSE}
 # Save results
 alpha <- .05
 k <- 2
@@ -880,8 +879,7 @@ kable(res_AUC) %>%
 
 ```
 
-NOTE: add brief comments about concordance
-The time-dependent AUCs at 5 years were in the external validation were between 0.68 and 0.72 showing moderate discrimination. The additional information of the PGR marker increased the discrimination by 0.04.
+NOTE: add brief comments about concordance and time-dependent AUC
 
 The discrimination ability may be evaluated over the time since diagnosis through a plot showing the AUC over the time (years) in the development and validation set in the basic and extended model. Since the calculation of the AUC and the standard errors in the development set is computationally demanding, we showed only the plot in the validation data. However, we provided the R code (as a comment) for the development data.
 
@@ -1369,14 +1367,14 @@ in which observations are weighted by the empirical density function of the pred
 
 
 ```{r, cal_rcs_metrics, fig.align='center'}
-# Calibration plot
-# Models 
+# Models  ---
 efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
   data = rott5, x = T, y = T
 )
 # Additional marker
 efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
 
+# Calibration plot --------
 # Basic model
 gbsg5$pred <- 1 - predictSurvProb(efit1, 
                                   newdata = gbsg5, 
@@ -1514,7 +1512,6 @@ numsum_cph_pgr <- c(
 
 ```
 
-##### 2.3.3.2 Moderate calibration - global assessment
 ```{r, res_numcal, message=FALSE,warning=FALSE, fig.align='center',include=FALSE, echo=FALSE}
 res_numcal <- matrix(c(numsum_cph,
                        numsum_cph_pgr),
@@ -1535,6 +1532,20 @@ kable(res_numcal) %>%
 
 In the validation, ICI at 5 years was 0.04 and 0.03 for the basic and extended model, respectively.
 
+##### 2.3.3.2 Moderate calibration - global assessment
+Please program it in R...
+
+```{r, mod_cal, message=FALSE,warning=FALSE, fig.align='center',include=FALSE, echo=TRUE}
+# Models ------------
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
+  data = rott5, x = T, y = T
+)
+# Additional marker
+efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
+
+
+
+```
 ##### 2.3.4 Calibration when only coefficients of the model are available
 When only coefficients of the development model is available and the baseline survival is not provided, only visual assessment of calibration is possible based on Kaplan-Meier curves between risk groups.
 
@@ -1812,9 +1823,7 @@ legend("topright",
 title("B External data", adj = 0, cex = 1.5)
 ```
 
-Based on previous research we used a range of thresholds from 14% to 23% for adjuvant chemotherapy. If we choose a threshold of 20% the model had a net benefit of 0.262 in the development data using the basic model. This means that the model would identify 26 patients per 100 who will have recurrent breast cancer or die within 5 years since diagnosis and thus adjuvant chemotherapy is really needed.   
-The decision curve shows that the net benefit would be much larger for higher threshold values, i.e., patients accepting higher risks of recurrence compared to the treat all strategy. The same interpretation may be used in the validation data:
-  choosing a threshold of 20% the basic model had a net benefit of 0.385 for the basic and the extended model.  
+COMMENTS NEED TO BE WRITTEN.  
 Moreover, net benefit can be defined in terms of reduction of avoidable interventions (e.g adjuvant chemotherapy per 100 patients) by:
   
 <img src="https://render.githubusercontent.com/render/math?math=%5Chuge%7B%5Cfrac%7BNB_%7Bmodel%7D%20-%20NB_%7Ball%7D%7D%7B(p_t%2F%20(1-p_t))%7D*100%7D%0A">  
