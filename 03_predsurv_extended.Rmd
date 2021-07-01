@@ -1033,6 +1033,9 @@ More detailed explanations are available in the paper.
   
 #### 2.3.1 Mean calibration
 ##### 2.3.1.1  Mean calibration - fixed time point
+The mean calibration at fixed time point (e.g. at 5 years) can be estimated using the Observed and Expected ratio.
+The observed is estimated using the complementary of the Kaplan-Meier curve at the fixed time point.
+The expected is estimated using the average predicted risk of the event at the fixed time point.
 
 ```{r, mean_cal_t, message=FALSE, warning=FALSE}
 ##  Observed / Expected ratio at time t ------------
@@ -1096,82 +1099,96 @@ kable(res_OE) %>%
 
 ```
 
+Observed and Expected ratio is 1.07 (95% CI: 0.95 - 1.20) for the basic model and 1.03 (95% CI: 0.92 - 1.16) for the extended model
 
-```{r, cal, message=FALSE, warning=FALSE}
-# Apparent calibration measures (calibration in-the-large and calibration slope) without pgr
-p <- log(predict(efit1, newdata = edata1, type = "expected") + .0000001)
-lp <- predict(efit1, newdata = edata1, type = "lp")
-logbase <- p - lp
-rcfit1 <- glm(status ~ offset(p), family = poisson, data = edata1) # calibration in-the-large
-rcfit2 <- glm(status ~ lp + offset(logbase), family = poisson, data = edata1)
-# If we used the original data, the apparent internal validation may be also not perfect calibrated.
+##### 2.3.1.2  Mean calibration - global assessment 
+The mean calibration for the entire data is calculated using the approach proposed by Crowson et al. to estimate calibration-in-the-large and slope using Poisson regression.
 
-
-# External validation without pgr
-p <- log(predict(efit1, newdata = evdata1, type = "expected") + .0000001)
-lp <- predict(efit1, newdata = evdata1, type = "lp")
-logbase <- p - lp
-vcfit1 <- glm(status ~ offset(p), family = poisson, data = evdata1) # calibration in-the-large
-vcfit2 <- glm(status ~ lp + offset(logbase), family = poisson, data = evdata1)
-
-# Apparent calibration measures (calibration in-the-large and calibration slope) with pgr
-p <- log(predict(efit1b, newdata = edata1, type = "expected") + .0000001)
-lp <- predict(efit1b, newdata = edata1, type = "lp")
-logbase <- p - lp
-rcfit1b <- glm(status ~ offset(p), family = poisson, data = edata1) # calibration in-the-large
-rcfit2b <- glm(status ~ lp + offset(logbase), family = poisson, data = edata1)
-
-
-# External validation with pgr
-p <- log(predict(efit1b, newdata = evdata1, type = "expected") + .0000001)
-lp <- predict(efit1b, newdata = vdata, type = "lp")
-logbase <- p - lp
-vcfit1b <- glm(status ~ offset(p), family = poisson, data = evdata1) # calibration in-the-large
-vcfit2b <- glm(status ~ lp + offset(logbase), family = poisson, data = evdata1)
-
-# Results calibration in-the-large and slope
-res_cal <- matrix(c(
-  rcfit1$coefficients, rcfit1b$coefficients, vcfit1$coefficients, vcfit1b$coefficients,
-  rcfit2$coefficients["lp"], rcfit2b$coefficients["lp"], vcfit2$coefficients["lp"], vcfit2b$coefficients["lp"]
-),
-nrow = 2, ncol = 4, byrow = T,
-dimnames = list(
-  c("Calibration in-the-large", "Calibration slope"),
-  c("Apparent", "Apparent + PGR", "Validation", "Validation + PGR")
+```{r, mean_cal, message=FALSE, warning=FALSE}
+# Models 
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
+  data = rott5, x = T, y = T
 )
-)
+# Additional marker
+efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
+
+## Calibration in the large and calibration slope -------------
+p <- predict(efit1, newdata = gbsg5, type = "expected")
+lp5    <- predict(efit1, newdata = gbsg5, type = "lp")  #linear predictor
+
+# With pgr
+p_pgr <- predict(efit1_pgr, newdata = gbsg5, type = "expected")
+lp5_pgr <- predict(efit1_pgr, newdata = gbsg5, type = "lp")  
+
+
+# Calibration in the large
+pfit1 <- glm(rfs ~ offset(log(p)), 
+             family = poisson, 
+             data = gbsg5,
+             subset = (expect5 > 0))
+logbase <- p - lp5
+
+# With pgr
+pfit1_pgr <- glm(rfs ~ offset(log(p_pgr)), 
+             family = poisson, 
+             data = gbsg5,
+             subset = (expect5 > 0))
+logbase_pgr <- p_pgr - lp5_pgr
+
+
+
+# Calibration slope
+pfit2 <- glm(rfs ~ lp5 + offset(logbase), 
+             family = poisson, 
+             data = gbsg5,
+             subset= (expect5 > 0))
+
+pfit2_pgr <- glm(rfs ~ lp5_pgr + offset(logbase_pgr), 
+             family = poisson, 
+             data = gbsg5,
+             subset = (expect5 > 0))
+
+
+int_summary <- summary(pfit1)$coefficients
+int_summary_pgr <- summary(pfit1_pgr)$coefficients
+int_summary[1] + c(-1.96, 0, 1.96)* int_summary[2]
+
+slope_summary <- summary(pfit2)$coefficients
+slope_summary_pgr <- summary(pfit2_pgr)$coefficients
+slope_summary[2, 1] + c(-1.96, 0, 1.96)* slope_summary[2, 2]
+slope_summary_pgr[2, 1] + c(-1.96, 0, 1.96)* slope_summary_pgr[2, 2]
+
+# Look at the risk score itself
+# pfit2 <- update(pfit1, . ~ . + eta5)
+# summary(pfit2)
 ```
 
-```{r, cal_res, echo=FALSE,message=FALSE,warning=FALSE}
+```{r, res_Poisson, echo=FALSE,message=FALSE,warning=FALSE}
+alpha <- 0.05
 res_cal <- matrix(c(
-  rcfit1$coefficients,
-  confint(rcfit1), # Apparent - calibration in-the-large
+    int_summary[1],
+    int_summary[1] - qnorm(1 - alpha / 2) * int_summary[2],
+    int_summary[1] + qnorm(1 - alpha / 2) * int_summary[2],
+    
+    int_summary_pgr[1],
+    int_summary_pgr[1] - qnorm(1 - alpha / 2) * int_summary_pgr[2],
+    int_summary_pgr[1] + qnorm(1 - alpha / 2) * int_summary_pgr[2],
+    
+    slope_summary[2, 1],
+    slope_summary[2, 1] - qnorm(1 - alpha / 2) * slope_summary[2, 2],
+    slope_summary[2, 1] + qnorm(1 - alpha / 2) * slope_summary[2, 2],
+    
+    slope_summary_pgr[2, 1],
+    slope_summary_pgr[2, 1] - qnorm(1 - alpha / 2) * slope_summary_pgr[2, 2],
+    slope_summary_pgr[2, 1] + qnorm(1 - alpha / 2) * slope_summary_pgr[2, 2]
+),
 
-  rcfit1b$coefficients,
-  confint(rcfit1b), # Apparent + PGR - calibration in-the-large
-
-  vcfit1$coefficients,
-  confint(vcfit1), # External - calibration in-the-large
-
-  vcfit1b$coefficients,
-  confint(vcfit1b), # External + PGR - calibration in-the-large
-
-  rcfit2$coefficients["lp"],
-  confint(rcfit2)[2, ], # Apparent - calibration slope
-
-  rcfit2b$coefficients["lp"],
-  confint(rcfit2b)[2, ], # Apparent + PGR - calibration slope
-
-  vcfit2$coefficients["lp"],
-  confint(vcfit2)[2, ], # External - calibration slope
-
-  vcfit2b$coefficients["lp"],
-  confint(vcfit2b)[2, ]
-), # External + PGR - calibration slope
-nrow = 2, ncol = 12, byrow = T,
-dimnames = list(
+  nrow = 2, 
+  ncol = 6, 
+  byrow = T,
+  dimnames = list(
   c("Calibration in-the-large", "Calibration slope"),
-  rep(c("Estimate", "Lower .95 ", "Upper .95"), 4)
+  rep(c("Estimate", "Lower .95 ", "Upper .95"), 2)
 )
 )
 
@@ -1179,11 +1196,11 @@ k <- 2
 res_cal <- round(res_cal, k) # number of digits
 kable(res_cal) %>%
   kable_styling("striped", position = "center") %>%
-  add_header_above(c(" " = 1, "Apparent" = 3, "Apparent + PGR" = 3, "External" = 3, "External + PGR" = 3))
+  add_header_above(c(" " = 1,  
+                     "External" = 3, 
+                     "External + PGR" = 3))
 ```
-
-Calibration in-the-large was 0.13 and 0.10  and calibration slope was 1.01 and 1.12 in the validation data without and with PGR, respectively.
-The exponential of calibration in-the-large is known as the observed and expected ratio (OE ratio). When the ratio is above 1, the model underpredicts the risk and below 1 indicates the overprediction of the model. The OE ratio is 1.14 and 1.11.
+Comments to be written
 
 #### 2.3.2 Calibration plot using restricted cubic splines
 Calibration plots of the external validation data with and without PGR are calculated and shown using restricted cubic splines.  
