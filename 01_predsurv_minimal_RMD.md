@@ -517,20 +517,9 @@ efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
   x = T, 
   y = T)
 
-# Bootstrap
-vboot <- list()
-B <- 10  # Number of bootstrap samples, please increase if you neeed
-set.seed(2021)
-for (j in 1:B) {
-vboot[[j]] <- gbsg5[sample(nrow(gbsg5), 
-                           size = nrow(gbsg5), 
-                           replace = TRUE),]
-}
-
-
 # Brier Score and IPA in the validation set (model without PGR)
 score_gbsg5 <-
-  Score(list("Cox development" = efit1),
+  Score(list("cox_validation" = efit1),
     formula = Surv(ryear, rfs) ~ 1, 
     data = gbsg5, 
     conf.int = TRUE, 
@@ -540,27 +529,39 @@ score_gbsg5 <-
     summary = "ipa"
 )
 
+# Extra: bootstrap confidence intervals for IPA ------
+B <- 100
+horizon <- 4.95
+boots_ls <- lapply(seq_len(B), function(b) {
+  
+  # Resample validation data
+  data_boot <- gbsg5[sample(nrow(gbsg5), replace = TRUE), ]
 
-# Scaled Brier / IPA bootstrap confidence intervals
-# COMMENT: computational time is too long to compute them when the number of bootstrap replications is high
-B <- length(vboot)
-score_vboot_1 <- c() # Bootstrap IPA validation set for model without PGR
+  
+  # Get IPA on boot validation data
+  score_boot <- Score(
+    list("cox_validation" = efit1),
+    formula = Surv(ryear, rfs) ~ 1,
+    cens.model = "km", 
+    data = data_boot, 
+    conf.int = FALSE, 
+    times = horizon,
+    metrics = c("brier"),
+    summary = c("ipa")
+  )
+  
+  #.. can add other measure heres, eg. concordance
+  
+  ipa_boot <- score_boot$Brier$score[model == "cox_validation"][["IPA"]]
+  cbind.data.frame("ipa" = ipa_boot)
+})
 
-for (j in 1:B) {
-    score_vboot_1[j] <-  Score(list("Cox development" = efit1), 
-                          formula = Surv(ryear, rfs) ~ 1,
-                          data = vboot[[j]], 
-                          conf.int = FALSE, 
-                          times = 4.95, 
-                          cens.model = "km", 
-                          metrics = "brier",
-                         summary = "ipa")$Brier[[1]]$IPA[2]
-}
+df_boots <- do.call(rbind.data.frame, boots_ls)
 ```
 
     ##                                Estimate Lower .95  Upper .95
     ## Brier - Validation data            0.22       0.20      0.24
-    ## Scaled Brier - Validation data     0.12       0.08      0.17
+    ## Scaled Brier - Validation data     0.12       0.03      0.17
 
 ## Goal 3 - Clinical utility
 
@@ -711,18 +712,7 @@ legend("topright",
 
 <img src="imgs/01_predsurv_base_02/dca-1.png" width="672" style="display: block; margin: auto;" />
 
-Based on previous research we used a range of thresholds from 14% to 23%
-for adjuvant chemotherapy. If we choose a threshold of 20% the model had
-a potential net benefit of 0.294 in the development data using the basic
-model. This means that the model would identify 29 patients per 100 who
-will have recurrent breast cancer or die within 5 years since diagnosis
-and thus adjuvant chemotherapy is potentially needed.  
-The decision curve shows that the net benefit would be much larger for
-higher threshold values, i.e., patients accepting higher risks of
-recurrence compared to the treat all strategy. The same interpretation
-may be used in the validation data: choosing a threshold of 20% the
-basic model had a net benefit of 0.384.  
-Moreover, potential net benefit can be defined in terms of reduction of
+Potential net benefit can be also defined in terms of reduction of
 avoidable interventions (e.g adjuvant chemotherapy per 100 patients) by:
 
 <img src="https://render.githubusercontent.com/render/math?math=%5Chuge%7B%5Cfrac%7BNB_%7Bmodel%7D%20-%20NB_%7Ball%7D%7D%7B(p_t%2F%20(1-p_t))%7D*100%7D%0A">
@@ -755,7 +745,7 @@ sessioninfo::session_info()
     ##  collate  English_United States.1252  
     ##  ctype    English_United States.1252  
     ##  tz       Europe/Berlin               
-    ##  date     2021-06-28                  
+    ##  date     2021-07-01                  
     ## 
     ## - Packages -------------------------------------------------------------------
     ##  package        * version    date       lib source        
