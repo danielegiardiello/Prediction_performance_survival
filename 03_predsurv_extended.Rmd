@@ -418,7 +418,7 @@ score_gbsg5_pgr <-
 
 # Bootstrap for IPA -------------------------
 B <- 10
-set.seed
+set.seed(1234)
 rott5_boot <- bootstraps(rott5, times = B)
 gbsg5_boot <- bootstraps(gbsg5, times = B)
 
@@ -1150,7 +1150,7 @@ logbase <- p - lp5
 pfit1_pgr <- glm(rfs ~ offset(log(p_pgr)), 
              family = poisson, 
              data = gbsg5,
-             subset = (p > 0))
+             subset = (p_pgr > 0))
 logbase_pgr <- p_pgr - lp5_pgr
 
 
@@ -1297,12 +1297,12 @@ logbase_pgr <- p_pgr - lp5_pgr
 pfit2 <- glm(rfs ~ lp5 + offset(logbase), 
              family = poisson, 
              data = gbsg5,
-             subset= (expect5 > 0))
+             subset= (p > 0))
 
 pfit2_pgr <- glm(rfs ~ lp5_pgr + offset(logbase_pgr), 
              family = poisson, 
              data = gbsg5,
-             subset = (expect5 > 0))
+             subset = (p_pgr > 0))
 
 
 slope_summary <- summary(pfit2)$coefficients
@@ -1365,7 +1365,7 @@ Calibration curve: it is a graphical representation of calibration in-the-large 
 + Integrated Calibration Index (ICI): it is the weighted difference between smoothed observed proportions and predicted probabilities
 in which observations are weighted by the empirical density function of the predicted probabilities;  
 
-+ E50, E90 and Emax denote the median, the 90th percentile and the maximum absolute difference between observed and predicted probabilities of the outcome at time *t*;  
++ E50 and E90 denote the median, the 90th percentile of the absolute difference between observed and predicted probabilities of the outcome at time *t*;  
 
 
 ```{r, cal_rcs_metrics, fig.align='center'}
@@ -1515,7 +1515,7 @@ numsum_cph_pgr <- c(
 
 ```
 
-```{r, res_numcal, message=FALSE,warning=FALSE, fig.align='center',include=FALSE, echo=FALSE}
+```{r, res_numcal, message=FALSE,warning=FALSE, fig.align='center',include=TRUE, echo=FALSE}
 res_numcal <- matrix(c(numsum_cph,
                        numsum_cph_pgr),
                      nrow = 2,
@@ -1549,7 +1549,7 @@ efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
 
 
 ```
-##### 2.3.4 Calibration when only coefficients of the model are available
+#### 2.3.4 Calibration when only coefficients of the model are available
 When only coefficients of the development model is available and the baseline survival is not provided, only visual assessment of calibration is possible based on Kaplan-Meier curves between risk groups.
 
 ```{r, km,message=FALSE, warning=FALSE}
