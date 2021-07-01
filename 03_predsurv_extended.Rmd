@@ -1216,18 +1216,28 @@ pred_pgr <- 1 - predictSurvProb(efit1_pgr,
                             newdata = gbsg5, 
                             times = horizon)
 
+# cloglog and center for the basic and extended model
+lp.val <- log(-log(1 - pred))   # lp = cloglog
+lp.val_pgr <- log(-log(1 - pred_pgr)) 
+center <- mean(lp.val)  # center
+center_pgr <- mean(lp.val_pgr)  # center
+
 ### Model with a slope and an intercept
 f.val <- coxph(Surv(gbsg5$ryear, gbsg5$rfs) ~ lp.val)  
 slope <- f.val$coefficients[1]
 slope.se <- sqrt(vcov(f.val)[[1, 1]])
+
+f.val_pgr <- coxph(Surv(gbsg5$ryear, gbsg5$rfs) ~ lp.val_pgr)  
+slope_pgr <- f.val_pgr$coefficients[1]
+slope.se_pgr <- sqrt(vcov(f.val_pgr)[[1, 1]])
  
 ### same procedure to find the intercept, now with slope-adjusted lp
-f.val.offset <- coxph(Surv(gbsg5$ryear, gbsg5$rfs) ~ offset(slope*lp.val))
-sf <- survfit(f.val.offset, conf.type = "log-log")
-log.H <- log(-log(tail(sf$surv[sf$time <= horizon], 1)))   
-int <- log.H - mean(slope*lp.val)
-log.H.upper <- log(-log(tail(sf$upper,1)))
-int.se <- (log.H-log.H.upper)/qnorm(.975)
+# f.val.offset <- coxph(Surv(gbsg5$ryear, gbsg5$rfs) ~ offset(slope*lp.val))
+# sf <- survfit(f.val.offset, conf.type = "log-log")
+# log.H <- log(-log(tail(sf$surv[sf$time <= horizon], 1)))   
+# int <- log.H - mean(slope*lp.val)
+# log.H.upper <- log(-log(tail(sf$upper,1)))
+# int.se <- (log.H-log.H.upper)/qnorm(.975)
 ```
 
 ```{r, res_OE, message=FALSE, warning=FALSE, echo=FALSE}
@@ -1236,9 +1246,13 @@ res_cal <- matrix(c(
                 slope,
                 slope - qnorm( 1- alpha / 2) * slope.se,
                 slope + qnorm( 1- alpha / 2) * slope.se,
+                
+                slope_pgr,
+                slope_pgr - qnorm( 1- alpha / 2) * slope.se_pgr,
+                slope_pgr + qnorm( 1- alpha / 2) * slope.se_pgr
                    ),
                  
-                 nrow = 2,
+                 nrow = 1,
                  ncol = 6,
                  byrow = T,
                  dimnames = list(
@@ -1246,14 +1260,15 @@ res_cal <- matrix(c(
                    rep(c("Estimate", "Lower .95", "Upper .95"),2))
 )
 
-res_OE <- round(res_OE, 2)
-kable(res_OE) %>%
+res_cal <- round(res_cal, 2)
+kable(res_cal) %>%
   kable_styling("striped", position = "center") %>%
   add_header_above(c(" " = 1, 
                      "External" = 3, 
                      "External + PGR" = 3))
 
 ```
+Calibration slope was 1.08 and 1.17 for the basic and extended model, respectively.
 
 ##### 2.3.2.2 Weak calibration - global assessment
 The calibration for the entire data is calculated using the approach proposed by Crowson et al. to estimate calibration-in-the-large and slope using Poisson regression.
@@ -1342,85 +1357,176 @@ the observed probabilities of recurrence.
 The additional information of PGR improved the overall calibration, especially for the highest values, as shown in the two calibration plots above.
 
 
-#### 2.3.3 Other calibration metrics: ICI, E50,E90 and Emax based on restricted cubic splines
-As explained in the previous sections, three additional calibration metrics were provided: the integrated Calibration Index (ICI), E50, E90 and Emax.  
-ICI is the weighted difference between smoothed observed proportions and predicted probabilities in which observations are weighted by the empirical density function of the predicted probabilities.   
-E50, E90 and Emax denote the median, the 90th percentile and the maximum absolute difference between observed and predicted probabilities of the outcome at time *t*. 
+#### 2.3.3 Moderate calibration 
+##### 2.3.3.1 Moderate calibration - fixed time point
+Moderate calibration at fixed time point can be assessed using flexible calibration curve, complemented with ICI, E50, E90 as suggested by Austin et al.
+
+Calibration curve: it is a graphical representation of calibration in-the-large and calibration. It shows:
+      
+  + on the *x-axis* the predicted survival (or risk) probabilities at a fixed time horizon (e.g. at 5 years);
+      
+  + on the *y-axis* the observed survival (or risk) probabilities at a fixed time horizon (e.g. at 5 years);
+      
+  + The 45-degree line indicates the good overall calibration. 
+      Points below the 45-degree line indicates that the model overestimate the observed risk. 
+      If points are above the 45-degree line, the model underestimate the observed risk;
+      The observed probabilities estimated by the Kaplan-Meier curves (in case of survival) or by the complementary of the Kaplan-Meier curves (in case of risk in absence of competing risks) are represented in terms of percentiles of the predicted survival (risk) probabilities.
+      
++ Integrated Calibration Index (ICI): it is the weighted difference between smoothed observed proportions and predicted probabilities
+in which observations are weighted by the empirical density function of the predicted probabilities;  
+
++ E50, E90 and Emax denote the median, the 90th percentile and the maximum absolute difference between observed and predicted probabilities of the outcome at time *t*;  
+
 
 ```{r, cal_rcs_metrics, fig.align='center'}
-# Calibration metrics
+# Calibration plot
+# Fit the model 
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
+  data = rott5, 
+  x = T, 
+  y = T)
 
-# Apparent
-edata1$predmort5 <- 1 - predictSurvProb(efit1, newdata = edata1, times = 5)
-# Here we used the model created with  survival::coxph() (e.g.efit1) but again 1-survest() using the model created with rms:cph() (e.g s5) can be used
-edata1$predmort5.cll <- log(-log(1 - edata1$predmort5))
-rcalibrate.efit1 <- coxph(Surv(ryear, status) ~ rcs(predmort5.cll, 3), x = T, y = T, data = edata1) # rms:cph() can be also used
-pred.rcalibrate.efit1 <- 1 - predictSurvProb(rcalibrate.efit1,
-  newdata = edata1, times = 5
+# Basic model
+gbsg5$pred <- 1 - predictSurvProb(efit1, 
+                                  newdata = gbsg5, 
+                                  times = 5)
+gbsg5$pred.cll <- log(-log(1 - gbsg5$pred))
+
+# Extended model
+gbsg5$pred_pgr <- 1 - predictSurvProb(efit1_pgr, 
+                                      newdata = gbsg5, 
+                                      times = 5)
+gbsg5$pred.cll_pgr <- log(-log(1 - gbsg5$pred_pgr))
+
+
+# Estimate actual risk - basic model
+vcal <- cph(Surv(ryear, rfs) ~ rcs(pred.cll, 3),
+            x = T,
+            y = T,
+            surv = T,
+            data = gbsg5
+) 
+
+# Estimate actual risk - extended model
+vcal_pgr <- cph(Surv(ryear, rfs) ~ rcs(pred.cll_pgr, 3),
+            x = T,
+            y = T,
+            surv = T,
+            data = gbsg5
+) 
+
+
+dat_cal <- cbind.data.frame(
+  "obs" = 1 - survest(vcal, 
+                      times = 5, 
+                      newdata = gbsg5)$surv,
+  
+  "lower" = 1 - survest(vcal, 
+                        times = 5, 
+                        newdata = gbsg5)$upper,
+  
+  "upper" = 1 - survest(vcal, 
+                        times = 5, 
+                        newdata = gbsg5)$lower,
+  "pred" = gbsg5$pred,
+  
+  
+   "obs_pgr" = 1 - survest(vcal_pgr, 
+                      times = 5, 
+                      newdata = gbsg5)$surv,
+  
+  "lower_pgr" = 1 - survest(vcal_pgr, 
+                        times = 5, 
+                        newdata = gbsg5)$upper,
+  
+  "upper_pgr" = 1 - survest(vcal_pgr, 
+                        times = 5, 
+                        newdata = gbsg5)$lower,
+  
+  "pred_pgr" = gbsg5$pred_pgr
+  
 )
 
-ICI.edata1.5yr <- mean(abs(edata1$predmort5 - pred.rcalibrate.efit1))
-E50.edata1.5yr <- median(abs(edata1$predmort5 - pred.rcalibrate.efit1))
-E90.edata1.5yr <- quantile(abs(edata1$predmort5 - pred.rcalibrate.efit1), probs = 0.9)
-Emax.edata1.5yr <- max(abs(edata1$predmort5 - pred.rcalibrate.efit1))
 
-# Apparent + PGR
-edata1$predmort5 <- 1 - predictSurvProb(efit1b, newdata = edata1, times = 5)
-edata1$predmort5.cll <- log(-log(1 - edata1$predmort5))
-rcalibrate.efit1b <- coxph(Surv(ryear, status) ~ rcs(predmort5.cll, 3), x = T, y = T, data = edata1) # better rms::cph?
-pred.rcalibrate.efit1b <- 1 - predictSurvProb(rcalibrate.efit1b,
-  newdata = edata1, times = 5
+# Flexible calibration curve - basic model
+dat_cal <- dat_cal[order(dat_cal$pred), ]
+
+par(xaxs = "i", yaxs = "i", las = 1)
+plot(
+  dat_cal$pred, 
+  dat_cal$obs,
+  type = "l", 
+  lty = 1, 
+  xlim = c(0, 1),
+  ylim = c(0, 1), 
+  lwd = 2,
+  xlab = "Predicted probability",
+  ylab = "Observed probability", bty = "n"
 )
+lines(dat_cal$pred, 
+      dat_cal$lower, 
+      type = "l", 
+      lty = 2, 
+      lwd = 2)
+lines(dat_cal$pred, 
+      dat_cal$upper,
+      type = "l", 
+      lty = 2, 
+      lwd = 2)
+abline(0, 1, lwd = 2, lty = 2, col = "red")
+title("Basic model - validation data ")
 
-ICI.edata1b.5yr <- mean(abs(edata1$predmort5 - pred.rcalibrate.efit1b))
-E50.edata1b.5yr <- median(abs(edata1$predmort5 - pred.rcalibrate.efit1b))
-E90.edata1b.5yr <- quantile(abs(edata1$predmort5 - pred.rcalibrate.efit1b), probs = 0.9)
-Emax.edata1b.5yr <- max(abs(edata1$predmort5 - pred.rcalibrate.efit1b))
 
-# Validation
-evdata1$predmort5 <- 1 - predictSurvProb(efit1, newdata = evdata1, times = 5)
-evdata1$predmort5.cll <- log(-log(1 - evdata1$predmort5))
-vcalibrate.efit1 <- coxph(Surv(ryear, status) ~ rcs(predmort5.cll, 3), x = T, y = T, data = evdata1) # better rms::cph?
-pred.vcalibrate.efit1 <- 1 - predictSurvProb(vcalibrate.efit1,
-  newdata = evdata1, times = 5
+# Flexible calibration curve - extended model
+dat_cal <- dat_cal[order(dat_cal$pred_pgr), ]
+par(xaxs = "i", yaxs = "i", las = 1)
+plot(
+  dat_cal$pred_pgr, 
+  dat_cal$obs_pgr,
+  type = "l", 
+  lty = 1, 
+  xlim = c(0, 1),
+  ylim = c(0, 1), 
+  lwd = 2,
+  xlab = "Predicted probability",
+  ylab = "Observed probability", bty = "n"
 )
+lines(dat_cal$pred_pgr, 
+      dat_cal$lower_pgr, 
+      type = "l", 
+      lty = 2, 
+      lwd = 2)
+lines(dat_cal$pred_pgr, 
+      dat_cal$upper_pgr,
+      type = "l", 
+      lty = 2, 
+      lwd = 2)
+abline(0, 1, lwd = 2, lty = 2, col = "red")
+title("Extended model - validation data ")
 
-ICI.evdata1.5yr <- mean(abs(evdata1$predmort5 - pred.vcalibrate.efit1))
-E50.evdata1.5yr <- median(abs(evdata1$predmort5 - pred.vcalibrate.efit1))
-E90.evdata1.5yr <- quantile(abs(evdata1$predmort5 - pred.vcalibrate.efit1), probs = 0.9)
-Emax.evdata1.5yr <- max(abs(evdata1$predmort5 - pred.vcalibrate.efit1))
+# Numerical measures ---------------
+# Basic model
+absdiff_cph <- abs(dat_cal$pred - dat_cal$obs)
 
-# Validation + PGR
-evdata1$predmort5 <- 1 - predictSurvProb(efit1b, newdata = evdata1, times = 5)
-evdata1$predmort5.cll <- log(-log(1 - evdata1$predmort5))
-vcalibrate.efit1b <- coxph(Surv(ryear, status) ~ rcs(predmort5.cll, 3), x = T, y = T, data = evdata1) # better rms::cph?
-pred.vcalibrate.efit1b <- 1 - predictSurvProb(vcalibrate.efit1b,
-  newdata = evdata1, times = 5
+numsum_cph <- c(
+  "ICI" = mean(absdiff_cph),
+  setNames(quantile(absdiff_cph, c(0.5, 0.9)), c("E50", "E90"))
 )
+numsum_cph
 
-ICI.evdata1b.5yr <- mean(abs(evdata1$predmort5 - pred.vcalibrate.efit1b))
-E50.evdata1b.5yr <- median(abs(evdata1$predmort5 - pred.vcalibrate.efit1b))
-E90.evdata1b.5yr <- quantile(abs(evdata1$predmort5 - pred.vcalibrate.efit1b), probs = 0.9)
-Emax.evdata1b.5yr <- max(abs(evdata1$predmort5 - pred.vcalibrate.efit1b))
+# Extended model ------
+absdiff_cph_pgr <- abs(dat_cal$pred_pgr - dat_cal$obs_pgr)
+
+numsum_cph_pgr <- c(
+  "ICI" = mean(absdiff_cph_pgr),
+  setNames(quantile(absdiff_cph_pgr, c(0.5, 0.9)), c("E50", "E90"))
+)
+numsum_cph_pgr
+
 ```
 
-```{r, calmetrics_res, echo=FALSE}
+##### 2.3.3.2 Moderate calibration - global assessment
 
-res_calmetrix <- matrix(c(
-  ICI.edata1.5yr, ICI.edata1b.5yr, ICI.evdata1.5yr, ICI.evdata1b.5yr,
-  E50.edata1.5yr, E50.edata1b.5yr, E50.evdata1.5yr, E50.evdata1b.5yr,
-  E90.edata1.5yr, E90.edata1b.5yr, E90.evdata1.5yr, E90.evdata1b.5yr,
-  Emax.edata1.5yr, Emax.edata1b.5yr, Emax.evdata1.5yr, Emax.evdata1b.5yr
-),
-byrow = T, ncol = 4, nrow = 4
-)
-colnames(res_calmetrix) <- c("Apparent", "Apparent + PGR", "External", "External + PGR")
-rownames(res_calmetrix) <- c("ICI", "E50", "E90", "Emax")
-
-k <- 2
-res_calmetrix <- round(res_calmetrix, k) # number of digits
-kable(res_calmetrix) %>% kable_styling("striped", position = "center")
-```
 
 In the validation data, PGR improves slightly the ICI and the median of the absolute difference between observed and predicted probabilities at 5 years.  More imprecise absolute differences between and observed and predicted probabilities in the extreme values of the distribution (E90, Emax). This is also graphically confirmed by the calibration plots.
 
