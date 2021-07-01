@@ -1000,6 +1000,7 @@ Calibration is the agreement between observed outcomes and predicted probabiliti
 For example, in survival models, a predicted survival probability at a fixed time horizon _t_ of 80% is considered reliable if it can be expected that 80 out of 100 will survive among patients received a predicted survival probability of 80%.
 Calibration can be assessed at a fixed time point (e.g. at 5 years), and globally (considering the entire range of the data).
 In addition, different level of calibration assessment can be estimated according to the level of information available in the data. 
+When individual data of development and validation set are available, full assessment of calibration is possible. Calibration at fixed time point is possible when baseline hazard at fixed time point and coefficient are available. When only coefficients are available, limited assessment of calibration is possible.
 
 At a fixed time point t, mean calibration can be assessed using:
 + globally: considering the entire range of the data;
@@ -1346,17 +1347,6 @@ kable(res_cal) %>%
 Calibration slope was 1.37 and 1.40 for the basic and extended model, respectively.
 
 
-Calibration plots of the external validation data with and without PGR are calculated and shown using restricted cubic splines.  
-The interpretation of the calibration plot were provided in the section 2.3 of this document, in the corresponding paper and in the literature provided in the paper and at the end of this document. More details about the method are given in the references below.
-
-
-
-
-Both plots identified good calibration although probabilities of recurrence were slightly underestimated especially for the lowest and the highest values of 
-the observed probabilities of recurrence.  
-The additional information of PGR improved the overall calibration, especially for the highest values, as shown in the two calibration plots above.
-
-
 #### 2.3.3 Moderate calibration 
 ##### 2.3.3.1 Moderate calibration - fixed time point
 Moderate calibration at fixed time point can be assessed using flexible calibration curve, complemented with ICI, E50, E90 as suggested by Austin et al.
@@ -1380,11 +1370,12 @@ in which observations are weighted by the empirical density function of the pred
 
 ```{r, cal_rcs_metrics, fig.align='center'}
 # Calibration plot
-# Fit the model 
+# Models 
 efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
-  data = rott5, 
-  x = T, 
-  y = T)
+  data = rott5, x = T, y = T
+)
+# Additional marker
+efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
 
 # Basic model
 gbsg5$pred <- 1 - predictSurvProb(efit1, 
@@ -1512,7 +1503,6 @@ numsum_cph <- c(
   "ICI" = mean(absdiff_cph),
   setNames(quantile(absdiff_cph, c(0.5, 0.9)), c("E50", "E90"))
 )
-numsum_cph
 
 # Extended model ------
 absdiff_cph_pgr <- abs(dat_cal$pred_pgr - dat_cal$obs_pgr)
@@ -1521,15 +1511,114 @@ numsum_cph_pgr <- c(
   "ICI" = mean(absdiff_cph_pgr),
   setNames(quantile(absdiff_cph_pgr, c(0.5, 0.9)), c("E50", "E90"))
 )
-numsum_cph_pgr
 
 ```
 
 ##### 2.3.3.2 Moderate calibration - global assessment
+```{r, res_numcal, message=FALSE,warning=FALSE, fig.align='center',include=FALSE, echo=FALSE}
+res_numcal <- matrix(c(numsum_cph,
+                       numsum_cph_pgr),
+                     nrow = 2,
+                     ncol = 3,
+                     byrow = T,
+                     dimnames = list(
+                       c("External data",
+                         "External data + PGR"),
+                       c("ICI", "E50", "E90"))
+)
+
+res_numcal <- round(res_numcal, 2)
+kable(res_numcal) %>%
+  kable_styling("striped", position = "center")
+
+```
+
+In the validation, ICI at 5 years was 0.04 and 0.03 for the basic and extended model, respectively.
+
+##### 2.3.4 Calibration when only coefficients of the model are available
+When only coefficients of the development model is available and the baseline survival is not provided, only visual assessment of calibration is possible based on Kaplan-Meier curves between risk groups.
+
+```{r, km,message=FALSE, warning=FALSE}
+
+# Models 
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
+  data = rott5, x = T, y = T
+)
+# Additional marker
+efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
+
+# Development and validation dataset without pgr ---
+rott5$lp <- predict(efit1, newdata = rott5)
+rott5$group1 <- cut(rott5$lp, 
+                    breaks = quantile(rott5$lp, 
+                                      probs = seq(0, 1, 0.25)),
+                    include.lowest = TRUE)
 
 
-In the validation data, PGR improves slightly the ICI and the median of the absolute difference between observed and predicted probabilities at 5 years.  More imprecise absolute differences between and observed and predicted probabilities in the extreme values of the distribution (E90, Emax). This is also graphically confirmed by the calibration plots.
+gbsg5$lp <- predict(efit1, newdata = gbsg5)
+gbsg5$group1 <- cut(gbsg5$lp, 
+                    breaks = quantile(gbsg5$lp, 
+                                      probs = seq(0, 1, 0.25)),
+                    include.lowest = TRUE)
 
+
+par(las = 1, xaxs = "i", yaxs = "i")
+plot(survfit(Surv(ryear, rfs) ~ group1, data = gbsg5),
+  bty = "n", 
+  xlim = c(0, 5), 
+  ylim = c(0, 1), 
+  lwd = 2, 
+  col = "black",
+  lty = 2, 
+  xlab = "Time (years)", 
+  ylab = "Survival probability"
+)
+lines(survfit(Surv(ryear, rfs) ~ group1, data = rott5),
+      lwd = 2)
+legend("bottomleft",
+       c("Development", "Validation"),
+       lwd = 2, 
+       lty = c(1, 2),
+       bty = "n")
+title("A - basic model", adj = 0)
+
+# Development and validation dataset with pgr ---
+rott5$lp_pgr <- predict(efit1_pgr, newdata = rott5)
+rott5$group1_pgr <- cut(rott5$lp_pgr, 
+                    breaks = quantile(rott5$lp_pgr, 
+                                      probs = seq(0, 1, 0.25)),
+                    include.lowest = TRUE)
+
+
+gbsg5$lp_pgr <- predict(efit1_pgr, newdata = gbsg5)
+gbsg5$group1_pgr <- cut(gbsg5$lp_pgr, 
+                    breaks = quantile(gbsg5$lp_pgr, 
+                                      probs = seq(0, 1, 0.25)),
+                    include.lowest = TRUE)
+
+
+par(las = 1, xaxs = "i", yaxs = "i")
+plot(survfit(Surv(ryear, rfs) ~ group1_pgr, 
+             data = gbsg5),
+     bty = "n",
+     xlim = c(0, 5), 
+     ylim = c(0, 1), 
+     lwd = 2, 
+     col = "black",
+     lty = 2, 
+     xlab = "Time (years)", 
+     ylab = "Survival probability"
+)
+lines(survfit(Surv(ryear, rfs) ~ group1_pgr, 
+              data = rott5),
+              lwd = 2)
+legend("bottomleft",
+       c("Development", "Validation"),
+       lwd = 2, 
+       lty = c(1, 2),
+       bty = "n")
+title("B - extended model with PGR", adj = 0)
+```
 
 ## Goal 3 - Clinical utility
 Discrimination and calibration measures are essential to assess the prediction performance but insufficient to evaluate the potential clinical utility of a risk prediction model for decision making. When new markers are available, clinical utility assessment evaluates whether the extended model helps to improve decision making.  
@@ -1572,46 +1661,72 @@ source(here::here('Functions/stdca.R'))
 
 
 ```{r, dca, message=FALSE,warning=FALSE, fig.align='center'}
-# We could use the rms::survest() or pec::predictEventProb() to get the mortality at observed time
-# Development data
+
+# Models 
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
+  data = rott5, x = T, y = T
+)
+# Additional marker
+efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
+
+# Development data ----
 # Predicted probability calculation
-edata1$mort5_efit1 <- 1 - predictSurvProb(efit1, newdata = edata1, times = 5)
+rott5$pred5 <- 1 - predictSurvProb(efit1, newdata = rott5, times = 5)
 
 # Extended model with PGR
 # Predicted probability calculation
-edata1$mort5_efit1b <- 1 - predictSurvProb(efit1b, newdata = edata1, times = 5)
+rott5$pred5_pgr <- 1 - predictSurvProb(efit1_pgr, newdata = rott5, times = 5)
 
 # Run decision curve analysis
 
 # Development data
 # Model without PGR
-edata1 <- as.data.frame(edata1)
-dca_rdata_1 <- stdca(
-  data = edata1, outcome = "status", ttoutcome = "ryear",
-  timepoint = 5, predictors = "mort5_efit1", xstop = 1.0,
+rott5 <- as.data.frame(rott5)
+dca_rott5 <- stdca(
+  data = rott5, outcome = "rfs", ttoutcome = "ryear",
+  timepoint = 5, predictors = "pred5", xstop = 1.0,
   ymin = -0.01, graph = FALSE
 )
+
 # Model with PGR
-dca_rdata_1b <- stdca(
-  data = edata1, outcome = "status", ttoutcome = "ryear",
-  timepoint = 5, predictors = "mort5_efit1b", xstop = 1.0,
+dca_rott5_pgr <- stdca(
+  data = rott5, outcome = "rfs", ttoutcome = "ryear",
+  timepoint = 5, predictors = "pred5_pgr", xstop = 1.0,
   ymin = -0.01, graph = FALSE
 )
 
 # Decision curves plot
 par(xaxs = "i", yaxs = "i", las = 1)
-plot(dca_rdata_1$net.benefit$threshold,
-  dca_rdata_1$net.benefit$mort5_efit1,
-  type = "l", lwd = 2, lty = 1,
-  xlab = "Threshold probability in %", ylab = "Net Benefit",
-  xlim = c(0, 1), ylim = c(-0.10, 0.45), bty = "n",
-  cex.lab = 1.2, cex.axis = 1
+plot(dca_rott5$net.benefit$threshold,
+  dca_rott5$net.benefit$pred5,
+  type = "l", 
+  lwd = 2, 
+  lty = 1,
+  xlab = "Threshold probability in %", 
+  ylab = "Net Benefit",
+  xlim = c(0, 1),
+  ylim = c(-0.10, 0.45), 
+  bty = "n",
+  cex.lab = 1.2, 
+  cex.axis = 1
 )
 # legend('topright',c('Treat all','Treat none','Prediction model'),
 #        lwd=c(2,2,2),lty=c(1,1,2),col=c('darkgray','black','black'),bty='n')
-lines(dca_rdata_1$net.benefit$threshold, dca_rdata_1$net.benefit$none, type = "l", lwd = 2, lty = 4)
-lines(dca_rdata_1$net.benefit$threshold, dca_rdata_1$net.benefit$all, type = "l", lwd = 2, col = "darkgray")
-lines(dca_rdata_1b$net.benefit$threshold, dca_rdata_1b$net.benefit$mort5_efit1b, type = "l", lwd = 2, lty = 5)
+lines(dca_rott5$net.benefit$threshold, 
+      dca_rott5$net.benefit$none, 
+      type = "l", 
+      lwd = 2, 
+      lty = 4)
+lines(dca_rott5$net.benefit$threshold, 
+      dca_rott5$net.benefit$all, 
+      type = "l",
+      lwd = 2, 
+      col = "darkgray")
+lines(dca_rott5_pgr$net.benefit$threshold, 
+      dca_rott5_pgr$net.benefit$pred5_pgr, 
+      type = "l", 
+      lwd = 2, 
+      lty = 5)
 legend("topright",
   c(
     "Treat All",
@@ -1619,7 +1734,9 @@ legend("topright",
     "Original model + PGR",
     "Treat None"
   ),
-  lty = c(1, 1, 5, 4), lwd = 2, col = c("darkgray", "black", "black", "black"),
+  lty = c(1, 1, 5, 4), 
+  lwd = 2, 
+  col = c("darkgray", "black", "black", "black"),
   bty = "n"
 )
 title("A Development data", adj = 0, cex = 1.5)
@@ -1628,43 +1745,59 @@ title("A Development data", adj = 0, cex = 1.5)
 # External data
 # Validation data
 # Predicted probability calculation
-evdata1$mort5_model1 <- 1 - predictSurvProb(efit1, newdata = evdata1, times = 5)
+gbsg5$pred5 <- 1 - predictSurvProb(efit1, newdata = gbsg5, times = 5)
 
 # Extended model with PGR
 # Predicted probability calculation
-evdata1$mort5_model1b <- 1 - predictSurvProb(efit1b, newdata = evdata1, times = 5)
+gbsg5$pred5_pgr <- 1 - predictSurvProb(efit1_pgr, newdata = gbsg5, times = 5)
 
 # Run decision curve analysis
 
 # Development data
 # Model without PGR
-evdata1 <- as.data.frame(evdata1)
-dca_vdata_model1 <- stdca(
-  data = evdata1, outcome = "status", ttoutcome = "ryear",
-  timepoint = 5, predictors = "mort5_model1", xstop = 1.0,
+gbsg5 <- as.data.frame(gbsg5)
+dca_gbsg5 <- stdca(
+  data = gbsg5, outcome = "status", ttoutcome = "ryear",
+  timepoint = 5, predictors = "pred5", xstop = 1.0,
   ymin = -0.01, graph = FALSE
 )
 # Model with PGR
-dca_vdata_model1b <- stdca(
-  data = evdata1, outcome = "status", ttoutcome = "ryear",
-  timepoint = 5, predictors = "mort5_model1b", xstop = 1,
+dca_gbsg5_pgr <- stdca(
+  data = gbsg5, outcome = "status", ttoutcome = "ryear",
+  timepoint = 5, predictors = "pred5_pgr", xstop = 1,
   ymin = -0.01, graph = FALSE
 )
 
 # Decision curves plot
 par(xaxs = "i", yaxs = "i", las = 1)
-plot(dca_vdata_model1$net.benefit$threshold,
-  dca_vdata_model1$net.benefit$mort5_model1,
-  type = "l", lwd = 2, lty = 1,
-  xlab = "Threshold probability in %", ylab = "Net Benefit",
-  xlim = c(0, 1), ylim = c(-0.10, 0.60), bty = "n",
-  cex.lab = 1.2, cex.axis = 1
+plot(dca_gbsg5$net.benefit$threshold,
+  dca_gbsg5$net.benefit$pred5,
+  type = "l", 
+  lwd = 2, 
+  lty = 1,
+  xlab = "Threshold probability in %", 
+  ylab = "Net Benefit",
+  xlim = c(0, 1), 
+  ylim = c(-0.10, 0.60), 
+  bty = "n",
+  cex.lab = 1.2, 
+  cex.axis = 1
 )
-# legend('topright',c('Treat all','Treat none','Prediction model'),
-#        lwd=c(2,2,2),lty=c(1,1,2),col=c('darkgray','black','black'),bty='n')
-lines(dca_vdata_model1$net.benefit$threshold, dca_vdata_model1$net.benefit$none, type = "l", lwd = 2, lty = 4)
-lines(dca_vdata_model1$net.benefit$threshold, dca_vdata_model1$net.benefit$all, type = "l", lwd = 2, col = "darkgray")
-lines(dca_vdata_model1b$net.benefit$threshold, dca_vdata_model1b$net.benefit$mort5_model1b, type = "l", lwd = 2, lty = 5)
+lines(dca_gbsg5$net.benefit$threshold, 
+      dca_gbsg5$net.benefit$none, 
+      type = "l", 
+      lwd = 2, 
+      lty = 4)
+lines(dca_gbsg5$net.benefit$threshold, 
+      dca_gbsg5$net.benefit$all, 
+      type = "l", 
+      lwd = 2, 
+      col = "darkgray")
+lines(dca_gbsg5_pgr$net.benefit$threshold,
+      dca_gbsg5_pgr$net.benefit$pred5_pgr, 
+      type = "l", 
+      lwd = 2, 
+      lty = 5)
 legend("topright",
   c(
     "Treat All",
@@ -1672,7 +1805,8 @@ legend("topright",
     "Original model + PGR",
     "Treat None"
   ),
-  lty = c(1, 1, 5, 4), lwd = 2, col = c("darkgray", "black", "black", "black"),
+  lty = c(1, 1, 5, 4), lwd = 2, 
+  col = c("darkgray", "black", "black", "black"),
   bty = "n"
 )
 title("B External data", adj = 0, cex = 1.5)
