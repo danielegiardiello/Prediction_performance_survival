@@ -677,7 +677,7 @@ Potential net benefit can be also defined in terms of reduction of avoidable int
 ## Additional notes
 
 1. To run the apparent validation find in any performance measure calculation
-   find "gbsg5" and replace with "rott5";  
+   find "gbsg5" and replace with "rott5" except for model development part;  
 
 2. To run validation of the extended model in any performance find "efit1" 
    and replace with "efit1_pgr".  
