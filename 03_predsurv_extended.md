@@ -40,7 +40,6 @@ Performance assessment of survival prediction models - extended code
         -   [2.3.4 Calibration when only coefficients of the model are
             available](#234-calibration-when-only-coefficients-of-the-model-are-available)
 -   [Goal 3 - Clinical utility](#goal-3---clinical-utility)
--   [References](#references)
 -   [Reproducibility ticket](#reproducibility-ticket)
 
 ## Goals
@@ -2915,34 +2914,6 @@ interventions (e.g adjuvant chemotherapy per 100 patients) by:
 where *NB*<sub>model</sub> is the net benefit of the prediction model,
 *NB*<sub>all</sub> is the net benefit of the strategy treat all and
 *p*<sub>*t*</sub> is the risk threshold.
-
-## References
-
--   Overall measures  
-    Reference:
-    <https://diagnprognres.biomedcentral.com/articles/10.1186/s41512-018-0029-2*/>  
-    R Vignette:
-    <https://cran.r-project.org/web/packages/riskRegression/vignettes/IPA.html#fn.1>  
-
--   Discrimination measures   <https://www.jstor.org/stable/27639883>  
-    <https://onlinelibrary.wiley.com/doi/10.1002/sim.5958>  
-    <https://pubmed.ncbi.nlm.nih.gov/23172755/>  
-
--   Calibration  
-    <https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3933449/pdf/nihms542648.pdf>  
-    <https://onlinelibrary.wiley.com/doi/full/10.1002/sim.8281>  
-    <https://onlinelibrary.wiley.com/doi/full/10.1002/sim.8570>  
-
--   Clinical utility (decision curves)  
-    R/SAS/STATA code and references:
-    <https://www.mskcc.org/departments/epidemiology-biostatistics/biostatistics/decision-curve-analysis>  
-    More guidelines about net benefit assessment and interpretation  
-    <https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6261531/>  
-    <https://diagnprognres.biomedcentral.com/articles/10.1186/s41512-019-0064-7>  
-
--   Other useful references  
-    <https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6728752/>  
-    <https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7100774/>  
 
 ## Reproducibility ticket
 
