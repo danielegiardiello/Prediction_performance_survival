@@ -191,8 +191,8 @@ is non-linear as investigated previously.
 The performance of a risk prediction models may be evaluated through:
 
 -   discrimination: the ability of the model to identify patients with
-    and without the outcome and it requires the coefficients (or the log
-    of the hazard ratios) of the developed risk prediction model to be
+    and without the outcome. It requires the coefficients (or the log of
+    the hazard ratios) of the developed risk prediction model to be
     evaluated.
 
 -   calibration: the agreement between observed and predicted
@@ -223,8 +223,25 @@ Discrimination is the ability to differentiate between subjects who have
 the outcome and subjects who do not. Concordance can be assessed over
 several different time intervals:
 
--   the entire range of the data
--   a 5 year window corresponding to our target assessment point
+-   the entire range of the data. Two concordance measures are
+    suggested:
+
+    -   Harrell’s C quantifies the degree of concordance as the
+        proportion of such pairs where the patient with a longer
+        survival time has better predicted survival;
+
+    -   Uno’s C uses a time dependent weighting that more fully adjusts
+        for censoring;
+
+-   a 5 year window corresponding to our target assessment point. Uno’s
+    time-dependent Area Under the Curve (AUC) is suggested. Uno’s
+    time-dependent AUC summarizes discrimination at specific fixed time
+    points. At any time point of interest, *t*, a patient is classified
+    as having an event if the patient experienced the event between
+    baseline and *t* (5 years in our case study), and as a non-event if
+    the patient remained event-free at *t*. The time-dependent AUC
+    evaluates whether predicted probabilities were higher for cases than
+    for non-case.
 
 Clearly the last of these is most relevant.
 
@@ -237,14 +254,15 @@ vignette found in the survival package.
 
 We also propose to calculate Uno’s time-dependent AUC at a specific time
 horizon *t*.  
-More explanations and details are in the paper.  
+More explanations and details are in the paper.
+
 The time horizon to calculate the time-dependent measures was set to 5
 years. Values close to 1 indicate good discrimination ability, while
 values close to 0.5 indicated poor discrimination ability.  
 We used the time horizon at 4.95 and not 5 years since controls are
 considered patients at risk after the time horizon and we
 administratively censored at 5 years to minimize the violation of PH
-assumption (see paragraph 1.3).
+assumption.
 
 ``` r
 # Libraries needed
@@ -561,7 +579,7 @@ df_boots <- do.call(rbind.data.frame, boots_ls)
 
     ##                                Estimate Lower .95  Upper .95
     ## Brier - Validation data            0.22       0.20      0.24
-    ## Scaled Brier - Validation data     0.12       0.06      0.18
+    ## Scaled Brier - Validation data     0.12       0.06      0.17
 
 ## Goal 3 - Clinical utility
 
@@ -712,6 +730,7 @@ legend("topright",
 
 <img src="imgs/01_predsurv_base_02/dca-1.png" width="672" style="display: block; margin: auto;" />
 
+COMMENT: a sentence to comment the results of the potential net benefit.
 Potential net benefit can be also defined in terms of reduction of
 avoidable interventions (e.g adjuvant chemotherapy per 100 patients) by:
 
@@ -746,7 +765,7 @@ sessioninfo::session_info()
     ##  collate  English_United States.1252  
     ##  ctype    English_United States.1252  
     ##  tz       Europe/Berlin               
-    ##  date     2021-07-01                  
+    ##  date     2021-07-06                  
     ## 
     ## - Packages -------------------------------------------------------------------
     ##  package        * version    date       lib source        
