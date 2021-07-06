@@ -144,7 +144,7 @@ The coefficients of the models indicated that higher size, higher number of posi
 ## Goal 2 - Assessing performance in survival prediction models
 The performance of a risk prediction models may be evaluated through:  
   
-  + discrimination:  the ability of the model to identify patients with and without the outcome and it requires the coefficients (or the log of the hazard ratios) of the developed risk prediction model to be evaluated.   
+  + discrimination:  the ability of the model to identify patients with and without the outcome. It requires the coefficients (or the log of the hazard ratios) of the developed risk prediction model to be evaluated.   
 
 + calibration: the agreement between observed and predicted probabilities. It requires the baseline (cumulative) hazard or survival.   
 
@@ -160,8 +160,13 @@ Here we aim to assess the prediction performance of a risk prediction model with
 Discrimination is the ability to differentiate between subjects who have the outcome and subjects who do not.
 Concordance can be assessed over several different time intervals:
 
-* the entire range of the data
-* a 5 year window corresponding to our target assessment point
++ the entire range of the data. Two concordance measures are suggested:  
+
+  + Harrell's C quantifies the degree of concordance as the proportion of such     pairs where the patient with a longer survival time has better predicted      survival;  
+  
+  + Uno’s C uses a time dependent weighting that more fully adjusts for           censoring; 
+  
++ a 5 year window corresponding to our target assessment point. Uno's           time-dependent Area Under the Curve (AUC) is suggested. Uno's time-dependent AUC summarizes discrimination at specific fixed time points. At any time point of interest, _t_, a patient is classified as having an event if the patient experienced the event between baseline and _t_ (5 years in our case study), and as a non-event if the patient remained event-free at _t_. The time-dependent AUC evaluates whether predicted probabilities were higher for cases than for non-case.
 
 Clearly the last of these is most relevant.
 
@@ -175,9 +180,10 @@ survival package.
 
 We also propose to calculate Uno's time-dependent AUC at a specific time horizon _t_.  
 More explanations and details are in the paper.  
+
 The time horizon to calculate the time-dependent measures was set to 5 years.
 Values close to 1 indicate good discrimination ability, while values close to 0.5 indicated poor discrimination ability.  
-We used the time horizon at 4.95 and not 5 years since controls are considered patients at risk after the time horizon and we administratively censored at 5 years to minimize the violation of PH assumption (see paragraph 1.3).
+We used the time horizon at 4.95 and not 5 years since controls are considered patients at risk after the time horizon and we administratively censored at 5 years to minimize the violation of PH assumption.
 
 ```{r, concordance,warning=FALSE}
 # Libraries needed
