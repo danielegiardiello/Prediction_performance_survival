@@ -971,10 +971,7 @@ The performance of a risk prediction models may be evaluated through:
 
 -   calibration: the agreement between observed and predicted
     probabilities. It requires the baseline (cumulative) hazard or
-    survival.  
-
--   overall performance measures: as a combination of discrimination and
-    calibration and/or as a measure of the explained variation;
+    survival.
 
 -   overall measures: combination of discrimination and calibration
     measures
@@ -1066,6 +1063,305 @@ at a specific time horizon *t* defining cases and non-cases of censored
 data at a fixed time horizon *t*.
 
 More details are in the paper and in the references.
+
+``` r
+# Models 
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
+  data = rott5, x = T, y = T
+)
+# Additional marker
+efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
+
+## Save elements needed to estimate concordance indexes
+# Development data 
+rott5$lp <- predict(efit1, newdata = rott5)
+rott5$lp_pgr <- predict(efit1_pgr, newdata = rott5)
+
+# Validation data 
+gbsg5$lp <- predict(efit1, newdata = gbsg5)
+gbsg5$lp_pgr <- predict(efit1_pgr, newdata = gbsg5)
+
+# Harrell C - development
+harrell_C_rott5 <- concordance(Surv(ryear, rfs) ~ lp, 
+                               rott5, 
+                               reverse = TRUE)
+
+harrell_C_rott5_pgr <- concordance(Surv(ryear, rfs) ~ lp_pgr, 
+                               rott5, 
+                               reverse = TRUE)
+
+# Harrell C - validation
+harrell_C_gbsg5 <- concordance(Surv(ryear, rfs) ~ lp, 
+                               gbsg5, 
+                               reverse = TRUE)
+
+harrell_C_gbsg5_pgr <- concordance(Surv(ryear, rfs) ~ lp_pgr, 
+                               gbsg5, 
+                               reverse = TRUE)
+
+# Uno's C - development
+Uno_C_rott5 <- concordance(Surv(ryear, rfs) ~ lp, 
+                           rott5, 
+                           reverse = TRUE,
+                           timewt = "n/G2")
+
+Uno_C_rott5_pgr <- concordance(Surv(ryear, rfs) ~ lp_pgr, 
+                           rott5, 
+                           reverse = TRUE,
+                           timewt = "n/G2")
+
+# Uno's C - validation
+Uno_C_gbsg5 <- concordance(Surv(ryear, rfs) ~ lp, 
+                           gbsg5, 
+                           reverse = TRUE,
+                           timewt = "n/G2")
+
+Uno_C_gbsg5_pgr <- concordance(Surv(ryear, rfs) ~ lp_pgr, 
+                           gbsg5, 
+                           reverse = TRUE,
+                           timewt = "n/G2")
+```
+
+<table class="table table-striped" style="margin-left: auto; margin-right: auto;">
+<thead>
+<tr>
+<th style="empty-cells: hide;border-bottom:hidden;" colspan="1">
+</th>
+<th style="border-bottom:hidden;padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="3">
+
+<div style="border-bottom: 1px solid #ddd; padding-bottom: 5px; ">
+
+Apparent
+
+</div>
+
+</th>
+<th style="border-bottom:hidden;padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="3">
+
+<div style="border-bottom: 1px solid #ddd; padding-bottom: 5px; ">
+
+Internal
+
+</div>
+
+</th>
+<th style="border-bottom:hidden;padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="3">
+
+<div style="border-bottom: 1px solid #ddd; padding-bottom: 5px; ">
+
+Apparent + PGR
+
+</div>
+
+</th>
+<th style="border-bottom:hidden;padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="3">
+
+<div style="border-bottom: 1px solid #ddd; padding-bottom: 5px; ">
+
+Internal + PGR
+
+</div>
+
+</th>
+<th style="border-bottom:hidden;padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="3">
+
+<div style="border-bottom: 1px solid #ddd; padding-bottom: 5px; ">
+
+External
+
+</div>
+
+</th>
+<th style="border-bottom:hidden;padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="3">
+
+<div style="border-bottom: 1px solid #ddd; padding-bottom: 5px; ">
+
+External + PGR
+
+</div>
+
+</th>
+</tr>
+<tr>
+<th style="text-align:left;">
+</th>
+<th style="text-align:right;">
+Estimate
+</th>
+<th style="text-align:right;">
+Lower .95
+</th>
+<th style="text-align:right;">
+Upper .95
+</th>
+<th style="text-align:right;">
+Estimate
+</th>
+<th style="text-align:right;">
+Lower .95
+</th>
+<th style="text-align:right;">
+Upper .95
+</th>
+<th style="text-align:right;">
+Estimate
+</th>
+<th style="text-align:right;">
+Lower .95
+</th>
+<th style="text-align:right;">
+Upper .95
+</th>
+<th style="text-align:right;">
+Estimate
+</th>
+<th style="text-align:right;">
+Lower .95
+</th>
+<th style="text-align:right;">
+Upper .95
+</th>
+<th style="text-align:right;">
+Estimate
+</th>
+<th style="text-align:right;">
+Lower .95
+</th>
+<th style="text-align:right;">
+Upper .95
+</th>
+<th style="text-align:right;">
+Estimate
+</th>
+<th style="text-align:right;">
+Lower .95
+</th>
+<th style="text-align:right;">
+Upper .95
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+Harrell C
+</td>
+<td style="text-align:right;">
+0.67
+</td>
+<td style="text-align:right;">
+0.66
+</td>
+<td style="text-align:right;">
+0.69
+</td>
+<td style="text-align:right;">
+0.68
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+0.68
+</td>
+<td style="text-align:right;">
+0.67
+</td>
+<td style="text-align:right;">
+0.70
+</td>
+<td style="text-align:right;">
+0.68
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+0.66
+</td>
+<td style="text-align:right;">
+0.63
+</td>
+<td style="text-align:right;">
+0.69
+</td>
+<td style="text-align:right;">
+0.68
+</td>
+<td style="text-align:right;">
+0.65
+</td>
+<td style="text-align:right;">
+0.72
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Uno C
+</td>
+<td style="text-align:right;">
+0.67
+</td>
+<td style="text-align:right;">
+0.66
+</td>
+<td style="text-align:right;">
+0.69
+</td>
+<td style="text-align:right;">
+0.68
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+0.68
+</td>
+<td style="text-align:right;">
+0.67
+</td>
+<td style="text-align:right;">
+0.69
+</td>
+<td style="text-align:right;">
+0.68
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+0.65
+</td>
+<td style="text-align:right;">
+0.62
+</td>
+<td style="text-align:right;">
+0.68
+</td>
+<td style="text-align:right;">
+0.67
+</td>
+<td style="text-align:right;">
+0.64
+</td>
+<td style="text-align:right;">
+0.70
+</td>
+</tr>
+</tbody>
+</table>
 
 Concordance varied between 0.67 and 0.68 in the apparent, internal and
 external validation using the basic and extended model.
