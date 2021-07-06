@@ -336,7 +336,6 @@ The performance of a risk prediction models may be evaluated through:
   + discrimination:  the ability of the model to identify patients with and without the outcome and it requires the coefficients (or the log of the hazard ratios) of the developed risk prediction model to be evaluated.   
 
 + calibration: the agreement between observed and predicted probabilities. It requires the baseline (cumulative) hazard or survival.     
-+ overall performance measures: as a combination of discrimination and calibration and/or as a measure of the explained variation;  
 
 + overall measures: combination of discrimination and calibration measures
 
@@ -397,7 +396,7 @@ The Uno's C-index provides a measure of an overall discrimination over the follo
 
 More details are in the paper and in the references.
 
-```{r, concordance, message=FALSE,warning=FALSE, fig.align='center',include=FALSE,echo=FALSE, eval=FALSE}
+```{r, concordance, message=FALSE,warning=FALSE}
 
 # Models 
 efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
@@ -490,7 +489,7 @@ int_val_pgr <- bootstrap_cv(db = rott5,
                         pred.time = 4.95)
 ```
 
-```{r, res_UnoC,echo=FALSE,include=TRUE,eval=FALSE}
+```{r, res_UnoC,echo=FALSE}
 alpha <- .05
 k <- 2
 res_C <- matrix(c(
