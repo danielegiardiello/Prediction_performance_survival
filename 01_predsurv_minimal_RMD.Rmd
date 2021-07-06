@@ -667,6 +667,7 @@ legend("topright",
 
 ```
 
+COMMENT: a sentence to comment the results of the potential net benefit.
 Potential net benefit can be also defined in terms of reduction of avoidable interventions (e.g adjuvant chemotherapy per 100 patients) by:
   
 <img src="https://render.githubusercontent.com/render/math?math=%5Chuge%7B%5Cfrac%7BNB_%7Bmodel%7D%20-%20NB_%7Ball%7D%7D%7B(p_t%2F%20(1-p_t))%7D*100%7D%0A">  
