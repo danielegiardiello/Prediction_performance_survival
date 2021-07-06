@@ -345,247 +345,40 @@ If we had both individual data of the development and validation, a complete ass
 In risk prediction, physicians typically focus on one or more clinically relevant time horizons to inform subjects about their risk. For this reasons, according to information available, different levels of validation assessment are possible.
 Here we aim to assess the prediction performance of a risk prediction model with time-to-event outcome in case all individual data are available and in case of only the model equation of a fixed time horizon (i.e. at 5 years) is provided including the baseline survival.
 
-### 2.1 Overall performance measures
-Some overall performance measures are proposed using survival data:
-    
-+ Brier score: it is the squared differences between observed and predicted values at fixed time point (e.g. at 5 years);
-  
-+ Scaled Brier score (also known as Index of prediction accuracy - IPA): it improves interpretability by scaling the Brier Score with the Brier of the null model.  
-  
-  
-First we save elements need to calculate the performance measures as the linear predictor and the predicted survival at 5 years in the development and validation data. Secondly, we create B bootstrap data to calculate percentile bootstrap confidence intervals needed for scaled Brier score.
 
-
-```{r, overall, warning=FALSE}
-# Models 
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
-  data = rott5, x = T, y = T
-)
-# Additional marker
-efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
-
-# NOTE: waiting for brier score function created by Terry.
-
-# Development set (apparent Brier and IPA) without pgr
-score_rott5 <-
-  Score(list("cox_development" = efit1),
-    formula = Surv(ryear, rfs) ~ 1, 
-    data = rott5, 
-    conf.int = TRUE, 
-    times = 4.95,
-    cens.model = "km", 
-    metrics = "brier",
-    summary = "ipa"
-  )
-
-# Validation set without pgr
-score_gbsg5 <-
-  Score(list("cox_validation" = efit1),
-    formula = Surv(ryear, status) ~ 1, 
-    data = gbsg5, 
-    conf.int = TRUE,
-    times = 4.95,
-    cens.model = "km", 
-    metrics = "brier",
-    summary = "ipa"
-  )
-
-# Development set (apparent Brier and IPA) with pgr
-score_rott5_pgr <-
-  Score(list("cox_development" = efit1_pgr),
-    formula = Surv(ryear, rfs) ~ 1, 
-    data = rott5, 
-    conf.int = TRUE, 
-    times = 4.95,
-    cens.model = "km", 
-    metrics = "brier",
-    summary = "ipa"
-  )
-
-# Validation set with pgr
-score_gbsg5_pgr <-
-  Score(list("cox_validation" = efit1_pgr),
-    formula = Surv(ryear, rfs) ~ 1, 
-    data = gbsg5, 
-    conf.int = TRUE, 
-    times = 4.95,
-    cens.model = "km", 
-    metrics = "brier",
-    summary = "ipa"
-  )
-
-
-
-# Bootstrap for IPA -------------------------
-B <- 10
-set.seed(1234)
-rott5_boot <- bootstraps(rott5, times = B)
-gbsg5_boot <- bootstraps(gbsg5, times = B)
-
-# IPA confidence intervals
-# NOTE: computational time is too long to compute them when the number of bootstrap replications is high
-
-# Bootstrap for IPA - basic model
-score_boot <- function(split) {
-  Score(list("model" = efit1),
-    formula = Surv(ryear, rfs) ~ 1, 
-    data = analysis(split), 
-    conf.int = FALSE, 
-    times = 4.95,
-    cens.model = "km", 
-    metrics = "brier",
-    summary = "ipa"
-  )$Brier$score[model == "model"][["IPA"]]
-}
-
-# Bootstrap for IPA - extended model with PGR
-score_boot_pgr <- function(split) {
-  Score(list("model" = efit1_pgr),
-    formula = Surv(ryear, rfs) ~ 1, 
-    data = analysis(split), 
-    conf.int = FALSE, 
-    times = 4.95,
-    cens.model = "km", 
-    metrics = "brier",
-    summary = "ipa"
-  )$Brier$score[model == "model"][["IPA"]]
-}
-
-
-
-rott5_boot <- rott5_boot %>% mutate(
-  IPA = map_dbl(splits, score_boot),
-  IPA_pgr = map_dbl(splits, score_boot_pgr)
-) # Development dataset
-
-gbsg5_boot <- gbsg5_boot %>% mutate(
-  IPA = map_dbl(splits, score_boot),
-  IPA_pgr = map_dbl(splits, score_boot_pgr)
-) # Validation dataset
-
-```
-
-```{r, int_val, echo=FALSE, warning=FALSE}
-source(here::here('Functions/internal_cv.R'))
-# See legend of the argument in the Functions folder
-```
-
-```{r, int_val_calc, echo=FALSE, warning=FALSE}
-# Models 
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
-  data = rott5, x = T, y = T
-)
-# Additional marker
-efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
-
-int_val <- bootstrap_cv(db = rott5, 
-                        B = 10,
-                        time = "ryear",
-                        status = "rfs",
-                        formula_model = "Surv(ryear, rfs) ~ csize + 
-                        cnode + 
-                        grade",
-                        formula_ipcw = "Surv(ryear, rfs) ~ 1",
-                        pred.time = 4.95)
-
-int_val_pgr <- bootstrap_cv(db = rott5, 
-                        B = 10,
-                        time = "ryear",
-                        status = "rfs",
-                        formula_model = "Surv(ryear, rfs) ~ csize + 
-                        cnode + 
-                        grade + pgr2 + pgr3",
-                        formula_ipcw = "Surv(ryear, rfs) ~ 1",
-                        pred.time = 4.95)
-```
-
-```{r, overall_table, echo=FALSE}
-# Table overall measures
-alpha <- .05
-k <- 2 # number of digits
-res_ov <- matrix(unlist(c(
-  score_rott5$Brier$score[model == "cox_development"][["Brier"]],
-  score_rott5$Brier$score[model == "cox_development"][["lower"]],
-  score_rott5$Brier$score[model == "cox_development"][["upper"]],
-  
-  int_val["Brier corrected"],
-  NA,
-  NA,
-  
-  score_rott5_pgr$Brier$score[model == "cox_development"][["Brier"]],
-  score_rott5_pgr$Brier$score[model == "cox_development"][["lower"]],
-  score_rott5_pgr$Brier$score[model == "cox_development"][["upper"]],
-  
-  int_val_pgr["Brier corrected"],
-  NA,
-  NA,
-  
-  score_gbsg5$Brier$score[model == "cox_validation"][["Brier"]],
-  score_gbsg5$Brier$score[model == "cox_validation"][["lower"]],
-  score_gbsg5$Brier$score[model == "cox_validation"][["upper"]],
-  
-  
-  score_gbsg5_pgr$Brier$score[model == "cox_validation"][["Brier"]],
-  score_gbsg5_pgr$Brier$score[model == "cox_validation"][["lower"]],
-  score_gbsg5_pgr$Brier$score[model == "cox_validation"][["upper"]],
-  
-  score_rott5$Brier$score[model == "cox_development"][["IPA"]],
-  quantile(rott5_boot$IPA, probs = alpha / 2),
-  quantile(rott5_boot$IPA, probs = 1 - alpha / 2),
-  
-  int_val["IPA corrected"],
-  NA,
-  NA,
-  
-  score_rott5_pgr$Brier$score[model == "cox_development"][["IPA"]],
-  quantile(rott5_boot$IPA_pgr, probs = alpha / 2),
-  quantile(rott5_boot$IPA_pgr, probs = 1 - alpha / 2),
-  
-  int_val_pgr["IPA corrected"],
-  NA,
-  NA,
-  
-  score_gbsg5$Brier$score[model == "cox_validation"][["IPA"]],
-  quantile(gbsg5_boot$IPA, probs = alpha / 2),
-  quantile(gbsg5_boot$IPA, probs = 1 - alpha / 2),
-  
-  score_gbsg5_pgr$Brier$score[model == "cox_validation"][["IPA"]],
-  quantile(gbsg5_boot$IPA_pgr, probs = alpha / 2),
-  quantile(gbsg5_boot$IPA_pgr, probs = 1 - alpha / 2)
-)),
-  nrow = 2, 
-  ncol = 18, 
-  byrow = T, 
-  dimnames = list(
-    c("Brier", "IPA"),
-    rep(c("Estimate", "Lower .95 ", "Upper .95"), 6)
-)
-)
-
-res_ov <- round(res_ov, 2) # Digits
-kable(res_ov) %>%
-  kable_styling("striped", position = "center") %>%
-  add_header_above(c(" " = 1, 
-                     "Apparent" = 3, 
-                     "Internal" = 3, 
-                     "Apparent + PGR" = 3, 
-                     "Internal + PGR" = 3, 
-                     "External" = 3, 
-                     "External + PGR" = 3))
-```
-
-As expected the overall performance measures were lower in the external validation. Including information about PGR slightly improved the overall performance.
-
-### 2.2 Discrimination measures
+### 2.1 Discrimination measures
 
 NOTE: to be adjusted in a consistent way with the paper
 Discrimination is the ability to differentiate between subjects who have the outcome and subjects who do not.
 In prognostic modelling, discrimination reflects separation between survival curves for individuals or groups.
 
+Discrimination is the ability to differentiate between subjects who have the outcome and subjects who do not.
 Concordance can be assessed over several different time intervals:
 
-* the entire range of the data
-* a 5 year window corresponding to our target assessment point
++ the entire range of the data. Two concordance measures are suggested:  
+
+  + Harrell's C quantifies the degree of concordance as the proportion of such     pairs where the patient with a longer survival time has better predicted      survival;  
+  
+  + Uno’s C uses a time dependent weighting that more fully adjusts for           censoring; 
+  
++ a 5 year window corresponding to our target assessment point. Uno's           time-dependent Area Under the Curve (AUC) is suggested. Uno's time-dependent AUC summarizes discrimination at specific fixed time points. At any time point of interest, _t_, a patient is classified as having an event if the patient experienced the event between baseline and _t_ (5 years in our case study), and as a non-event if the patient remained event-free at _t_. The time-dependent AUC evaluates whether predicted probabilities were higher for cases than for non-case.
+
+Clearly the last of these is most relevant.
+
+This is easy to compute using the concordance function in the survival
+package.
+There is some uncertainty in the literature about the original Harrell
+formulation versus Uno's suggestion to re-weight the time scale by the
+factor $1/G^2(t)$ where $G$ is the censoring distribution.
+There is more detailed information in the concordance vignette found in the
+survival package.
+
+We also propose to calculate Uno's time-dependent AUC at a specific time horizon _t_.  
+More explanations and details are in the paper.  
+
+The time horizon to calculate the time-dependent measures was set to 5 years.
+Values close to 1 indicate good discrimination ability, while values close to 0.5 indicated poor discrimination ability.  
+We used the time horizon at 4.95 and not 5 years since controls are considered patients at risk after the time horizon and we administratively censored at 5 years to minimize the violation of PH assumption.
 
 Clearly the last of these is most relevant
 
@@ -599,7 +392,7 @@ survival package.
   
 We used the time horizon at 4.95 and not 5 years since controls are considered patients at risk after the time horizon and we administratively censored at 5 years to minimize the violation of PH assumption (see paragraph 1.3).  
 
-The Uno's C-index provides a measure of an overall discrimination over the follow-up time. The Uno's time-dependent AUC measures discrimination at a specific time horizon *t* defining cases and controls of censored data at a fixed time horizon *t*.
+The Uno's C-index provides a measure of an overall discrimination over the follow-up time. The Uno's time-dependent AUC measures discrimination at a specific time horizon _t_ defining cases and non-cases of censored data at a fixed time horizon _t_.
 
 
 More details are in the paper and in the references.
@@ -663,9 +456,41 @@ Uno_C_gbsg5_pgr <- concordance(Surv(ryear, rfs) ~ lp_pgr,
                            timewt = "n/G2")
 ```
 
+```{r, int_val_01, echo=FALSE, warning=FALSE}
+source(here::here('Functions/internal_cv.R'))
+# See legend of the argument in the Functions folder
+```
 
+```{r, int_val_calc_01, echo=FALSE, warning=FALSE, message=FALSE}
+# Models 
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
+  data = rott5, x = T, y = T
+)
+# Additional marker
+efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
 
-```{r, res_UnoC,echo=FALSE,include=FALSE,eval=FALSE}
+int_val <- bootstrap_cv(db = rott5, 
+                        B = 10,
+                        time = "ryear",
+                        status = "rfs",
+                        formula_model = "Surv(ryear, rfs) ~ csize + 
+                        cnode + 
+                        grade",
+                        formula_ipcw = "Surv(ryear, rfs) ~ 1",
+                        pred.time = 4.95)
+
+int_val_pgr <- bootstrap_cv(db = rott5, 
+                        B = 10,
+                        time = "ryear",
+                        status = "rfs",
+                        formula_model = "Surv(ryear, rfs) ~ csize + 
+                        cnode + 
+                        grade + pgr2 + pgr3",
+                        formula_ipcw = "Surv(ryear, rfs) ~ 1",
+                        pred.time = 4.95)
+```
+
+```{r, res_UnoC,echo=FALSE,include=TRUE,eval=FALSE}
 alpha <- .05
 k <- 2
 res_C <- matrix(c(
@@ -757,6 +582,7 @@ kable(res_C) %>%
                      "External + PGR" = 3))
 ```
 
+Concordance varied between 0.67 and 0.68 in the apparent, internal and external validation using the basic and extended model.
 
 ```{r, AUC, message=FALSE, warning=FALSE}
 
@@ -993,7 +819,7 @@ title("B GBSG data (n=686)", adj = 0)
 
 The discrimination performance is higher in the extended model compared to the model without PGR over the entire follow-up.
 
-### 2.3 Calibration
+### 2.2 Calibration
 Calibration is the agreement between observed outcomes and predicted probabilities.
 For example, in survival models, a predicted survival probability at a fixed time horizon _t_ of 80% is considered reliable if it can be expected that 80 out of 100 will survive among patients received a predicted survival probability of 80%.
 Calibration can be assessed at a fixed time point (e.g. at 5 years), and globally (considering the entire range of the data).
@@ -1030,8 +856,8 @@ Since different level of information may be available, different level of calibr
 
 More detailed explanations are available in the paper.
   
-#### 2.3.1 Mean calibration
-##### 2.3.1.1  Mean calibration - fixed time point
+#### 2.2.1 Mean calibration
+##### 2.2.1.1  Mean calibration - fixed time point
 The mean calibration at fixed time point (e.g. at 5 years) can be estimated using the Observed and Expected ratio.
 The observed is estimated using the complementary of the Kaplan-Meier curve at the fixed time point.
 The expected is estimated using the average predicted risk of the event at the fixed time point.
@@ -1118,7 +944,7 @@ kable(res_OE) %>%
 
 Observed and Expected ratio is 1.07 (95% CI: 0.95 - 1.20) for the basic model and 1.03 (95% CI: 0.92 - 1.16) for the extended model.
 
-##### 2.3.1.2  Mean calibration - global assessment 
+##### 2.2.1.2  Mean calibration - global assessment 
 The mean calibration for the entire data is calculated using the approach proposed by Crowson et al. to estimate calibration-in-the-large and slope using Poisson regression.
 For mean calibration, we show the calibration-in-the-large.
 
@@ -1127,10 +953,11 @@ For mean calibration, we show the calibration-in-the-large.
 efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
   data = rott5, x = T, y = T
 )
+
 # Additional marker
 efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
 
-## Calibration in the large and calibration slope -------------
+### Calibration in the large and calibration slope -------------
 p <- predict(efit1, newdata = gbsg5, type = "expected")
 lp5  <- predict(efit1, newdata = gbsg5, type = "lp")  #linear predictor
 
@@ -1156,6 +983,8 @@ logbase_pgr <- p_pgr - lp5_pgr
 
 int_summary <- summary(pfit1)$coefficients
 int_summary_pgr <- summary(pfit1_pgr)$coefficients
+
+
 
 # Look at the risk score itself
 # pfit2 <- update(pfit1, . ~ . + eta5)
@@ -1193,8 +1022,8 @@ kable(res_cal) %>%
 ```
 Calibration-in-the-large was 0.09 and 0.05 in the basic and extended model, respectively. 
 
-#### 2.3.2 Weak calibration 
-##### 2.3.2.1 Weak calibration - fixed time point
+#### 2.2.2 Weak calibration 
+##### 2.2.2.1 Weak calibration - fixed time point
 
 ```{r, weak_cal_t, echo=TRUE,message=FALSE,warning=FALSE}
 # Models 
@@ -1223,6 +1052,7 @@ lp.val_pgr <- log(-log(1 - pred_pgr))
 center <- mean(lp.val)  # center
 center_pgr <- mean(lp.val_pgr)  # center
 
+
 ### Model with a slope and an intercept
 f.val <- coxph(Surv(gbsg5$ryear, gbsg5$rfs) ~ lp.val)  
 slope <- f.val$coefficients[1]
@@ -1233,31 +1063,50 @@ slope_pgr <- f.val_pgr$coefficients[1]
 slope.se_pgr <- sqrt(vcov(f.val_pgr)[[1, 1]])
  
 ### same procedure to find the intercept, now with slope-adjusted lp
-# f.val.offset <- coxph(Surv(gbsg5$ryear, gbsg5$rfs) ~ offset(slope*lp.val))
-# sf <- survfit(f.val.offset, conf.type = "log-log")
-# log.H <- log(-log(tail(sf$surv[sf$time <= horizon], 1)))   
-# int <- log.H - mean(slope*lp.val)
-# log.H.upper <- log(-log(tail(sf$upper,1)))
-# int.se <- (log.H-log.H.upper)/qnorm(.975)
+f.val.offset <- coxph(Surv(gbsg5$ryear, gbsg5$rfs) ~ offset(slope*lp.val))
+sf <- survfit(f.val.offset, conf.type = "log-log")
+log.H <- log(-log(tail(sf$surv[sf$time <= horizon], 1)))   
+int <- log.H - mean(slope*lp.val)
+log.H.upper <- log(-log(tail(sf$upper,1)))
+int.se <- (log.H-log.H.upper)/qnorm(.975)
+
+# With marker
+f.val.offset_pgr <- coxph(Surv(gbsg5$ryear, gbsg5$rfs) ~
+                        offset(slope_pgr*lp.val_pgr))
+sf_pgr <- survfit(f.val.offset_pgr, conf.type = "log-log")
+log.H_pgr <- log(-log(tail(sf_pgr$surv[sf_pgr$time <= horizon], 1)))   
+int_pgr <- log.H_pgr - mean(slope_pgr*lp.val_pgr)
+log.H.upper_pgr <- log(-log(tail(sf_pgr$upper,1)))
+int.se_pgr <- (log.H_pgr-log.H.upper_pgr)/qnorm(.975)
+
 ```
 
 ```{r, res_cal, message=FALSE, warning=FALSE, echo=FALSE}
 alpha <- 0.05
 res_cal <- matrix(c(
+                int,
+                int - qnorm( 1- alpha / 2) * int.se,
+                int + qnorm( 1- alpha / 2) * int.se,
+                
+                
                 slope,
                 slope - qnorm( 1- alpha / 2) * slope.se,
                 slope + qnorm( 1- alpha / 2) * slope.se,
+                
+                int_pgr,
+                int_pgr - qnorm( 1- alpha / 2) * int.se_pgr,
+                int_pgr + qnorm( 1- alpha / 2) * int.se_pgr,
                 
                 slope_pgr,
                 slope_pgr - qnorm( 1- alpha / 2) * slope.se_pgr,
                 slope_pgr + qnorm( 1- alpha / 2) * slope.se_pgr
                    ),
                  
-                 nrow = 1,
+                 nrow = 2,
                  ncol = 6,
                  byrow = T,
                  dimnames = list(
-                   c("Calibration slope"),
+                   c("Calibration intercept","Calibration slope"),
                    rep(c("Estimate", "Lower .95", "Upper .95"),2))
 )
 
@@ -1269,9 +1118,10 @@ kable(res_cal) %>%
                      "External + PGR" = 3))
 
 ```
+Calibration intercept was 0.15 and 0.14 for the basic and extended model, respectively.  
 Calibration slope was 1.08 and 1.17 for the basic and extended model, respectively.
 
-##### 2.3.2.2 Weak calibration - global assessment
+##### 2.2.2.2 Weak calibration - global assessment
 The calibration for the entire data is calculated using the approach proposed by Crowson et al. to estimate calibration-in-the-large and slope using Poisson regression.
 For weak calibration, we show the calibration slope.
 
@@ -1292,6 +1142,24 @@ p_pgr <- predict(efit1_pgr, newdata = gbsg5, type = "expected")
 lp5_pgr <- predict(efit1_pgr, newdata = gbsg5, type = "lp")  
 logbase <- p - lp5
 logbase_pgr <- p_pgr - lp5_pgr
+
+# Calibration in the large
+pfit1 <- glm(rfs ~ offset(log(p)), 
+             family = poisson, 
+             data = gbsg5,
+             subset = (p > 0))
+logbase <- p - lp5
+
+# With pgr
+pfit1_pgr <- glm(rfs ~ offset(log(p_pgr)), 
+             family = poisson, 
+             data = gbsg5,
+             subset = (p_pgr > 0))
+logbase_pgr <- p_pgr - lp5_pgr
+
+
+int_summary <- summary(pfit1)$coefficients
+int_summary_pgr <- summary(pfit1_pgr)$coefficients
 
 # Calibration slope
 pfit2 <- glm(rfs ~ lp5 + offset(logbase), 
@@ -1316,7 +1184,15 @@ slope_summary_pgr <- summary(pfit2_pgr)$coefficients
 ```{r, res_Poisson, echo=FALSE,message=FALSE,warning=FALSE}
 alpha <- 0.05
 res_cal <- matrix(c(
+  
+    int_summary[1],
+    int_summary[1] - qnorm(1 - alpha / 2) * int_summary[2],
+    int_summary[1] + qnorm(1 - alpha / 2) * int_summary[2],
     
+    int_summary_pgr[1],
+    int_summary_pgr[1] - qnorm(1 - alpha / 2) * int_summary_pgr[2],
+    int_summary_pgr[1] + qnorm(1 - alpha / 2) * int_summary_pgr[2],
+  
     slope_summary[2, 1],
     slope_summary[2, 1] - qnorm(1 - alpha / 2) * slope_summary[2, 2],
     slope_summary[2, 1] + qnorm(1 - alpha / 2) * slope_summary[2, 2],
@@ -1326,11 +1202,11 @@ res_cal <- matrix(c(
     slope_summary_pgr[2, 1] + qnorm(1 - alpha / 2) * slope_summary_pgr[2, 2]
 ),
 
-  nrow = 1, 
+  nrow = 2, 
   ncol = 6, 
   byrow = T,
   dimnames = list(
-  c("Calibration slope"),
+  c("Calibration intercept","Calibration slope"),
   rep(c("Estimate", "Lower .95 ", "Upper .95"), 2)
 )
 )
@@ -1347,8 +1223,8 @@ kable(res_cal) %>%
 Calibration slope was 1.37 and 1.40 for the basic and extended model, respectively.
 
 
-#### 2.3.3 Moderate calibration 
-##### 2.3.3.1 Moderate calibration - fixed time point
+#### 2.2.3 Moderate calibration 
+##### 2.2.3.1 Moderate calibration - fixed time point
 Moderate calibration at fixed time point can be assessed using flexible calibration curve, complemented with ICI, E50, E90 as suggested by Austin et al.
 
 Calibration curve: it is a graphical representation of calibration in-the-large and calibration. It shows:
@@ -1535,7 +1411,7 @@ kable(res_numcal) %>%
 
 In the validation, ICI at 5 years was 0.04 and 0.03 for the basic and extended model, respectively.
 
-##### 2.3.3.2 Moderate calibration - global assessment
+##### 2.2.3.2 Moderate calibration - global assessment
 Please program it in R...
 
 ```{r, mod_cal, message=FALSE,warning=FALSE, fig.align='center',include=FALSE, echo=TRUE}
@@ -1545,11 +1421,10 @@ efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
 )
 # Additional marker
 efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
-
-
-
 ```
-#### 2.3.4 Calibration when only coefficients of the model are available
+
+
+#### 2.2.4 Calibration when only coefficients of the model are available
 When only coefficients of the development model is available and the baseline survival is not provided, only visual assessment of calibration is possible based on Kaplan-Meier curves between risk groups.
 
 ```{r, km,message=FALSE, warning=FALSE}
@@ -1633,6 +1508,237 @@ legend("bottomleft",
        bty = "n")
 title("B - extended model with PGR", adj = 0)
 ```
+
+### 2.3 Overall performance measures
+Some overall performance measures are proposed using survival data:
+    
++ Brier score: it is the squared differences between observed and predicted values at fixed time point (e.g. at 5 years);
+  
++ Scaled Brier score (also known as Index of prediction accuracy - IPA): it improves interpretability by scaling the Brier Score with the Brier of the null model.  
+  
+  
+First we save elements need to calculate the performance measures as the linear predictor and the predicted survival at 5 years in the development and validation data. Secondly, we create B bootstrap data to calculate percentile bootstrap confidence intervals needed for scaled Brier score.
+
+
+```{r, overall, warning=FALSE}
+# Models 
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
+  data = rott5, x = T, y = T
+)
+# Additional marker
+efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
+
+# NOTE: waiting for brier score function created by Terry.
+
+# Development set (apparent Brier and IPA) without pgr
+score_rott5 <-
+  Score(list("cox_development" = efit1),
+    formula = Surv(ryear, rfs) ~ 1, 
+    data = rott5, 
+    conf.int = TRUE, 
+    times = 4.95,
+    cens.model = "km", 
+    metrics = "brier",
+    summary = "ipa"
+  )
+
+# Validation set without pgr
+score_gbsg5 <-
+  Score(list("cox_validation" = efit1),
+    formula = Surv(ryear, status) ~ 1, 
+    data = gbsg5, 
+    conf.int = TRUE,
+    times = 4.95,
+    cens.model = "km", 
+    metrics = "brier",
+    summary = "ipa"
+  )
+
+# Development set (apparent Brier and IPA) with pgr
+score_rott5_pgr <-
+  Score(list("cox_development" = efit1_pgr),
+    formula = Surv(ryear, rfs) ~ 1, 
+    data = rott5, 
+    conf.int = TRUE, 
+    times = 4.95,
+    cens.model = "km", 
+    metrics = "brier",
+    summary = "ipa"
+  )
+
+# Validation set with pgr
+score_gbsg5_pgr <-
+  Score(list("cox_validation" = efit1_pgr),
+    formula = Surv(ryear, rfs) ~ 1, 
+    data = gbsg5, 
+    conf.int = TRUE, 
+    times = 4.95,
+    cens.model = "km", 
+    metrics = "brier",
+    summary = "ipa"
+  )
+
+
+
+# Bootstrap for IPA -------------------------
+B <- 10
+set.seed(1234)
+rott5_boot <- bootstraps(rott5, times = B)
+gbsg5_boot <- bootstraps(gbsg5, times = B)
+
+# IPA confidence intervals
+# NOTE: computational time is too long to compute them when the number of bootstrap replications is high
+
+# Bootstrap for IPA - basic model
+score_boot <- function(split) {
+  Score(list("model" = efit1),
+    formula = Surv(ryear, rfs) ~ 1, 
+    data = analysis(split), 
+    conf.int = FALSE, 
+    times = 4.95,
+    cens.model = "km", 
+    metrics = "brier",
+    summary = "ipa"
+  )$Brier$score[model == "model"][["IPA"]]
+}
+
+# Bootstrap for IPA - extended model with PGR
+score_boot_pgr <- function(split) {
+  Score(list("model" = efit1_pgr),
+    formula = Surv(ryear, rfs) ~ 1, 
+    data = analysis(split), 
+    conf.int = FALSE, 
+    times = 4.95,
+    cens.model = "km", 
+    metrics = "brier",
+    summary = "ipa"
+  )$Brier$score[model == "model"][["IPA"]]
+}
+
+
+
+rott5_boot <- rott5_boot %>% mutate(
+  IPA = map_dbl(splits, score_boot),
+  IPA_pgr = map_dbl(splits, score_boot_pgr)
+) # Development dataset
+
+gbsg5_boot <- gbsg5_boot %>% mutate(
+  IPA = map_dbl(splits, score_boot),
+  IPA_pgr = map_dbl(splits, score_boot_pgr)
+) # Validation dataset
+
+```
+
+```{r, int_val_02, echo=FALSE, warning=FALSE}
+source(here::here('Functions/internal_cv.R'))
+# See legend of the argument in the Functions folder
+```
+
+```{r, int_val_calc_02, echo=FALSE, warning=FALSE}
+# Models 
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
+  data = rott5, x = T, y = T
+)
+# Additional marker
+efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
+
+int_val <- bootstrap_cv(db = rott5, 
+                        B = 10,
+                        time = "ryear",
+                        status = "rfs",
+                        formula_model = "Surv(ryear, rfs) ~ csize + 
+                        cnode + 
+                        grade",
+                        formula_ipcw = "Surv(ryear, rfs) ~ 1",
+                        pred.time = 4.95)
+
+int_val_pgr <- bootstrap_cv(db = rott5, 
+                        B = 10,
+                        time = "ryear",
+                        status = "rfs",
+                        formula_model = "Surv(ryear, rfs) ~ csize + 
+                        cnode + 
+                        grade + pgr2 + pgr3",
+                        formula_ipcw = "Surv(ryear, rfs) ~ 1",
+                        pred.time = 4.95)
+```
+
+```{r, overall_table, echo=FALSE}
+# Table overall measures
+alpha <- .05
+k <- 2 # number of digits
+res_ov <- matrix(unlist(c(
+  score_rott5$Brier$score[model == "cox_development"][["Brier"]],
+  score_rott5$Brier$score[model == "cox_development"][["lower"]],
+  score_rott5$Brier$score[model == "cox_development"][["upper"]],
+  
+  int_val["Brier corrected"],
+  NA,
+  NA,
+  
+  score_rott5_pgr$Brier$score[model == "cox_development"][["Brier"]],
+  score_rott5_pgr$Brier$score[model == "cox_development"][["lower"]],
+  score_rott5_pgr$Brier$score[model == "cox_development"][["upper"]],
+  
+  int_val_pgr["Brier corrected"],
+  NA,
+  NA,
+  
+  score_gbsg5$Brier$score[model == "cox_validation"][["Brier"]],
+  score_gbsg5$Brier$score[model == "cox_validation"][["lower"]],
+  score_gbsg5$Brier$score[model == "cox_validation"][["upper"]],
+  
+  
+  score_gbsg5_pgr$Brier$score[model == "cox_validation"][["Brier"]],
+  score_gbsg5_pgr$Brier$score[model == "cox_validation"][["lower"]],
+  score_gbsg5_pgr$Brier$score[model == "cox_validation"][["upper"]],
+  
+  score_rott5$Brier$score[model == "cox_development"][["IPA"]],
+  quantile(rott5_boot$IPA, probs = alpha / 2),
+  quantile(rott5_boot$IPA, probs = 1 - alpha / 2),
+  
+  int_val["IPA corrected"],
+  NA,
+  NA,
+  
+  score_rott5_pgr$Brier$score[model == "cox_development"][["IPA"]],
+  quantile(rott5_boot$IPA_pgr, probs = alpha / 2),
+  quantile(rott5_boot$IPA_pgr, probs = 1 - alpha / 2),
+  
+  int_val_pgr["IPA corrected"],
+  NA,
+  NA,
+  
+  score_gbsg5$Brier$score[model == "cox_validation"][["IPA"]],
+  quantile(gbsg5_boot$IPA, probs = alpha / 2),
+  quantile(gbsg5_boot$IPA, probs = 1 - alpha / 2),
+  
+  score_gbsg5_pgr$Brier$score[model == "cox_validation"][["IPA"]],
+  quantile(gbsg5_boot$IPA_pgr, probs = alpha / 2),
+  quantile(gbsg5_boot$IPA_pgr, probs = 1 - alpha / 2)
+)),
+  nrow = 2, 
+  ncol = 18, 
+  byrow = T, 
+  dimnames = list(
+    c("Brier", "IPA"),
+    rep(c("Estimate", "Lower .95 ", "Upper .95"), 6)
+)
+)
+
+res_ov <- round(res_ov, 2) # Digits
+kable(res_ov) %>%
+  kable_styling("striped", position = "center") %>%
+  add_header_above(c(" " = 1, 
+                     "Apparent" = 3, 
+                     "Internal" = 3, 
+                     "Apparent + PGR" = 3, 
+                     "Internal + PGR" = 3, 
+                     "External" = 3, 
+                     "External + PGR" = 3))
+```
+
+As expected the overall performance measures were lower in the external validation. Including information about PGR slightly improved the overall performance.
 
 ## Goal 3 - Clinical utility
 Discrimination and calibration measures are essential to assess the prediction performance but insufficient to evaluate the potential clinical utility of a risk prediction model for decision making. When new markers are available, clinical utility assessment evaluates whether the extended model helps to improve decision making.  
