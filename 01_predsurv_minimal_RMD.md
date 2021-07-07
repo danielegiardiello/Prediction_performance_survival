@@ -587,7 +587,7 @@ df_boots <- do.call(rbind.data.frame, boots_ls)
 
     ##                                Estimate Lower .95  Upper .95
     ## Brier - Validation data            0.22       0.20      0.24
-    ## Scaled Brier - Validation data     0.12       0.06      0.18
+    ## Scaled Brier - Validation data     0.12       0.05      0.19
 
 Brier and scaled Brier score were 0.22 and 0.12, respectively.
 
@@ -745,7 +745,7 @@ legend("topright",
 The potential benefit at 23% threshold of the prediction model is 0.36.
 This means that the model might identify 36 patients out of 100 who may
 develop recurrence or may die within 5 years since diagnosis and thus
-adjvant chemotherapy may help to reduce recurrence or mortality.
+adjuvant chemotherapy may help to reduce recurrence or mortality.
 
 Potential benefit can be also defined in terms of reduction of avoidable
 interventions (e.g adjuvant chemotherapy per 100 patients) by:
