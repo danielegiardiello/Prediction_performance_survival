@@ -333,11 +333,11 @@ The coefficients of the models indicated that higher size, higher number of posi
 ## Goal 2 - Assessing performance in survival prediction models
 The performance of a risk prediction models may be evaluated through:  
   
-  + discrimination:  the ability of the model to identify patients with and without the outcome and it requires the coefficients (or the log of the hazard ratios) of the developed risk prediction model to be evaluated.   
+  + discrimination:  the ability of the model to identify patients with and without the outcome and it requires the coefficients (or the log of the hazard ratios) of the developed risk prediction model to be evaluated;     
 
-+ calibration: the agreement between observed and predicted probabilities. It requires the baseline (cumulative) hazard or survival.     
++ calibration: the agreement between observed and predicted probabilities. It requires the baseline (cumulative) hazard or survival;       
 
-+ overall measures: combination of discrimination and calibration measures
++ overall measures: combination of discrimination and calibration measures.  
 
 Unfortunately, a few publications report the complete baseline (cumulative) hazard or survival or even the baseline (cumulative) hazard or survival at fixed time horizon _t_.
 If we had both individual data of the development and validation, a complete assessment of discrimination and calibration would be possible. We could evaluate the prediction performance of a risk prediction model at a fixed time horizon(s) _t_ and for the complete follow-up time.
@@ -347,12 +347,11 @@ Here we aim to assess the prediction performance of a risk prediction model with
 
 ### 2.1 Discrimination measures
 
-NOTE: to be adjusted in a consistent way with the paper
 Discrimination is the ability to differentiate between subjects who have the outcome and subjects who do not.
 In prognostic modelling, discrimination reflects separation between survival curves for individuals or groups.
 
 Discrimination is the ability to differentiate between subjects who have the outcome and subjects who do not.
-Concordance can be assessed over several different time intervals:
+Concordance can be assessed over several different time intervals:  
 
 + the entire range of the data. Two concordance measures are suggested:  
 
@@ -379,7 +378,7 @@ The time horizon to calculate the time-dependent measures was set to 5 years.
 Values close to 1 indicate good discrimination ability, while values close to 0.5 indicated poor discrimination ability.  
 We used the time horizon at 4.95 and not 5 years since controls are considered patients at risk after the time horizon and we administratively censored at 5 years to minimize the violation of PH assumption.
 
-Clearly the last of these is most relevant
+Clearly the last of these is most relevant.  
 
 This is easy to compute using the concordance function in the survival
 package.
@@ -705,7 +704,7 @@ kable(res_AUC) %>%
 
 ```
 
-NOTE: add brief comments about concordance and time-dependent AUC
+Time-dependent AUC at 5 years was between 0.71 and 0.73 in the apparent, internal and external validation for the basic and extended model.
 
 The discrimination ability may be evaluated over the time since diagnosis through a plot showing the AUC over the time (years) in the development and validation set in the basic and extended model. Since the calculation of the AUC and the standard errors in the development set is computationally demanding, we showed only the plot in the validation data. However, we provided the R code (as a comment) for the development data.
 
@@ -842,10 +841,10 @@ Since different level of information may be available, different level of calibr
 
 + Weak calibration can be estimated:
   + at a fixed time point  
-    + using slope as the coefficient of cloglog transformation of             predicted probabilities in Cox model. Possible to determine intercept        after adjusting for slope.   
+    + using intercept and slope as the coefficient of cloglog                      transformation of predicted probabilities in Cox model. Possible to          determine intercept after adjusting for slope.  
     
   + global:  
-    + using slope as the coefficient of PI in Poisson model with log of            baseline cumulative hazard as offset.  
+    + using intercept and slope as the coefficient of PI in Poisson model          with log of  baseline cumulative hazard as offset.  
 
 + Moderate calibration can estimated:
   + at a fixed time point:  
@@ -1025,7 +1024,7 @@ Calibration-in-the-large was 0.09 and 0.05 in the basic and extended model, resp
 
 #### 2.2.2 Weak calibration 
 ##### 2.2.2.1 Weak calibration - fixed time point
-
+Weak calibration using intercept and slope as the coefficient of cloglog transformation of predicted probabilities in Cox model.  
 ```{r, weak_cal_t, echo=TRUE,message=FALSE,warning=FALSE}
 # Models 
 efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
@@ -1119,7 +1118,7 @@ kable(res_cal) %>%
                      "External + PGR" = 3))
 
 ```
-Calibration intercept was 0.15 and 0.14 for the basic and extended model, respectively.  
+Calibration intercept (adjusted for the slope) was 0.15 and 0.14 for the basic and extended model , respectively.  
 Calibration slope was 1.08 and 1.17 for the basic and extended model, respectively.
 
 ##### 2.2.2.2 Weak calibration - global assessment
@@ -1228,11 +1227,11 @@ Calibration slope was 1.37 and 1.40 for the basic and extended model, respective
 ##### 2.2.3.1 Moderate calibration - fixed time point
 Moderate calibration at fixed time point can be assessed using flexible calibration curve, complemented with ICI, E50, E90 as suggested by Austin et al.
 
-Calibration curve: it is a graphical representation of calibration in-the-large and calibration. It shows:
+Calibration curve: it is a graphical representation of calibration in-the-large and calibration. It shows:  
       
-  + on the *x-axis* the predicted survival (or risk) probabilities at a fixed time horizon (e.g. at 5 years);
+  + on the *x-axis* the predicted survival (or risk) probabilities at a fixed time horizon (e.g. at 5 years);  
       
-  + on the *y-axis* the observed survival (or risk) probabilities at a fixed time horizon (e.g. at 5 years);
+  + on the *y-axis* the observed survival (or risk) probabilities at a fixed time horizon (e.g. at 5 years);  
       
   + The 45-degree line indicates the good overall calibration. 
       Points below the 45-degree line indicates that the model overestimate the observed risk. 
@@ -1427,18 +1426,8 @@ efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
 p <- log(predict(efit1, newdata = gbsg5, type = "expected"))
 lp <- predict(efit1, newdata = gbsg5, type = "lp")
 logbase <- p - lp
-
-fit1 <- glm(rfs ~ offset(p), family=  poisson, data = gbsg5,
-            subset = (p > 0))
-fit2 <- glm(rfs ~ lp + offset(logbase), family = poisson, 
-            data = gbsg5,
-            subset = (p > 0))
-
-
-group <- cut(lp, c(quantile(lp, probs = seq(0, 1, 0.25))))
-
-fit3 <- glm(rfs ~ -1 + group + offset(p), family = poisson, data = gbsg5,
-            subset = (p > 0)) 
+# fit3 <- glm(rfs ~ -1 + group + offset(p), family = poisson, data = gbsg5,
+#             subset = (p > 0)) 
 
 ```
 
@@ -1530,7 +1519,7 @@ legend("bottomleft",
 ### 2.3 Overall performance measures
 Some overall performance measures are proposed using survival data:
     
-+ Brier score: it is the squared differences between observed and predicted values at fixed time point (e.g. at 5 years);
++ Brier score: it is the squared differences between observed and predicted values at fixed time point (e.g. at 5 years);  
   
 + Scaled Brier score (also known as Index of prediction accuracy - IPA): it improves interpretability by scaling the Brier Score with the Brier of the null model.  
   
@@ -1950,8 +1939,12 @@ legend("topright",
 title("B External data", adj = 0, cex = 1.5)
 ```
 
-COMMENTS NEED TO BE WRITTEN.  
-Moreover, net benefit can be defined in terms of reduction of avoidable interventions (e.g adjuvant chemotherapy per 100 patients) by:
+
+The potential net benefit at 23% threshold of the prediction model was 0.27, 0.28 for the basic and extended model in the development data, respectively.
+This means that the model might identify approximately 27/28 patients out of 100 who may develop recurrence or may die within 5 years since diagnosis and thus adjuvant chemotherapy may help to reduce recurrence or mortality.
+For validation data, the potential net benefit was 0.42 for the basic and extended model. 
+
+Moreover, potential net benefit can be defined in terms of reduction of avoidable interventions (e.g adjuvant chemotherapy per 100 patients) by:
   
 <img src="https://render.githubusercontent.com/render/math?math=%5Chuge%7B%5Cfrac%7BNB_%7Bmodel%7D%20-%20NB_%7Ball%7D%7D%7B(p_t%2F%20(1-p_t))%7D*100%7D%0A">  
   
@@ -1959,7 +1952,6 @@ Moreover, net benefit can be defined in terms of reduction of avoidable interven
 
   
 ## Reproducibility ticket
-
 ```{r repro_ticket, echo=TRUE}
 sessioninfo::session_info()
 ```
