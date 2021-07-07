@@ -967,14 +967,14 @@ The performance of a risk prediction models may be evaluated through:
 -   discrimination: the ability of the model to identify patients with
     and without the outcome and it requires the coefficients (or the log
     of the hazard ratios) of the developed risk prediction model to be
-    evaluated.
+    evaluated;
 
 -   calibration: the agreement between observed and predicted
     probabilities. It requires the baseline (cumulative) hazard or
-    survival.
+    survival;
 
 -   overall measures: combination of discrimination and calibration
-    measures
+    measures.
 
 Unfortunately, a few publications report the complete baseline
 (cumulative) hazard or survival or even the baseline (cumulative) hazard
@@ -993,10 +993,10 @@ horizon (i.e. at 5 years) is provided including the baseline survival.
 
 ### 2.1 Discrimination measures
 
-NOTE: to be adjusted in a consistent way with the paper Discrimination
-is the ability to differentiate between subjects who have the outcome
-and subjects who do not. In prognostic modelling, discrimination
-reflects separation between survival curves for individuals or groups.
+Discrimination is the ability to differentiate between subjects who have
+the outcome and subjects who do not. In prognostic modelling,
+discrimination reflects separation between survival curves for
+individuals or groups.
 
 Discrimination is the ability to differentiate between subjects who have
 the outcome and subjects who do not. Concordance can be assessed over
@@ -1043,7 +1043,7 @@ considered patients at risk after the time horizon and we
 administratively censored at 5 years to minimize the violation of PH
 assumption.
 
-Clearly the last of these is most relevant
+Clearly the last of these is most relevant.
 
 This is easy to compute using the concordance function in the survival
 package. There is some uncertainty in the literature about the original
@@ -1080,6 +1080,7 @@ rott5$lp_pgr <- predict(efit1_pgr, newdata = rott5)
 # Validation data 
 gbsg5$lp <- predict(efit1, newdata = gbsg5)
 gbsg5$lp_pgr <- predict(efit1_pgr, newdata = gbsg5)
+
 
 # Harrell C - development
 harrell_C_rott5 <- concordance(Surv(ryear, rfs) ~ lp, 
@@ -1256,7 +1257,7 @@ Harrell C
 0.69
 </td>
 <td style="text-align:right;">
-0.68
+0.67
 </td>
 <td style="text-align:right;">
 NA
@@ -1315,7 +1316,7 @@ Uno C
 0.69
 </td>
 <td style="text-align:right;">
-0.68
+0.67
 </td>
 <td style="text-align:right;">
 NA
@@ -1577,7 +1578,7 @@ NA
 0.74
 </td>
 <td style="text-align:right;">
-0.71
+0.72
 </td>
 <td style="text-align:right;">
 NA
@@ -1607,7 +1608,8 @@ NA
 </tbody>
 </table>
 
-NOTE: add brief comments about concordance and time-dependent AUC
+Time-dependent AUC at 5 years was between 0.71 and 0.73 in the apparent,
+internal and external validation for the basic and extended model.
 
 The discrimination ability may be evaluated over the time since
 diagnosis through a plot showing the AUC over the time (years) in the
@@ -1767,12 +1769,13 @@ of calibration can be estimated: mean, weak, and moderate calibration.
 -   Weak calibration can be estimated:
 
     -   at a fixed time point
-        -   using slope as the coefficient of cloglog transformation of
-            predicted probabilities in Cox model. Possible to determine
-            intercept after adjusting for slope.
+        -   using intercept and slope as the coefficient of cloglog
+            transformation of predicted probabilities in Cox model.
+            Possible to determine intercept after adjusting for slope.
     -   global:
-        -   using slope as the coefficient of PI in Poisson model with
-            log of baseline cumulative hazard as offset.
+        -   using intercept and slope as the coefficient of PI in
+            Poisson model with log of baseline cumulative hazard as
+            offset.
 
 -   Moderate calibration can estimated:
 
@@ -1824,6 +1827,7 @@ OE_pgr <- (1 - obj$surv) / mean(pred_pgr)
 
 ## Difference between the log cumulative hazard from Cox model with cloglog transformation of predicted probabilities as offset and the mean of cloglog transformation ------------------
 # NOTE: to be discussed if it is really needed
+# We calculate directly for the basic model and the extended model (*_pgr objects)
 
 lp.val <- log(-log(1 - pred))   # lp = cloglog
 lp.val_pgr <- log(-log(1 - pred_pgr)) 
@@ -2053,6 +2057,9 @@ model, respectively.
 
 ##### 2.2.2.1 Weak calibration - fixed time point
 
+Weak calibration using intercept and slope as the coefficient of cloglog
+transformation of predicted probabilities in Cox model.
+
 ``` r
 # Models 
 efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
@@ -2205,8 +2212,8 @@ Calibration slope
 </tbody>
 </table>
 
-Calibration intercept was 0.15 and 0.14 for the basic and extended
-model, respectively.  
+Calibration intercept (adjusted for the slope) was 0.15 and 0.14 for the
+basic and extended model , respectively.  
 Calibration slope was 1.08 and 1.17 for the basic and extended model,
 respectively.
 
@@ -2704,7 +2711,6 @@ legend("bottomleft",
        lwd = 2, 
        lty = c(1, 2),
        bty = "n")
-title("B - extended model with PGR", adj = 0)
 ```
 
 <img src="imgs/03_predsurv_extended/km-2.png" width="672" />
@@ -3323,9 +3329,16 @@ title("B External data", adj = 0, cex = 1.5)
 
 <img src="imgs/03_predsurv_extended/dca-2.png" width="672" style="display: block; margin: auto;" />
 
-COMMENTS NEED TO BE WRITTEN.  
-Moreover, net benefit can be defined in terms of reduction of avoidable
-interventions (e.g adjuvant chemotherapy per 100 patients) by:
+The potential net benefit at 23% threshold of the prediction model was
+0.27, 0.28 for the basic and extended model in the development data,
+respectively. This means that the model might identify approximately
+27/28 patients out of 100 who may develop recurrence or may die within 5
+years since diagnosis and thus adjuvant chemotherapy may help to reduce
+recurrence or mortality. For validation data, the potential net benefit
+was 0.42 for the basic and extended model.
+
+Moreover, potential net benefit can be defined in terms of reduction of
+avoidable interventions (e.g adjuvant chemotherapy per 100 patients) by:
 
 <img src="https://render.githubusercontent.com/render/math?math=%5Chuge%7B%5Cfrac%7BNB_%7Bmodel%7D%20-%20NB_%7Ball%7D%7D%7B(p_t%2F%20(1-p_t))%7D*100%7D%0A">
 
@@ -3349,7 +3362,7 @@ sessioninfo::session_info()
     ##  collate  English_United States.1252  
     ##  ctype    English_United States.1252  
     ##  tz       Europe/Berlin               
-    ##  date     2021-07-06                  
+    ##  date     2021-07-07                  
     ## 
     ## - Packages -------------------------------------------------------------------
     ##  package        * version    date       lib source        
