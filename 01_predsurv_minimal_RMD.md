@@ -279,6 +279,8 @@ efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
   x = T, 
   y = T)
 
+# The model with additional PGR marker
+efit1_pgr  <- update(efit1, . ~ . + pgr2 + pgr3)
 
 # Add linear predictor in the validation set
 gbsg5$lp <- predict(efit1, newdata = gbsg5)
@@ -303,8 +305,7 @@ Uno_C_gbsg5 <- concordance(Surv(ryear, rfs) ~ lp,
     ## Harrell C - Validation data      0.66      0.63      0.69
     ## Uno C - Validation data          0.65      0.62      0.68
 
-COMMENT: please comment the results and differences between Harrell and
-Uno’s concordance index (see also the chapter of Terry’s book)
+Harrell C and Uno C were 0.66 and 0.65, respectively.
 
     ##   Uno AUC Lower .95 Upper .95 
     ##      0.70      0.65      0.76
@@ -375,6 +376,9 @@ efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
   x = T, 
   y = T)
 
+# The model with additional PGR marker
+efit1_pgr  <- update(efit1, . ~ . + pgr2 + pgr3)
+
 # Observed / Expected ration
 t_horizon <- 5
 
@@ -409,8 +413,7 @@ OE_summary
     ##        OE     2.5 %    97.5 % 
     ## 1.0652823 0.9485143 1.1964252
 
-The models PGR tend to slightly under-predict the risk of mortality in
-the validation data.
+Observed and expected ratio was 1.06.
 
 ### 2.2.2 Calibration plot using restricted cubic splines
 
@@ -433,6 +436,9 @@ efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
   data = rott5, 
   x = T, 
   y = T)
+
+# The model with additional PGR marker
+efit1_pgr  <- update(efit1, . ~ . + pgr2 + pgr3)
 
 gbsg5$pred <- 1 - predictSurvProb(efit1, 
                                   newdata = gbsg5, 
@@ -507,9 +513,8 @@ numsum_cph
     ##        ICI        E50        E90       Emax 
     ## 0.03727480 0.04143515 0.05773384 0.05821704
 
-Calibration plot identified good calibration although probabilities of
-recurrence were slightly underestimated especially for the lowest and
-the highest values of the observed probabilities of recurrence.
+Good calibration was estimated using calibration plot and calibration
+measures.
 
 ### 2.3 Overall performance measures
 
@@ -534,6 +539,9 @@ efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
   data = rott5, 
   x = T, 
   y = T)
+
+# The model with additional PGR marker
+efit1_pgr  <- update(efit1, . ~ . + pgr2 + pgr3)
 
 # Brier Score and IPA in the validation set (model without PGR)
 score_gbsg5 <-
@@ -579,7 +587,9 @@ df_boots <- do.call(rbind.data.frame, boots_ls)
 
     ##                                Estimate Lower .95  Upper .95
     ## Brier - Validation data            0.22       0.20      0.24
-    ## Scaled Brier - Validation data     0.12       0.06      0.17
+    ## Scaled Brier - Validation data     0.12       0.06      0.18
+
+Brier and scaled Brier score were 0.22 and 0.12, respectively.
 
 ## Goal 3 - Clinical utility
 
@@ -659,6 +669,9 @@ pacman::p_load(survival,
 efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
   data = rott5, x = T, y = T)
 
+# The model with additional PGR marker
+efit1_pgr  <- update(efit1, . ~ . + pgr2 + pgr3)
+
 # Add predicted survival at 5 years in the validation set
 gbsg5$pred <- 1 - predictSurvProb(efit1, 
                               newdata = gbsg5, 
@@ -718,21 +731,24 @@ legend("topright",
   c(
     "Treat All",
     "Original model",
-    "Original model + PGR",
     "Treat None"
   ),
-  lty = c(1, 1, 5, 4), 
+  lty = c(1, 1, 4), 
   lwd = 2, 
-  col = c("darkgray", "black", "black", "black"),
+  col = c("darkgray", "black", "black"),
   bty = "n"
 )
 ```
 
 <img src="imgs/01_predsurv_base_02/dca-1.png" width="672" style="display: block; margin: auto;" />
 
-COMMENT: a sentence to comment the results of the potential net benefit.
-Potential net benefit can be also defined in terms of reduction of
-avoidable interventions (e.g adjuvant chemotherapy per 100 patients) by:
+The potential benefit at 23% threshold of the prediction model is 0.36.
+This means that the model might identify 36 patients out of 100 who may
+develop recurrence or may die within 5 years since diagnosis and thus
+adjvant chemotherapy may help to reduce recurrence or mortality.
+
+Potential benefit can be also defined in terms of reduction of avoidable
+interventions (e.g adjuvant chemotherapy per 100 patients) by:
 
 <img src="https://render.githubusercontent.com/render/math?math=%5Chuge%7B%5Cfrac%7BNB_%7Bmodel%7D%20-%20NB_%7Ball%7D%7D%7B(p_t%2F%20(1-p_t))%7D*100%7D%0A">
 
@@ -765,7 +781,7 @@ sessioninfo::session_info()
     ##  collate  English_United States.1252  
     ##  ctype    English_United States.1252  
     ##  tz       Europe/Berlin               
-    ##  date     2021-07-06                  
+    ##  date     2021-07-07                  
     ## 
     ## - Packages -------------------------------------------------------------------
     ##  package        * version    date       lib source        
