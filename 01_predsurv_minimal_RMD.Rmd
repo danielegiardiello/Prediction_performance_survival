@@ -683,7 +683,7 @@ legend("topright",
 )
 ```
 
-The potential benefit at 23% threshold of the prediction model is 0.36. This means that the model might identify 36 patients out of 100 who may develop recurrence or may die within 5 years since diagnosis and thus adjvant chemotherapy may help to reduce recurrence or mortality.
+The potential benefit at 23% threshold of the prediction model is 0.36. This means that the model might identify 36 patients out of 100 who may develop recurrence or may die within 5 years since diagnosis and thus adjuvant chemotherapy may help to reduce recurrence or mortality.
 
 Potential benefit can be also defined in terms of reduction of avoidable interventions (e.g adjuvant chemotherapy per 100 patients) by:
   
