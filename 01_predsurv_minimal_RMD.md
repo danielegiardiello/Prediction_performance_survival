@@ -183,8 +183,8 @@ efit1_pgr  <- update(efit1, . ~ . + pgr2 + pgr3)
 
 The coefficients of the models indicated that higher size, higher number
 of positive lymph nodes and higher grade is more associate with poorer
-prognosis. The association of the progesterone biomarker and the outcome
-is non-linear as investigated previously.
+prognosis. The association of the progesterone marker and the outcome is
+non-linear as investigated previously.
 
 ## Goal 2 - Assessing performance in survival prediction models
 
@@ -246,7 +246,7 @@ several different time intervals:
 Clearly the last of these is most relevant.
 
 This is easy to compute using the concordance function in the survival
-package. There is some uncertainty in the literature about the original
+package There is some uncertainty in the literature about the original
 Harrell formulation versus Uno’s suggestion to re-weight the time scale
 by the factor 1/*G*<sup>2</sup>(*t*) where *G* is the censoring
 distribution. There is more detailed information in the concordance
@@ -420,9 +420,8 @@ Observed and expected ratio was 1.06.
 Calibration plots of the external validation data with and without PGR
 are calculated and shown using restricted cubic splines.  
 The interpretation of the calibration plot were provided in the section
-2.3 of this document, in the corresponding paper and in the literature
-provided in the paper and at the end of this document. More details
-about the method are given in the references below.
+2.2 reported above, in the corresponding paper and in the literature
+provided in the paper and at the end of this document.
 
 ``` r
 if (!require("pacman")) install.packages("pacman")
@@ -587,7 +586,7 @@ df_boots <- do.call(rbind.data.frame, boots_ls)
 
     ##                                Estimate Lower .95  Upper .95
     ## Brier - Validation data            0.22       0.20      0.24
-    ## Scaled Brier - Validation data     0.12       0.05      0.19
+    ## Scaled Brier - Validation data     0.12       0.07      0.17
 
 Brier and scaled Brier score were 0.22 and 0.12, respectively.
 
