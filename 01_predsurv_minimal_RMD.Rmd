@@ -138,7 +138,7 @@ efit1_pgr  <- update(efit1, . ~ . + pgr2 + pgr3)
 
 ```
 
-The coefficients of the models indicated that higher size, higher number of positive lymph nodes and higher grade is more associate with poorer prognosis. The association of the progesterone biomarker and the outcome is non-linear as investigated previously.
+The coefficients of the models indicated that higher size, higher number of positive lymph nodes and higher grade is more associate with poorer prognosis. The association of the progesterone marker and the outcome is non-linear as investigated previously.
 
 
 ## Goal 2 - Assessing performance in survival prediction models
@@ -160,18 +160,18 @@ Here we aim to assess the prediction performance of a risk prediction model with
 Discrimination is the ability to differentiate between subjects who have the outcome and subjects who do not.
 Concordance can be assessed over several different time intervals:
 
-+ the entire range of the data. Two concordance measures are suggested:  
++ the entire range of the data. Two concordance measures are suggested:    
 
   + Harrell's C quantifies the degree of concordance as the proportion of such     pairs where the patient with a longer survival time has better predicted      survival;  
   
-  + Uno’s C uses a time dependent weighting that more fully adjusts for           censoring; 
+  + Uno’s C uses a time dependent weighting that more fully adjusts for           censoring;  
   
 + a 5 year window corresponding to our target assessment point. Uno's           time-dependent Area Under the Curve (AUC) is suggested. Uno's time-dependent AUC summarizes discrimination at specific fixed time points. At any time point of interest, _t_, a patient is classified as having an event if the patient experienced the event between baseline and _t_ (5 years in our case study), and as a non-event if the patient remained event-free at _t_. The time-dependent AUC evaluates whether predicted probabilities were higher for cases than for non-case.
 
 Clearly the last of these is most relevant.
 
 This is easy to compute using the concordance function in the survival
-package.
+package
 There is some uncertainty in the literature about the original Harrell
 formulation versus Uno's suggestion to re-weight the time scale by the
 factor $1/G^2(t)$ where $G$ is the censoring distribution.
@@ -377,7 +377,7 @@ Observed and expected ratio was 1.06.
 
 ### 2.2.2 Calibration plot using restricted cubic splines
 Calibration plots of the external validation data with and without PGR are calculated and shown using restricted cubic splines.  
-The interpretation of the calibration plot were provided in the section 2.3 of this document, in the corresponding paper and in the literature provided in the paper and at the end of this document. More details about the method are given in the references below.
+The interpretation of the calibration plot were provided in the section 2.2 reported above, in the corresponding paper and in the literature provided in the paper and at the end of this document.
 
 ```{r, cal_rcs, fig.align='center',warning=FALSE,message=FALSE}
 if (!require("pacman")) install.packages("pacman")
