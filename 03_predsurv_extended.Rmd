@@ -414,6 +414,7 @@ rott5$lp_pgr <- predict(efit1_pgr, newdata = rott5)
 gbsg5$lp <- predict(efit1, newdata = gbsg5)
 gbsg5$lp_pgr <- predict(efit1_pgr, newdata = gbsg5)
 
+
 # Harrell C - development
 harrell_C_rott5 <- concordance(Surv(ryear, rfs) ~ lp, 
                                rott5, 
@@ -890,6 +891,7 @@ OE_pgr <- (1 - obj$surv) / mean(pred_pgr)
 
 ## Difference between the log cumulative hazard from Cox model with cloglog transformation of predicted probabilities as offset and the mean of cloglog transformation ------------------
 # NOTE: to be discussed if it is really needed
+# We calculate directly for the basic model and the extended model (*_pgr objects)
 
 lp.val <- log(-log(1 - pred))   # lp = cloglog
 lp.val_pgr <- log(-log(1 - pred_pgr)) 
@@ -1420,6 +1422,24 @@ efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
 )
 # Additional marker
 efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
+
+
+p <- log(predict(efit1, newdata = gbsg5, type = "expected"))
+lp <- predict(efit1, newdata = gbsg5, type = "lp")
+logbase <- p - lp
+
+fit1 <- glm(rfs ~ offset(p), family=  poisson, data = gbsg5,
+            subset = (p > 0))
+fit2 <- glm(rfs ~ lp + offset(logbase), family = poisson, 
+            data = gbsg5,
+            subset = (p > 0))
+
+
+group <- cut(lp, c(quantile(lp, probs = seq(0, 1, 0.25))))
+
+fit3 <- glm(rfs ~ -1 + group + offset(p), family = poisson, data = gbsg5,
+            subset = (p > 0)) 
+
 ```
 
 
@@ -1505,7 +1525,6 @@ legend("bottomleft",
        lwd = 2, 
        lty = c(1, 2),
        bty = "n")
-title("B - extended model with PGR", adj = 0)
 ```
 
 ### 2.3 Overall performance measures
