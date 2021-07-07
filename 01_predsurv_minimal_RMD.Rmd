@@ -200,6 +200,8 @@ efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
   x = T, 
   y = T)
 
+# The model with additional PGR marker
+efit1_pgr  <- update(efit1, . ~ . + pgr2 + pgr3)
 
 # Add linear predictor in the validation set
 gbsg5$lp <- predict(efit1, newdata = gbsg5)
@@ -250,8 +252,7 @@ res_C  <- matrix(temp,
 res_C <- round(res_C, 2) # Digit
 res_C
 ```
-COMMENT: please comment the results and differences between Harrell and Uno's concordance
-index (see also the chapter of Terry's book)
+Harrell C and Uno C were 0.66 and 0.65, respectively.
 
 
 ```{r, AUC,warning=FALSE,echo=FALSE}
@@ -338,6 +339,9 @@ efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
   x = T, 
   y = T)
 
+# The model with additional PGR marker
+efit1_pgr  <- update(efit1, . ~ . + pgr2 + pgr3)
+
 # Observed / Expected ration
 t_horizon <- 5
 
@@ -367,10 +371,9 @@ OE_summary <- c(
 )
 
 OE_summary
-
 ```
+Observed and expected ratio was 1.06. 
 
-The models PGR tend to slightly under-predict the risk of mortality in the validation data. 
 
 ### 2.2.2 Calibration plot using restricted cubic splines
 Calibration plots of the external validation data with and without PGR are calculated and shown using restricted cubic splines.  
@@ -388,6 +391,9 @@ efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
   data = rott5, 
   x = T, 
   y = T)
+
+# The model with additional PGR marker
+efit1_pgr  <- update(efit1, . ~ . + pgr2 + pgr3)
 
 gbsg5$pred <- 1 - predictSurvProb(efit1, 
                                   newdata = gbsg5, 
@@ -455,7 +461,7 @@ numsum_cph <- c(
 numsum_cph
 ```
 
-Calibration plot identified good calibration although probabilities of recurrence were slightly underestimated especially for the lowest and the highest values of the observed probabilities of recurrence.  
+Good calibration was estimated using calibration plot and calibration measures.
 
 ### 2.3 Overall performance measures
 We calculate the Brier Score and the Index of Prediction Accuracy (IPA, the scaled Brier) as a overall performance measure.  
@@ -477,6 +483,9 @@ efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
   data = rott5, 
   x = T, 
   y = T)
+
+# The model with additional PGR marker
+efit1_pgr  <- update(efit1, . ~ . + pgr2 + pgr3)
 
 # Brier Score and IPA in the validation set (model without PGR)
 score_gbsg5 <-
@@ -550,7 +559,7 @@ res_ov
 # the are provided using riskRegression::Score(.., conf.int = TRUE).
 # However, Terry should provide his own function to calculate Brier.
 ```
-
+Brier and scaled Brier score were 0.22 and 0.12, respectively.
 
 
 ## Goal 3 - Clinical utility
@@ -607,6 +616,9 @@ pacman::p_load(survival,
 efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
   data = rott5, x = T, y = T)
 
+# The model with additional PGR marker
+efit1_pgr  <- update(efit1, . ~ . + pgr2 + pgr3)
+
 # Add predicted survival at 5 years in the validation set
 gbsg5$pred <- 1 - predictSurvProb(efit1, 
                               newdata = gbsg5, 
@@ -662,19 +674,18 @@ legend("topright",
   c(
     "Treat All",
     "Original model",
-    "Original model + PGR",
     "Treat None"
   ),
-  lty = c(1, 1, 5, 4), 
+  lty = c(1, 1, 4), 
   lwd = 2, 
-  col = c("darkgray", "black", "black", "black"),
+  col = c("darkgray", "black", "black"),
   bty = "n"
 )
-
 ```
 
-COMMENT: a sentence to comment the results of the potential net benefit.
-Potential net benefit can be also defined in terms of reduction of avoidable interventions (e.g adjuvant chemotherapy per 100 patients) by:
+The potential benefit at 23% threshold of the prediction model is 0.36. This means that the model might identify 36 patients out of 100 who may develop recurrence or may die within 5 years since diagnosis and thus adjvant chemotherapy may help to reduce recurrence or mortality.
+
+Potential benefit can be also defined in terms of reduction of avoidable interventions (e.g adjuvant chemotherapy per 100 patients) by:
   
 <img src="https://render.githubusercontent.com/render/math?math=%5Chuge%7B%5Cfrac%7BNB_%7Bmodel%7D%20-%20NB_%7Ball%7D%7D%7B(p_t%2F%20(1-p_t))%7D*100%7D%0A">  
   
@@ -690,7 +701,6 @@ Potential net benefit can be also defined in terms of reduction of avoidable int
    and replace with "efit1_pgr".  
 
 ## Reproducibility ticket
-
 ```{r repro_ticket, echo=TRUE}
 sessioninfo::session_info()
 ```
