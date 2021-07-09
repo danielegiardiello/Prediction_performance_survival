@@ -747,6 +747,16 @@ efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
 )
 # Additional marker
 efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
+
+# Baseline at 5 years
+bh <- basehaz(efit1, centered = FALSE) # uncentered
+bh$surv <- exp(-bh$hazard) # baseline survival
+S0_t5 <- bh$surv[bh$time == 5] 
+# NOTE: this can be used to calculate S(t = 5) = S0(t = 5)**exp(X*beta)
+
+bh_c <- basehaz(efit1, centered = TRUE)
+bh_c$surv_c <- exp(-bh_c$hazard) # baseline survival
+S0_t5_c <- bh_c$surv[bh_c$time == 5] 
 ```
 
 Below the results of the models:
@@ -1578,7 +1588,7 @@ NA
 0.74
 </td>
 <td style="text-align:right;">
-0.72
+0.71
 </td>
 <td style="text-align:right;">
 NA
@@ -3362,7 +3372,7 @@ sessioninfo::session_info()
     ##  collate  English_United States.1252  
     ##  ctype    English_United States.1252  
     ##  tz       Europe/Berlin               
-    ##  date     2021-07-07                  
+    ##  date     2021-07-09                  
     ## 
     ## - Packages -------------------------------------------------------------------
     ##  package        * version    date       lib source        
