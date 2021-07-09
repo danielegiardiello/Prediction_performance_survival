@@ -35,31 +35,10 @@ install.packages('') (e.g. install.packages('survival')) or use the user-friendl
 # Use pacman to check whether packages are installed, if not load
 if (!require("pacman")) install.packages("pacman")
 library(pacman)
-
-pacman::p_load(
-  rio,
-  survival,
-  rms,
-  mstate,
-  sqldf,
-  pec,
-  riskRegression,
-  survAUC,
-  survivalROC,
-  timeROC,
-  plotrix,
-  splines,
-  knitr,
-  table1,
-  kableExtra,
-  gtsummary,
-  boot,
-  tidyverse,
-  rsample,
-  gridExtra,
-  webshot
-)
-# webshot::install_phantomjs()
+pacman::p_load(survival,
+               Hmisc,
+               pec,
+               timeROC)
 ```
 
 
@@ -242,146 +221,132 @@ gbsg5$PI_pgr <- as.matrix(des_matr) %*% cbind(coef)
 gbsg5$pred5_pgr <-  1 - S0.5yr_pgr**exp(gbsg5$PI_pgr)
 ```
 
-### 1.2 Overall performance measures
-Some overall performance measures are proposed using survival data:
 
-+ Brier score: it is the squared differences between observed and predicted values at fixed time point (e.g. at 5 years);
+### 1.2 Discrimination measures
+Discrimination is the ability to differentiate between subjects who have the outcome and subjects who do not.
+Concordance can be assessed over several different time intervals:
+
++ the entire range of the data. Two concordance measures are suggested:    
+
+  + Harrell's C quantifies the degree of concordance as the proportion of such     pairs where the patient with a longer survival time has better predicted      survival;  
   
-+ Scaled Brier score (known as Index of prediction accuracy): it improves interpretability by scaling the Brier Score.
+  + Uno’s C uses a time dependent weighting that more fully adjusts for           censoring;  
+  
++ a 5 year window corresponding to our target assessment point. Uno's           time-dependent Area Under the Curve (AUC) is suggested. Uno's time-dependent AUC summarizes discrimination at specific fixed time points. At any time point of interest, _t_, a patient is classified as having an event if the patient experienced the event between baseline and _t_ (5 years in our case study), and as a non-event if the patient remained event-free at _t_. The time-dependent AUC evaluates whether predicted probabilities were higher for cases than for non-case.
 
-```{r, function_brier, message=FALSE,warning=FALSE, fig.align='center',include=FALSE}
-# Run the function to calculate the net benefit and the elements needed to develop decision curve analysis
-source(here::here("Functions/brier_score.R"))
+Clearly the last of these is most relevant.
+
+This is easy to compute using the concordance function in the survival
+package
+There is some uncertainty in the literature about the original Harrell
+formulation versus Uno's suggestion to re-weight the time scale by the
+factor $1/G^2(t)$ where $G$ is the censoring distribution.
+There is more detailed information in the concordance vignette found in the
+survival package.
+
+We also propose to calculate Uno's time-dependent AUC at a specific time horizon _t_.  
+More explanations and details are in the paper.  
+
+The time horizon to calculate the time-dependent measures was set to 5 years.
+Values close to 1 indicate good discrimination ability, while values close to 0.5 indicated poor discrimination ability.  
+
+```{r, concordance ,message=FALSE, warning=FALSE}
+if (!require("pacman")) install.packages("pacman")
+library(pacman)
+pacman::p_load(survival,
+               Hmisc,
+               pec,
+               timeROC)
+
+harrell_C_gbsg5 <- concordance(Surv(ryear, rfs) ~ PI, 
+                               gbsg5, 
+                               reverse = TRUE)
+
+harrell_C_gbsg5_pgr <- concordance(Surv(ryear, rfs) ~ PI_pgr, 
+                               gbsg5, 
+                               reverse = TRUE)
+
+# Uno's C
+Uno_C_gbsg5 <- concordance(Surv(ryear, rfs) ~ PI, 
+                           gbsg5, 
+                           reverse = TRUE,
+                           timewt = "n/G2")
+
+Uno_C_gbsg5_pgr <- concordance(Surv(ryear, rfs) ~ PI_pgr, 
+                           gbsg5, 
+                           reverse = TRUE,
+                           timewt = "n/G2")
 ```
 
-
-```{r, overall, warning=FALSE, message=FALSE}
-brier_gbsg5 <-
-  brier_score(
-    tfup = gbsg5$ryear, status = gbsg5$rfs,
-    thorizon = 4.95, survival = 1 - gbsg5$pred5
-  )
-
-brier_gbsg5b_pgr <-
-  brier_score(
-    tfup = gbsg5$ryear, status = gbsg5$rfs,
-    thorizon = 4.95, survival = 1 - gbsg5$pred5_pgr
-  )
-
-## Overall measures: Bootstrap confidence intervals ---------------
-B <- 100
-horizon <- 4.95
-boots_ls <- lapply(seq_len(B), function(b) {
+```{r, concordance_table,warning=FALSE,echo=FALSE}
+alpha <- 0.05
+temp <- c(
+  harrell_C_gbsg5$concordance,
+  harrell_C_gbsg5$concordance - 
+    qnorm(1 - alpha/2) * sqrt(harrell_C_gbsg5$var),
+  harrell_C_gbsg5$concordance + 
+    qnorm(1 - alpha/2) * sqrt(harrell_C_gbsg5$var),
   
-  # Resample validation data
-  data_boot <- gbsg5[sample(nrow(gbsg5), replace = TRUE), ]
+  harrell_C_gbsg5_pgr$concordance,
+  harrell_C_gbsg5_pgr$concordance - 
+    qnorm(1 - alpha/2) * sqrt(harrell_C_gbsg5_pgr$var),
+  harrell_C_gbsg5$concordance + 
+    qnorm(1 - alpha/2) * sqrt(harrell_C_gbsg5_pgr$var),
 
+  Uno_C_gbsg5$concordance,
+  Uno_C_gbsg5$concordance - 
+    qnorm(1 - alpha/2) * sqrt(Uno_C_gbsg5$var),
+  Uno_C_gbsg5$concordance + 
+    qnorm(1 - alpha/2) * sqrt(Uno_C_gbsg5$var),
   
-  # Get overall measures on boot validation data
-  BS_boot <- brier_score(
-    tfup = data_boot$ryear, status = data_boot$rfs,
-    thorizon = 4.95, survival = 1 - data_boot$pred5
-  )
+  Uno_C_gbsg5_pgr$concordance,
+  Uno_C_gbsg5_pgr$concordance - 
+    qnorm(1 - alpha/2) * sqrt(Uno_C_gbsg5_pgr$var),
+  Uno_C_gbsg5_pgr$concordance + 
+    qnorm(1 - alpha/2) * sqrt(Uno_C_gbsg5_pgr$var)
+)
+res_C  <- matrix(temp, 
+                nrow = 2, 
+                ncol = 6, 
+                byrow = TRUE,
+                dimnames = list(
+  c("Harrell C - Validation data ", 
+    "Uno C - Validation data"),
   
-  # Get overall measures on boot validation data
-  BS_boot_pgr <- brier_score(
-    tfup = data_boot$ryear, status = data_boot$rfs,
-    thorizon = 4.95, survival = 1 - data_boot$pred5_pgr
-  )
-    
-  brier_boot <- BS_boot["Brier"]
-  scaled_brier <- BS_boot["IPA"]
-  brier_boot_pgr <- BS_boot_pgr["Brier"]
-  scaled_brier_pgr <- BS_boot_pgr["IPA"]
-  #.. can add other measure heres, eg. concordance
-  
-  cbind.data.frame(
-    "Brier" = brier_boot,
-    "Scaled Brier" = scaled_brier,
-    "Brier with PGR" = brier_boot_pgr,
-    "Scaled Brier with PGR" = scaled_brier_pgr)
-})
-
-df_boots <- do.call(rbind.data.frame, boots_ls)
-
-
-# Bootstrap percentile confidence intervals for Brier score
-vboot <- vboot %>% mutate(
-  err1 = map(splits, brier_score_boot1),
-  err1b = map(splits, brier_score_boot1b),
-  Brier1 = map_dbl(err1, "Brier"),
-  Brier1b = map_dbl(err1b, "Brier"),
-  IPA1 = map_dbl(err1, "IPA"),
-  IPA1b = map_dbl(err1b, "IPA")
+  c(rep(c("Estimate", "Lower .95", "Upper .95"), 2)))
 )
 
-```
-
-```{r, overall_table, echo=FALSE}
-## Table overall measures
-alpha <- .05
-k <- 2 # number of digits
-res_ov <- matrix(c(
-  brier_gbsg5["Brier"],
-  quantile(vboot$Brier1, probs = alpha / 2),
-  quantile(vboot$Brier1, probs = 1 - alpha / 2),
-  brier_gbsg5b["Brier"],
-  quantile(vboot$Brier1b, probs = alpha / 2),
-  quantile(vboot$Brier1b, probs = 1 - alpha / 2),
-  brier_gbsg5["IPA"],
-  quantile(vboot$IPA1, probs = alpha / 2),
-  quantile(vboot$IPA1, probs = 1 - alpha / 2),
-  brier_gbsg5b["IPA"],
-  quantile(vboot$IPA1b, probs = alpha / 2),
-  quantile(vboot$IPA1b, probs = 1 - alpha / 2)
-),
-nrow = 2, ncol = 6, byrow = T,
-dimnames = list(
-  c("Brier", "IPA"),
-  rep(c("Estimate", "Lower .95 ", "Upper .95"), 2)
-)
-)
-
-res_ov <- round(res_ov, 2) # Digits
-
-kable(res_ov) %>%
+res_C <- round(res_C, 2) # Digit
+kable(res_C) %>%
   kable_styling("striped") %>%
   add_header_above(c(" " = 1, "External" = 3, "External + PGR" = 3))
 ```
+Concordance was between 0.64 and 0.68. The extended model slightly improved
+discrimination ability compared to the basic model.  
 
-As expected the overall performance measures were lower in the external validation. Including information about PGR slightly improved the overall performance.
 
-### 1.3 Discrimination measures
-Discrimination is the ability to differentiate between subjects who have the outcome and subjects who do not.
-In prognostic modelling, discrimination reflects separation between survival curves for individuals or groups.
-The following discrimination measures is proposed:
-
-+ Uno's time-dependent Area Under the ROC curve (AUC);
-
-The time horizon to calculate the time-dependent measures was set to 5 years.
-Values close to 1 indicate good discrimination ability, while values close to 0.5 indicated poor discrimination ability. More details are in the paper and in the references (link available at the end of the document).
-The dynamic controls are defined as subjects surviving after the time horizon (i.e. 5 years). However, since we administratively censored follow-up at 5 years, no controls would be available. For this reason we calculate the time-dependent AUC using a time horizon at 4.95. This is just a trick, we expect no events between 4.95 and 5 years. We could otherwise to be more confident set a time horizon as 4.99. The choice depends how precise the follow-up is measured.
-
-```{r, AUC,message=FALSE, warning=FALSE}
-
-# Run time-dependent AUC
-# NOTE: when N >2000 the calculation of the standard errors using iid=TRUE is computationally demanding. We suggest to use the bootstrap as we did for the Brier Score.
-
+```{r, AUC ,message=FALSE, warning=FALSE}
+if (!require("pacman")) install.packages("pacman")
+library(pacman)
+pacman::p_load(survival,
+               Hmisc,
+               pec,
+               timeROC)
 
 # External validation
-Uno_gbsg1 <-
+Uno_gbsg5 <-
   timeROC(
     T = gbsg5$ryear, delta = gbsg5$rfs,
-    marker = gbsg5$lp,
+    marker = gbsg5$PI,
     cause = 1, weighting = "marginal", times = 4.95,
     iid = TRUE
   )
 
 # External validation with pgr
-Uno_gbsg1b <-
+Uno_gbsg5_pgr <-
   timeROC(
     T = gbsg5$ryear, delta = gbsg5$rfs,
-    marker = gbsg5$lp_1b,
+    marker = gbsg5$PI_pgr,
     cause = 1, weighting = "marginal", times = 4.95,
     iid = TRUE
   )
@@ -393,16 +358,16 @@ Uno_gbsg1b <-
 alpha <- .05
 k <- 2
 res_discr <- matrix(c(
-  Uno_gbsg1$AUC["t=4.95"],
-  Uno_gbsg1$AUC["t=4.95"] - qnorm(1 - alpha / 2) *
-    Uno_gbsg1$inference$vect_sd_1["t=4.95"],
-  Uno_gbsg1$AUC["t=4.95"] + qnorm(1 - alpha / 2) *
-    Uno_gbsg1$inference$vect_sd_1["t=4.95"],
-  Uno_gbsg1b$AUC["t=4.95"],
-  Uno_gbsg1b$AUC["t=4.95"] - qnorm(1 - alpha / 2) *
-    Uno_gbsg1b$inference$vect_sd_1["t=4.95"],
-  Uno_gbsg1b$AUC["t=4.95"] + qnorm(1 - alpha / 2) *
-    Uno_gbsg1b$inference$vect_sd_1["t=4.95"]
+  Uno_gbsg5$AUC["t=4.95"],
+  Uno_gbsg5$AUC["t=4.95"] - qnorm(1 - alpha / 2) *
+    Uno_gbsg5$inference$vect_sd_1["t=4.95"],
+  Uno_gbsg5$AUC["t=4.95"] + qnorm(1 - alpha / 2) *
+    Uno_gbsg5$inference$vect_sd_1["t=4.95"],
+  Uno_gbsg5_pgr$AUC["t=4.95"],
+  Uno_gbsg5_pgr$AUC["t=4.95"] - qnorm(1 - alpha / 2) *
+    Uno_gbsg5_pgr$inference$vect_sd_1["t=4.95"],
+  Uno_gbsg5_pgr$AUC["t=4.95"] + qnorm(1 - alpha / 2) *
+    Uno_gbsg5_pgr$inference$vect_sd_1["t=4.95"]
 ),
 nrow = 1, ncol = 6, byrow = T,
 dimnames =
@@ -418,49 +383,10 @@ kable(res_discr) %>%
   add_header_above(c(" " = 1, "External" = 3, "External + PGR" = 3))
 ```
 
-The time-dependent AUCs at 5 years were in the external validation were between 0.68 and 0.72 showing moderate discrimination. The additional information of the PGR marker increased the discrimination by 0.04.
+The time-dependent AUCs at 5 years were in the external validation were 0.70 and 0.73 for the basic and extended model, respectively.
 
 
-### 1.4 Calibration
-Calibration is measured by:
-
-+   Observed and Expected ratio at time horizon (*t*):
-
-    +   the number of observed event is calculated as the one minus the
-        Kaplan-Meier curve at time *t*;
-
-    +   the number of expected event is calculated as the mean of the
-        predicted risk at time *t*;
-
-    +   Confidence intervals are calculated using the Normal
-        approximation of the Poisson distribution.
-        
-+ Calibration slope: below (above) 1.0 indicate over (under) estimation of risk due to the coefficients of the model;  
-
--   Calibration plot: it is an overall graphical representation of calibration. It shows:
-
-    +   on the *x-axis* the predicted survival (or risk) probabilities
-        at a fixed time horizon (e.g. at 5 years);
-
-    +   on the *y-axis* the observed survival (or risk) probabilities at
-        a fixed time horizon (e.g. at 5 years);
-
-    +   The 45-degree line indicates the good overall calibration.
-        Points below the 45-degree line indicates that the model
-        overestimate the observed risk. If points are above the
-        45-degree line, the model underestimate the observed risk; The
-        observed probabilities estimated by the Kaplan-Meier curves (in
-        case of survival) or by the complementary of the Kaplan-Meier
-        curves (in case of risk in absence of competing risks) are
-        represented in terms of percentiles of the predicted survival
-        (risk) probabilities.
-
-Other calibration measures are proposed in the literature. More details
-are provided in the references at the end of the document.
-
-When only the coefficients of a developed prediction model is provided but the baseline at time _t_ is unavailable in the literature, calibration assessment may be incomplete. However, a basic graphical representation of calibration may be provided through:  
-
-+ Kaplan-Meier curves may be used as calibration assessment using the predictor index (PI, see formula above). The PI is the combination of the coefficients estimated in the development data multiplied by the predictors in the validation data. Basically, if the survival curves among risk groups are separated, then good calibration might be implied. However, this is not strict comparison between observed and predicted values since a model-based approach cannot be used.  
+### 1.3 Calibration
 
 
 When a risk prediction model has been developed and published in the literature, individual data are probably not available. 
@@ -468,47 +394,7 @@ If the model equation is provided including the coefficients and the baseline at
 Typically, the model equation is provided in terms of predicted survival at a fixed time point _t_.
 
 ```{r, cal_time,message=FALSE, warning=FALSE}
-#' Calculate the O/E ratio
-#'
-#' @param tfup follow-up time
-#' @param event variable indication event (0=no, 1=yes)
-#' @param pred.risk predicted risk at time horizon
-#' @param thorizon time horizon to calculate the observed/expected ratio at time t
-#' @param alpha type I error (to calculate confidence intervals, default: 0.05)
-#'
-#' @return 
-#'
-#' @examples
 
-OE.ratio.t <- function(tfup, event, pred.risk, thorizon, alpha = .05) {
-  obs_t <- 1 - summary(survfit(Surv(tfup, event) ~ 1), times = thorizon)$surv
-  exp_t <- mean(pred.risk)
-
-  OE <- obs_t / exp_t
-  OE.lower <- OE * exp(-qnorm(1 - alpha / 2) * sqrt(1 / sum(event)))
-  OE.upper <- OE * exp(+qnorm(1 - alpha / 2) * sqrt(1 / sum(event)))
-  res <- c(OE, OE.lower, OE.upper)
-  names(res) <- c("Estimate", "Lower .95", "Upper .95")
-  return(res)
-}
-
-# Calculation
-# Without PGR
-OE_ratio5 <- OE.ratio.t(
-  tfup = gbsg5$ryear, event = gbsg5$rfs,
-  pred.risk = 1 - gbsg5$predsurv5,
-  thorizon = 5
-)
-# With PGR
-OE_ratio5_1b <- OE.ratio.t(
-  tfup = gbsg5$ryear, event = gbsg5$rfs,
-  pred.risk = 1 - gbsg5$predsurv5_1b,
-  thorizon = 5
-)
-
-# Calibration slope
-calslope <- coxph(Surv(ryear, rfs) ~ lp, data = gbsg5)
-calslope_1b <- coxph(Surv(ryear, rfs) ~ lp_1b, data = gbsg5)
 ```
 
 ```{r, cal_table,echo=FALSE}
@@ -652,6 +538,108 @@ plot(survfit(Surv(ryear, rfs) ~ group1b, data = gbsg5),
 )
 title("B External data with PGR", adj = 0)
 ```
+
+
+### 1.3 Overall performance measures
+Some overall performance measures are proposed using survival data:
+
++ Brier score: it is the squared differences between observed and predicted values at fixed time point (e.g. at 5 years);
+  
++ Scaled Brier score (known as Index of prediction accuracy): it improves interpretability by scaling the Brier Score.
+
+```{r, function_brier, message=FALSE,warning=FALSE, fig.align='center',include=FALSE}
+# Run the function to calculate the net benefit and the elements needed to develop decision curve analysis
+source(here::here("Functions/brier_score.R"))
+```
+
+
+```{r, overall, warning=FALSE, message=FALSE}
+brier_gbsg5 <-
+  brier_score(
+    tfup = gbsg5$ryear, status = gbsg5$rfs,
+    thorizon = 4.95, survival = 1 - gbsg5$pred5
+  )
+
+brier_gbsg5b_pgr <-
+  brier_score(
+    tfup = gbsg5$ryear, status = gbsg5$rfs,
+    thorizon = 4.95, survival = 1 - gbsg5$pred5_pgr
+  )
+
+## Overall measures: Bootstrap confidence intervals ---------------
+B <- 100
+horizon <- 4.95
+set.seed(12345)
+boots_ls <- lapply(seq_len(B), function(b) {
+  
+  # Resample validation data
+  data_boot <- gbsg5[sample(nrow(gbsg5), replace = TRUE), ]
+
+  
+  # Get overall measures on boot validation data
+  BS_boot <- brier_score(
+    tfup = data_boot$ryear, status = data_boot$rfs,
+    thorizon = 4.95, survival = 1 - data_boot$pred5
+  )
+  
+  # Get overall measures on boot validation data
+  BS_boot_pgr <- brier_score(
+    tfup = data_boot$ryear, status = data_boot$rfs,
+    thorizon = 4.95, survival = 1 - data_boot$pred5_pgr
+  )
+    
+  brier_boot <- BS_boot["Brier"]
+  scaled_brier <- BS_boot["IPA"]
+  brier_boot_pgr <- BS_boot_pgr["Brier"]
+  scaled_brier_pgr <- BS_boot_pgr["IPA"]
+  #.. can add other measure heres, eg. concordance
+  
+  cbind.data.frame(
+    "Brier" = brier_boot,
+    "Scaled Brier" = scaled_brier,
+    "Brier with PGR" = brier_boot_pgr,
+    "Scaled Brier with PGR" = scaled_brier_pgr)
+})
+
+df_boots <- do.call(rbind.data.frame, boots_ls)
+```
+
+```{r, overall_table, echo=FALSE}
+## Table overall measures
+alpha <- .05
+k <- 2 # number of digits
+res_ov <- matrix(c(
+  brier_gbsg5["Brier"],
+  quantile(df_boots$Brier, probs = alpha / 2),
+  quantile(df_boots$Brier, probs = 1 - alpha / 2),
+  
+  brier_gbsg5b_pgr["Brier"],
+  quantile(df_boots$"Brier with PGR", probs = alpha / 2),
+  quantile(df_boots$"Brier with PGR", probs = 1 - alpha / 2),
+  
+  brier_gbsg5["IPA"],
+  quantile(df_boots$"Scaled Brier", probs = alpha / 2),
+  quantile(df_boots$"Scaled Brier", probs = 1 - alpha / 2),
+  brier_gbsg5b_pgr["IPA"],
+  quantile(df_boots$"Scaled Brier with PGR", probs = alpha / 2),
+  quantile(df_boots$"Scaled Brier with PGR", probs = 1 - alpha / 2)
+),
+nrow = 2, ncol = 6, byrow = T,
+dimnames = list(
+  c("Brier", "Scaled Brier"),
+  rep(c("Estimate", "Lower .95 ", "Upper .95"), 2)
+)
+)
+
+res_ov <- round(res_ov, 2) # Digits
+
+kable(res_ov) %>%
+  kable_styling("striped") %>%
+  add_header_above(c(" " = 1, "External" = 3, "External + PGR" = 3))
+```
+
+As expected the overall performance measures were lower in the external validation. Including information about PGR slightly improved the overall performance.
+
 
 ## 2. Clinical utility
 
