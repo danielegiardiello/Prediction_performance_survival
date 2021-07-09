@@ -159,16 +159,17 @@ In the prediction model developed using the Rotterdam data, violation of proport
 
 ## Goal 1: Assessing performance of a developed survival model in a new data
 The performance of a risk prediction models may be evaluated through:  
-+ discrimination:  the ability of the model to identify patients with and without the outcome and it requires the coefficients (or the log of the hazard ratios) of the developed risk prediction model to be evaluated.   
 
-+ calibration: the agreement between observed and predicted probabilities. It requires the baseline (cumulative) hazard or survival.   
++ discrimination:  the ability of the model to identify patients with and without the outcome and it requires the coefficients (or the log of the hazard ratios) of the developed risk prediction model to be evaluated;     
+
++ calibration: the agreement between observed and predicted probabilities. It requires the baseline (cumulative) hazard or survival;     
   
-+ overall performance measures: as a combination of discrimination and calibration and/or as a measure of the explained variation;  
++ overall performance measures: as a combination of discrimination and calibration.  
   
 Unfortunately, a few publications report the complete baseline (cumulative) hazard or survival or even the baseline (cumulative) hazard or survival at fixed time horizon *t*.  
 It is common that physicians focus on one or more clinically relevant time horizons to inform subjects about their risk. 
 We aim to assess the prediction performance of a risk prediction model with time-to-event outcome in a new data when information at a fixed time horizon(s) (here at 5 years) of a developed prediction model were provided. The coefficients of the model(s) are essential to assess the overall performances and to calculate the discrimination ability of the developed model in a new data. Information of the baseline hazard/survival over the follow-up time or at a fixed time horizon *t* are needed for calibration assessment.  
-When the baseline is not available (and it is not uncommon in the literature), only a graphical representation of the calibration is possible. We assume here to know the coefficients *\beta* and the baseline survival at 5 years *S_0(t=5)* of the developed prediction model.
+When the baseline is not available (and it is not uncommon in the literature), only a graphical representation of the calibration is possible. We assume here to know the coefficients *\beta* and the baseline survival at 5 years *S*<sub>0</sub>*(t = 5)* of the developed prediction model.
 We also provide the graphical visualization of the calibration when the baseline is not reported in the literature.
 
 If the model equation is provided including the coefficients and the baseline at fixed time point _t_ (e.g. 5 years), we could validate the risk prediction model in our external data.
@@ -181,14 +182,17 @@ where: \
 *S*<sub>0</sub>*(t)* is the baseline survival at time *t*. \
 <img src="https://render.githubusercontent.com/render/math?math=%5Csf%7BPI%20%3D%20%5Cbeta_1X_1%2B%5Ccdots%2B%5Cbeta_pX_p%7D"> is the predictor index: the combination of the coefficients estimated by the statistical model (i.e Cox model) and the predictors. \
 
-In some software, the baseline survival might be already internally rescaled including the centercept. Since the function cph() in the rms R package provides the centercept the formula above included also the centercept in the model equation. More information can be found in *help(cph)*. However, if the centercept is mentioned in the model equation, this can be used to rescaled the baseline using some easy algebraic steps:
+In some software, the baseline survival might be already internally rescaled including the centercept. For example, the function ```rms::cph()``` in the ```rms``` R package provides the centercept the formula above included also the centercept in the model equation. More information can be found in 
+```help(cph)``` . 
+In ```survival``` package the baseline survival can be obtained using
+```survival::basehaz()``` then ```exp(-survival::basehaz()$hazard)``` to calculate *S*<sub>0</sub>*(t)* . For details see ```help(basehaz)```, especially the argument ```centered```. 
+If the centercept is mentioned in the model equation, this can be used to rescaled the baseline using some easy algebraic steps.
 
 <img src="https://render.githubusercontent.com/render/math?math=%5Clarge%7BS(t)%20%3D%20%7BS_%7B0%7D(t)%7D%5E%7Bexp(PI-c)%7D%20%3D%20%5B%7BS_%7B0%7D(t)%7D%5E%7Bexp(-c)%7D%5D%5E%7Bexp(PI)%7D%20%3D%7BS_%7B0%7D(t)_%7Bresc%7D%7D%5E%7Bexp(PI)%7D%7D">
 
 The model equation assuming the centercept was mentioned in the developed model was:  
 
 <img src="https://render.githubusercontent.com/render/math?math=%5Clarge%7B%5Csf%7BS(5)%20%3D%20.614%5E%7Bexp(.394*I(csize%3D21-50)%2B.623*I(csize%3E50)%2B.361*I(cnode%3D1-3)%2B1.090*I(cnode%3E3)%2B.415*I(cgrade%3E2)-0.920)%7D%7D%7D"> 
-
 
 The extended model equation including the additional information of the progesterone biomarker was:
 
@@ -207,28 +211,35 @@ Categorization of number of positive lymph nodes was suboptimal in this example 
 ### 1.1 Calculate the absolute risk prediction at 5 years in the validation data
 
 ```{r, predsurv, message=FALSE, warning=FALSE}
-# Baseline survival at 5 years
-S0.5yr <- .614 # Assuming the baseline survival at 5 years is available in the model equation (model with no PGR)
-S0b.5yr <- .616 # Baseline survival for the extended model (with PGR)
 
-# Centercepts of the models
-centercept1 <- .920
-centercept1b <- .658
+### Absolute risk  at 5 yrs - Basic model ---------------
+# Baseline survival at 5 years - basic model
+S0.5yr <- .8604385 
+# Design matrix of predictors
+des_matr <- as.data.frame(model.matrix(~ csize + cnode + grade, data = gbsg5))
+des_matr$`(Intercept)` <- NULL
+# Coefficients
+coef <- c(0.3922098, 0.6656456, -0.3538533, 0.6936283,  0.3766110)
+# Prognostic index (PI)
+gbsg5$PI <- as.matrix(des_matr) %*% cbind(coef)
+# Absolute risk at 5 years (1 - S(t), 1 - survival at time t)
+gbsg5$pred5 <-  1 - S0.5yr**exp(gbsg5$PI)
 
-# Calculate the predictor index (linear predictor) and predicted survival at 5 years in the validation data for the model without PGR
-vdf_lp <- as.data.frame(model.matrix(~ csize + cnode + cgrade, data = egbsg1))
-vdf_lp$`(Intercept)` <- NULL
-coef_efit1 <- c(.394, .623, .361, 1.090, .415)
-lp <- as.matrix(vdf_lp) %*% cbind(coef_efit1)
-egbsg1$lp <- lp - centercept1
-egbsg1$predsurv5 <- S0.5yr**exp(egbsg1$lp)
 
-vdf_lp_1b <- as.data.frame(model.matrix(~ csize + cnode + cgrade + I(pgr2) + I(pgr3), data = egbsg1))
-vdf_lp_1b$`(Intercept)` <- NULL
-coef_efit1b <- c(.370, .598, .385, 1.09, .35, -.003, .014)
-lp_1b <- as.matrix(vdf_lp_1b) %*% cbind(coef_efit1b)
-egbsg1$lp_1b <- lp_1b - centercept1b
-egbsg1$predsurv5_1b <- S0b.5yr**exp(egbsg1$lp_1b)
+### Absolute risk  at 5 yrs - Extended model with PGR ---------------
+# Baseline survival at 5 years - basic model
+S0.5yr_pgr <- .8084657  
+# Design matrix of predictors
+des_matr <- as.data.frame(model.matrix(~ csize + cnode + grade + 
+                                        I(pgr2) + I(pgr3), data = gbsg5))
+des_matr$`(Intercept)` <- NULL
+# Coefficients
+coef <- c(0.37096136, 0.64380754, -0.37445717, 
+          0.66988919, 0.32169223, -0.00293231, 0.01281538)
+# Prognostic index (PI)
+gbsg5$PI_pgr <- as.matrix(des_matr) %*% cbind(coef)
+# Absolute risk at 5 years (1 - S(t), 1 - survival at time t)
+gbsg5$pred5_pgr <-  1 - S0.5yr_pgr**exp(gbsg5$PI_pgr)
 ```
 
 ### 1.2 Overall performance measures
@@ -236,15 +247,7 @@ Some overall performance measures are proposed using survival data:
 
 + Brier score: it is the squared differences between observed and predicted values at fixed time point (e.g. at 5 years);
   
-+ Index of prediction accuracy (IPA): it improves interpretability by scaling the Brier Score.
-
-Bootstrapping validation data to calculate bootstrap percentile confidence intervals
-```{r, bootstrap, message=FALSE, warning=FALSE}
-set.seed(20200416)
-vboot <- bootstraps(egbsg1, times = 10)
-# NOTE: B=10 otherwise the computation time will be too long
-```
-
++ Scaled Brier score (known as Index of prediction accuracy): it improves interpretability by scaling the Brier Score.
 
 ```{r, function_brier, message=FALSE,warning=FALSE, fig.align='center',include=FALSE}
 # Run the function to calculate the net benefit and the elements needed to develop decision curve analysis
@@ -253,35 +256,54 @@ source(here::here("Functions/brier_score.R"))
 
 
 ```{r, overall, warning=FALSE, message=FALSE}
-brier_egbsg1 <-
+brier_gbsg5 <-
   brier_score(
-    tfup = egbsg1$ryear, rfs = egbsg1$rfs,
-    thorizon = 4.95, survival = egbsg1$predsurv5
+    tfup = gbsg5$ryear, status = gbsg5$rfs,
+    thorizon = 4.95, survival = 1 - gbsg5$pred5
   )
 
-brier_egbsg1b <-
+brier_gbsg5b_pgr <-
   brier_score(
-    tfup = egbsg1$ryear, rfs = egbsg1$rfs,
-    thorizon = 4.95, survival = egbsg1$predsurv5_1b
+    tfup = gbsg5$ryear, status = gbsg5$rfs,
+    thorizon = 4.95, survival = 1 - gbsg5$pred5_pgr
   )
 
-brier_score_boot1 <- function(split) {
-  brier_score(
-    tfup = analysis(split)$ryear,
-    rfs = analysis(split)$rfs,
-    thorizon = 4.95,
-    survival = analysis(split)$predsurv5
-  )
-}
+## Overall measures: Bootstrap confidence intervals ---------------
+B <- 100
+horizon <- 4.95
+boots_ls <- lapply(seq_len(B), function(b) {
+  
+  # Resample validation data
+  data_boot <- gbsg5[sample(nrow(gbsg5), replace = TRUE), ]
 
-brier_score_boot1b <- function(split) {
-  brier_score(
-    tfup = analysis(split)$ryear,
-    rfs = analysis(split)$rfs,
-    thorizon = 4.95,
-    survival = analysis(split)$predsurv5_1b
+  
+  # Get overall measures on boot validation data
+  BS_boot <- brier_score(
+    tfup = data_boot$ryear, status = data_boot$rfs,
+    thorizon = 4.95, survival = 1 - data_boot$pred5
   )
-}
+  
+  # Get overall measures on boot validation data
+  BS_boot_pgr <- brier_score(
+    tfup = data_boot$ryear, status = data_boot$rfs,
+    thorizon = 4.95, survival = 1 - data_boot$pred5_pgr
+  )
+    
+  brier_boot <- BS_boot["Brier"]
+  scaled_brier <- BS_boot["IPA"]
+  brier_boot_pgr <- BS_boot_pgr["Brier"]
+  scaled_brier_pgr <- BS_boot_pgr["IPA"]
+  #.. can add other measure heres, eg. concordance
+  
+  cbind.data.frame(
+    "Brier" = brier_boot,
+    "Scaled Brier" = scaled_brier,
+    "Brier with PGR" = brier_boot_pgr,
+    "Scaled Brier with PGR" = scaled_brier_pgr)
+})
+
+df_boots <- do.call(rbind.data.frame, boots_ls)
+
 
 # Bootstrap percentile confidence intervals for Brier score
 vboot <- vboot %>% mutate(
@@ -300,16 +322,16 @@ vboot <- vboot %>% mutate(
 alpha <- .05
 k <- 2 # number of digits
 res_ov <- matrix(c(
-  brier_egbsg1["Brier"],
+  brier_gbsg5["Brier"],
   quantile(vboot$Brier1, probs = alpha / 2),
   quantile(vboot$Brier1, probs = 1 - alpha / 2),
-  brier_egbsg1b["Brier"],
+  brier_gbsg5b["Brier"],
   quantile(vboot$Brier1b, probs = alpha / 2),
   quantile(vboot$Brier1b, probs = 1 - alpha / 2),
-  brier_egbsg1["IPA"],
+  brier_gbsg5["IPA"],
   quantile(vboot$IPA1, probs = alpha / 2),
   quantile(vboot$IPA1, probs = 1 - alpha / 2),
-  brier_egbsg1b["IPA"],
+  brier_gbsg5b["IPA"],
   quantile(vboot$IPA1b, probs = alpha / 2),
   quantile(vboot$IPA1b, probs = 1 - alpha / 2)
 ),
@@ -349,8 +371,8 @@ The dynamic controls are defined as subjects surviving after the time horizon (i
 # External validation
 Uno_gbsg1 <-
   timeROC(
-    T = egbsg1$ryear, delta = egbsg1$rfs,
-    marker = egbsg1$lp,
+    T = gbsg5$ryear, delta = gbsg5$rfs,
+    marker = gbsg5$lp,
     cause = 1, weighting = "marginal", times = 4.95,
     iid = TRUE
   )
@@ -358,8 +380,8 @@ Uno_gbsg1 <-
 # External validation with pgr
 Uno_gbsg1b <-
   timeROC(
-    T = egbsg1$ryear, delta = egbsg1$rfs,
-    marker = egbsg1$lp_1b,
+    T = gbsg5$ryear, delta = gbsg5$rfs,
+    marker = gbsg5$lp_1b,
     cause = 1, weighting = "marginal", times = 4.95,
     iid = TRUE
   )
@@ -473,20 +495,20 @@ OE.ratio.t <- function(tfup, event, pred.risk, thorizon, alpha = .05) {
 # Calculation
 # Without PGR
 OE_ratio5 <- OE.ratio.t(
-  tfup = egbsg1$ryear, event = egbsg1$rfs,
-  pred.risk = 1 - egbsg1$predsurv5,
+  tfup = gbsg5$ryear, event = gbsg5$rfs,
+  pred.risk = 1 - gbsg5$predsurv5,
   thorizon = 5
 )
 # With PGR
 OE_ratio5_1b <- OE.ratio.t(
-  tfup = egbsg1$ryear, event = egbsg1$rfs,
-  pred.risk = 1 - egbsg1$predsurv5_1b,
+  tfup = gbsg5$ryear, event = gbsg5$rfs,
+  pred.risk = 1 - gbsg5$predsurv5_1b,
   thorizon = 5
 )
 
 # Calibration slope
-calslope <- coxph(Surv(ryear, rfs) ~ lp, data = egbsg1)
-calslope_1b <- coxph(Surv(ryear, rfs) ~ lp_1b, data = egbsg1)
+calslope <- coxph(Surv(ryear, rfs) ~ lp, data = gbsg5)
+calslope_1b <- coxph(Surv(ryear, rfs) ~ lp_1b, data = gbsg5)
 ```
 
 ```{r, cal_table,echo=FALSE}
@@ -528,12 +550,12 @@ Calibration plot at 5 years may be created using equally-sized groups of patient
 
 ```{r, cal_rcs, fig.align='center',message=FALSE, warning=FALSE}
 ## External data without PGR
-egbsg1$predmort5 <- 1 - egbsg1$predsurv5
-egbsg1$predmort5.cll <- log(-log(1 - egbsg1$predmort5))
+gbsg5$predmort5 <- 1 - gbsg5$predsurv5
+gbsg5$predmort5.cll <- log(-log(1 - gbsg5$predmort5))
 
 # Estimate
-vcalibrate.efit1 <- cph(Surv(ryear, rfs) ~ rcs(predmort5.cll, 3), x = T, y = T, data = egbsg1, surv = T) # better rms::cph?
-predict.grid <- seq(quantile(egbsg1$predmort5, prob = 0.01), quantile(egbsg1$predmort5, prob = 0.99), length = 100)
+vcalibrate.efit1 <- cph(Surv(ryear, rfs) ~ rcs(predmort5.cll, 3), x = T, y = T, data = gbsg5, surv = T) # better rms::cph?
+predict.grid <- seq(quantile(gbsg5$predmort5, prob = 0.01), quantile(gbsg5$predmort5, prob = 0.99), length = 100)
 predict.grid.cll <- log(-log(1 - predict.grid))
 predict.grid.df <- data.frame(predict.grid)
 predict.grid.cll.df <- data.frame(predict.grid.cll)
@@ -556,18 +578,18 @@ lines(predict.grid, pred.vcalibrate.efit1.upper, type = "l", lty = 2, lwd = 2)
 abline(0, 1, lwd = 2, lty = 2, col = "red")
 title("A External data without PGR", adj = 0)
 # par(new=T)
-# plot(density(egbsg1$predmort5),
+# plot(density(gbsg5$predmort5),
 #     axes=F,xlab=NA,ylab=NA,
 #     main="")
 
 
 ## External data with PGR
-egbsg1$predmort5 <- 1 - egbsg1$predsurv5_1b
-egbsg1$predmort5.cll <- log(-log(1 - egbsg1$predmort5))
+gbsg5$predmort5 <- 1 - gbsg5$predsurv5_1b
+gbsg5$predmort5.cll <- log(-log(1 - gbsg5$predmort5))
 
 # Estimate
-vcalibrate.efit1b <- cph(Surv(ryear, rfs) ~ rcs(predmort5.cll, 3), x = T, y = T, data = egbsg1, surv = T) # better rms::cph?
-predict.grid <- seq(quantile(egbsg1$predmort5, prob = 0.01), quantile(egbsg1$predmort5, prob = 0.99), length = 100)
+vcalibrate.efit1b <- cph(Surv(ryear, rfs) ~ rcs(predmort5.cll, 3), x = T, y = T, data = gbsg5, surv = T) # better rms::cph?
+predict.grid <- seq(quantile(gbsg5$predmort5, prob = 0.01), quantile(gbsg5$predmort5, prob = 0.99), length = 100)
 predict.grid.cll <- log(-log(1 - predict.grid))
 predict.grid.df <- data.frame(predict.grid)
 predict.grid.cll.df <- data.frame(predict.grid.cll)
@@ -591,7 +613,7 @@ lines(predict.grid, pred.vcalibrate.efit1b.upper, type = "l", lty = 2, lwd = 2)
 abline(0, 1, lwd = 2, lty = 2, col = "red")
 title("B External data with PGR", adj = 0)
 # par(new=T)
-# plot(density(egbsg1$predmort5),
+# plot(density(gbsg5$predmort5),
 #      axes=F,xlab=NA,ylab=NA,
 #      main="")
 ```
@@ -607,24 +629,24 @@ However, one graphical representation of calibration is based on the Kaplan-Meie
 # Development and validation dataset without pgr
 ## NOTE: this code should be adjusted using assuming only information of the coefficients is provided according to the previous sections
 
-egbsg1$group1 <- cut(egbsg1$lp, breaks = quantile(egbsg1$lp, probs = seq(0, 1, 0.25)), include.lowest = TRUE)
+gbsg5$group1 <- cut(gbsg5$lp, breaks = quantile(gbsg5$lp, probs = seq(0, 1, 0.25)), include.lowest = TRUE)
 
 par(las = 1, xaxs = "i", yaxs = "i")
-plot(survfit(Surv(ryear, rfs) ~ group1, data = egbsg1),
+plot(survfit(Surv(ryear, rfs) ~ group1, data = gbsg5),
   bty = "n", xlim = c(0, 5), ylim = c(0, 1), lwd = 2, col = "black",
   lty = 2, xlab = "Time (years)", ylab = "Survival probability"
 )
 title("A External data without PGR", adj = 0)
 
-egbsg1$group1b <- cut(
-  egbsg1$lp_1b,
-  breaks = quantile(egbsg1$lp_1b, probs = seq(0, 1, 0.25)),
+gbsg5$group1b <- cut(
+  gbsg5$lp_1b,
+  breaks = quantile(gbsg5$lp_1b, probs = seq(0, 1, 0.25)),
   include.lowest = TRUE
 )
-# egbsg1$group1b<-cut(egbsg1$lp1b,breaks=quantile(egbsg1$# lp1b,probs=seq(0,1,0.25)),include.lowest = TRUE)
+# gbsg5$group1b<-cut(gbsg5$lp1b,breaks=quantile(gbsg5$# lp1b,probs=seq(0,1,0.25)),include.lowest = TRUE)
 
 par(las = 1, xaxs = "i", yaxs = "i")
-plot(survfit(Surv(ryear, rfs) ~ group1b, data = egbsg1),
+plot(survfit(Surv(ryear, rfs) ~ group1b, data = gbsg5),
   bty = "n", xlim = c(0, 5),
   ylim = c(0, 1), lwd = 2, col = "black", lty = 2
 )
@@ -714,25 +736,25 @@ source(here::here("Functions/stdca.R"))
 # External data
 # Validation data
 # Predicted probability calculation
-egbsg1$mort5_model1 <- 1 - egbsg1$predsurv5
+gbsg5$mort5_model1 <- 1 - gbsg5$predsurv5
 
 # Extended model with PGR
 # Predicted probability calculation
-egbsg1$mort5_model1b <- 1 - egbsg1$predsurv5_1b
+gbsg5$mort5_model1b <- 1 - gbsg5$predsurv5_1b
 
 # Run decision curve analysis
 
 # Validation data
 # Model without PGR
-egbsg1 <- as.data.frame(egbsg1)
+gbsg5 <- as.data.frame(gbsg5)
 dca_gbsg_model1 <- stdca(
-  data = egbsg1, outcome = "rfs", ttoutcome = "ryear",
+  data = gbsg5, outcome = "rfs", ttoutcome = "ryear",
   timepoint = 5, predictors = "mort5_model1", xstop = 1.0,
   ymin = -0.01, graph = FALSE
 )
 # Model with PGR
 dca_gbsg_model1b <- stdca(
-  data = egbsg1, outcome = "rfs", ttoutcome = "ryear",
+  data = gbsg5, outcome = "rfs", ttoutcome = "ryear",
   timepoint = 5, predictors = "mort5_model1b", xstop = 1,
   ymin = -0.01, graph = FALSE
 )
