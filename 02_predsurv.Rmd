@@ -4,7 +4,7 @@ always_allow_html: true
 output:
   github_document:
     toc: true
-    toc_depth: 4
+    toc_depth: 5
   keep_text: true
   pandoc_args: --webtex
 ---
@@ -189,8 +189,9 @@ Categorization of number of positive lymph nodes was suboptimal in this example 
 
 ### 1.1 Calculate the absolute risk prediction at 5 years in the validation data
 
-```{r, predsurv, message=FALSE, warning=FALSE}
+This part must be run. Then, the user can also focus on one prediction performance is interested in (e.g. discrimination).  
 
+```{r, predsurv, message=FALSE, warning=FALSE}
 ### Absolute risk  at 5 yrs - Basic model ---------------
 # Baseline survival at 5 years - basic model
 S0.5yr <- .8604385 
@@ -387,160 +388,163 @@ The time-dependent AUCs at 5 years were in the external validation were 0.70 and
 
 
 ### 1.3 Calibration
+Calibration is the agreement between observed outcomes and predicted probabilities.
+For example, in survival models, a predicted survival probability at a fixed time horizon _t_ of 80% is considered reliable if it can be expected that 80 out of 100 will survive among patients received a predicted survival probability of 80%.
+Calibration can be assessed at a fixed time point (e.g. at 5 years), and globally (considering the entire range of the data).
+In addition, different level of calibration assessment can be estimated according to the level of information available in the data. 
+When individual data of development and validation set are available, full assessment of calibration is possible. Calibration at fixed time point is possible when baseline hazard at fixed time point and coefficient are available. When only coefficients are available, limited assessment of calibration is possible.
 
+In this scenario, we can evaluate calibration only at fixed time point _t_ (i.e. 5 years) since we may have baseline survival at time _t_ (5 years) and coefficients of the model.  
+
+Since different level of information may be available, different level of calibration can be estimated:  mean, weak, and moderate calibration.
+
++ Mean calibration can be estimated:  
+
+  + at a fixed time point:
+    + using the Observed and Expected ratio at time t;  
+
++ Weak calibration can be estimated:
+  + at a fixed time point  
+    + using intercept and slope as the coefficient of cloglog                      transformation of predicted probabilities in Cox model. Possible to          determine intercept after adjusting for slope.  
+
++ Moderate calibration can estimated:
+  + at a fixed time point:  
+    + using flexible calibration curve, complemented with ICI, E50, E90.  
+
+More detailed explanations are available in the paper.
 
 When a risk prediction model has been developed and published in the literature, individual data are probably not available. 
 If the model equation is provided including the coefficients and the baseline at fixed time point _t_ (e.g. 5 years), we could validate the risk prediction model in our external data.
 Typically, the model equation is provided in terms of predicted survival at a fixed time point _t_.
 
-```{r, cal_time,message=FALSE, warning=FALSE}
+#### 1.3.1  Mean calibration - fixed time point
+The mean calibration at fixed time point (e.g. at 5 years) can be estimated using the Observed and Expected ratio.
+The observed is estimated using the complementary of the Kaplan-Meier curve at the fixed time point.
+The expected is estimated using the average predicted risk of the event at the fixed time point.
+
+```{r, mean_cal_t, message=FALSE, warning=FALSE}
+
+##  Observed / Expected ratio at time t ------------
+# Observed: 1-Kaplan Meier at time (t)
+horizon <- 5
+obj <- summary(survfit(Surv(ryear, rfs) ~ 1, 
+                       data = gbsg5), 
+               times = horizon)
+
+OE <- (1 - obj$surv) / mean(gbsg5$pred5)
+OE_pgr <- (1 - obj$surv) / mean(gbsg5$pred5_pgr)
+```
+
+```{r, res_OE, message=FALSE, warning=FALSE, echo=FALSE}
+alpha <- 0.05
+res_OE <- matrix(c(OE,
+                   OE * exp(-qnorm(1 - alpha / 2) * sqrt(1 / obj$n.event)),
+                   OE * exp(qnorm(1 - alpha / 2) * sqrt(1 / obj$n.event)),
+                   
+                   OE_pgr,
+                   OE_pgr 
+                   * exp(-qnorm(1 - alpha / 2) * sqrt(1 / obj$n.event)),
+                   OE_pgr 
+                   * exp(qnorm(1 - alpha / 2) * sqrt(1 / obj$n.event))
+                   ),
+                 
+                 nrow = 1,
+                 ncol = 6,
+                 byrow = T,
+                 dimnames = list(
+                   c("OE ratio"),
+                   rep(c("Estimate", "Lower .95", "Upper .95"),2))
+)
+
+res_OE <- round(res_OE, 2)
+kable(res_OE) %>%
+  kable_styling("striped", position = "center") %>%
+  add_header_above(c(" " = 1, 
+                     "External" = 3, 
+                     "External + PGR" = 3))
+
+```
+Observed and Expected ratio is 1.07 (95% CI: 0.95 - 1.20) for the basic model and 1.03 (95% CI: 0.92 - 1.16) for the extended model.
+
+#### 1.3.2 Weak calibration - fixed time point
+Weak calibration using intercept and slope as the coefficient of cloglog transformation of predicted probabilities in Cox model.  
+```{r, weak_cal_t, echo=TRUE,message=FALSE,warning=FALSE}
+
+# cloglog and center for the basic and extended model
+lp.val <- log(-log(1 - gbsg5$pred5))   # lp = cloglog
+lp.val_pgr <- log(-log(1 - gbsg5$pred5_pgr)) 
+center <- mean(lp.val)  # center
+center_pgr <- mean(lp.val_pgr)  # center
+
+
+### Model with a slope and an intercept
+f.val <- coxph(Surv(gbsg5$ryear, gbsg5$rfs) ~ lp.val)  
+slope <- f.val$coefficients[1]
+slope.se <- sqrt(vcov(f.val)[[1, 1]])
+
+f.val_pgr <- coxph(Surv(gbsg5$ryear, gbsg5$rfs) ~ lp.val_pgr)  
+slope_pgr <- f.val_pgr$coefficients[1]
+slope.se_pgr <- sqrt(vcov(f.val_pgr)[[1, 1]])
+ 
+### same procedure to find the intercept, now with slope-adjusted lp
+f.val.offset <- coxph(Surv(gbsg5$ryear, gbsg5$rfs) ~ offset(slope*lp.val))
+sf <- survfit(f.val.offset, conf.type = "log-log")
+log.H <- log(-log(tail(sf$surv[sf$time <= horizon], 1)))   
+int <- log.H - mean(slope*lp.val)
+log.H.upper <- log(-log(tail(sf$upper,1)))
+int.se <- (log.H-log.H.upper)/qnorm(.975)
+
+# With marker
+f.val.offset_pgr <- coxph(Surv(gbsg5$ryear, gbsg5$rfs) ~
+                        offset(slope_pgr*lp.val_pgr))
+sf_pgr <- survfit(f.val.offset_pgr, conf.type = "log-log")
+log.H_pgr <- log(-log(tail(sf_pgr$surv[sf_pgr$time <= horizon], 1)))   
+int_pgr <- log.H_pgr - mean(slope_pgr*lp.val_pgr)
+log.H.upper_pgr <- log(-log(tail(sf_pgr$upper,1)))
+int.se_pgr <- (log.H_pgr-log.H.upper_pgr)/qnorm(.975)
 
 ```
 
-```{r, cal_table,echo=FALSE}
-# Save results
-alpha <- .05
-k <- 2
+```{r, res_cal, message=FALSE, warning=FALSE, echo=FALSE}
+alpha <- 0.05
 res_cal <- matrix(c(
-  OE_ratio5["Estimate"],
-  OE_ratio5["Lower .95"],
-  OE_ratio5["Upper .95"],
-  OE_ratio5_1b["Estimate"],
-  OE_ratio5_1b["Lower .95"],
-  OE_ratio5_1b["Upper .95"],
-  calslope$coefficients["lp"],
-  confint(calslope), # External - calibration slope
-
-  calslope_1b$coefficients["lp_1b"],
-  confint(calslope_1b)
-), # External + PGR - calibration slope
-nrow = 2, ncol = 6, byrow = T,
-dimnames = list(
-  c("O/E ratio at 5 years", "Calibration slope"),
-  rep(c("Estimate", "Lower .95 ", "Upper .95"), 2)
+                int,
+                int - qnorm( 1- alpha / 2) * int.se,
+                int + qnorm( 1- alpha / 2) * int.se,
+                
+                
+                slope,
+                slope - qnorm( 1- alpha / 2) * slope.se,
+                slope + qnorm( 1- alpha / 2) * slope.se,
+                
+                int_pgr,
+                int_pgr - qnorm( 1- alpha / 2) * int.se_pgr,
+                int_pgr + qnorm( 1- alpha / 2) * int.se_pgr,
+                
+                slope_pgr,
+                slope_pgr - qnorm( 1- alpha / 2) * slope.se_pgr,
+                slope_pgr + qnorm( 1- alpha / 2) * slope.se_pgr
+                   ),
+                 
+                 nrow = 2,
+                 ncol = 6,
+                 byrow = T,
+                 dimnames = list(
+                   c("Calibration intercept","Calibration slope"),
+                   rep(c("Estimate", "Lower .95", "Upper .95"),2))
 )
-)
 
-k <- 2
-res_cal <- round(res_cal, k) # number of digits
+res_cal <- round(res_cal, 2)
 kable(res_cal) %>%
   kable_styling("striped", position = "center") %>%
-  add_header_above(c(" " = 1, "External" = 3, "External + PGR" = 3))
-rm(res_cal, calslope, calslope_1b, OE_ratio5, OE_ratio5_1b)
+  add_header_above(c(" " = 1, 
+                     "External" = 3, 
+                     "External + PGR" = 3))
 ```
+Calibration intercept (adjusted for the slope) was 0.15 and 0.14 for the basic and extended model , respectively.  
+Calibration slope was 1.08 and 1.17 for the basic and extended model, respectively.
 
-The OE ratio was 1.12 and 1.05 indicating that the predicted values at 5 years were systematic overestimated for both models with and without PGR. The calibration slope was 1.04 and 1.15 indicate good estimation of the risk by the model and slight under estimation when PGR was included as a predictor.
-Recalibration may be useful to improve prediction in the external data.
-Calibration plot at 5 years may be created using equally-sized groups of patients based on percentiles of the predicted survival distribution, restricted cubic splines and hazard regression. We provide here calibration plot based on restricted cubic splines. 
-
-
-```{r, cal_rcs, fig.align='center',message=FALSE, warning=FALSE}
-## External data without PGR
-gbsg5$predmort5 <- 1 - gbsg5$predsurv5
-gbsg5$predmort5.cll <- log(-log(1 - gbsg5$predmort5))
-
-# Estimate
-vcalibrate.efit1 <- cph(Surv(ryear, rfs) ~ rcs(predmort5.cll, 3), x = T, y = T, data = gbsg5, surv = T) # better rms::cph?
-predict.grid <- seq(quantile(gbsg5$predmort5, prob = 0.01), quantile(gbsg5$predmort5, prob = 0.99), length = 100)
-predict.grid.cll <- log(-log(1 - predict.grid))
-predict.grid.df <- data.frame(predict.grid)
-predict.grid.cll.df <- data.frame(predict.grid.cll)
-names(predict.grid.df) <- "predmort5"
-names(predict.grid.cll.df) <- "predmort5.cll"
-
-# Plot
-pred.vcalibrate.efit1 <- 1 - survest(vcalibrate.efit1, newdata = predict.grid.cll.df, times = 5)$surv
-pred.vcalibrate.efit1.lower <- 1 - survest(vcalibrate.efit1, newdata = predict.grid.cll.df, times = 5)$upper
-pred.vcalibrate.efit1.upper <- 1 - survest(vcalibrate.efit1, newdata = predict.grid.cll.df, times = 5)$lower
-par(xaxs = "i", yaxs = "i", las = 1)
-plot(predict.grid, pred.vcalibrate.efit1,
-  type = "l", lty = 1, xlim = c(0, 1),
-  ylim = c(0, 1), lwd = 2,
-  xlab = "Predicted risk at 5 years",
-  ylab = "Observed risk at 5 years", bty = "n"
-)
-lines(predict.grid, pred.vcalibrate.efit1.lower, type = "l", lty = 2, lwd = 2)
-lines(predict.grid, pred.vcalibrate.efit1.upper, type = "l", lty = 2, lwd = 2)
-abline(0, 1, lwd = 2, lty = 2, col = "red")
-title("A External data without PGR", adj = 0)
-# par(new=T)
-# plot(density(gbsg5$predmort5),
-#     axes=F,xlab=NA,ylab=NA,
-#     main="")
-
-
-## External data with PGR
-gbsg5$predmort5 <- 1 - gbsg5$predsurv5_1b
-gbsg5$predmort5.cll <- log(-log(1 - gbsg5$predmort5))
-
-# Estimate
-vcalibrate.efit1b <- cph(Surv(ryear, rfs) ~ rcs(predmort5.cll, 3), x = T, y = T, data = gbsg5, surv = T) # better rms::cph?
-predict.grid <- seq(quantile(gbsg5$predmort5, prob = 0.01), quantile(gbsg5$predmort5, prob = 0.99), length = 100)
-predict.grid.cll <- log(-log(1 - predict.grid))
-predict.grid.df <- data.frame(predict.grid)
-predict.grid.cll.df <- data.frame(predict.grid.cll)
-names(predict.grid.df) <- "predmort5"
-names(predict.grid.cll.df) <- "predmort5.cll"
-
-
-# Plot
-pred.vcalibrate.efit1b <- 1 - survest(vcalibrate.efit1b, newdata = predict.grid.cll.df, times = 5)$surv
-pred.vcalibrate.efit1b.lower <- 1 - survest(vcalibrate.efit1b, newdata = predict.grid.cll.df, times = 5)$upper
-pred.vcalibrate.efit1b.upper <- 1 - survest(vcalibrate.efit1b, newdata = predict.grid.cll.df, times = 5)$lower
-par(xaxs = "i", yaxs = "i", las = 1)
-plot(predict.grid, pred.vcalibrate.efit1b,
-  type = "l", lty = 1, xlim = c(0, 1),
-  ylim = c(0, 1), lwd = 2,
-  xlab = "Predicted risk at 5 years",
-  ylab = "Observed risk at 5 years", bty = "n"
-)
-lines(predict.grid, pred.vcalibrate.efit1b.lower, type = "l", lty = 2, lwd = 2)
-lines(predict.grid, pred.vcalibrate.efit1b.upper, type = "l", lty = 2, lwd = 2)
-abline(0, 1, lwd = 2, lty = 2, col = "red")
-title("B External data with PGR", adj = 0)
-# par(new=T)
-# plot(density(gbsg5$predmort5),
-#      axes=F,xlab=NA,ylab=NA,
-#      main="")
-```
-
-
-Both plots identified good calibration although predicted risk were slightly underestimated especially for the lowest and the highest values of the observed probabilities.  
-The additional information of PGR improved the overall calibration, especially for the highest values, as shown in the two calibration plots above.
-
-When only coefficients of the predictors of a risk prediction model are provided, full calibration cannot be assessed.
-However, one graphical representation of calibration is based on the Kaplan-Meier survival curves based on the distribution of the predictor index. For example, four equally sized patients based on quartiles of the predicted survival probabilities. 
-
-```{r, km,message=FALSE, warning=FALSE}
-# Development and validation dataset without pgr
-## NOTE: this code should be adjusted using assuming only information of the coefficients is provided according to the previous sections
-
-gbsg5$group1 <- cut(gbsg5$lp, breaks = quantile(gbsg5$lp, probs = seq(0, 1, 0.25)), include.lowest = TRUE)
-
-par(las = 1, xaxs = "i", yaxs = "i")
-plot(survfit(Surv(ryear, rfs) ~ group1, data = gbsg5),
-  bty = "n", xlim = c(0, 5), ylim = c(0, 1), lwd = 2, col = "black",
-  lty = 2, xlab = "Time (years)", ylab = "Survival probability"
-)
-title("A External data without PGR", adj = 0)
-
-gbsg5$group1b <- cut(
-  gbsg5$lp_1b,
-  breaks = quantile(gbsg5$lp_1b, probs = seq(0, 1, 0.25)),
-  include.lowest = TRUE
-)
-# gbsg5$group1b<-cut(gbsg5$lp1b,breaks=quantile(gbsg5$# lp1b,probs=seq(0,1,0.25)),include.lowest = TRUE)
-
-par(las = 1, xaxs = "i", yaxs = "i")
-plot(survfit(Surv(ryear, rfs) ~ group1b, data = gbsg5),
-  bty = "n", xlim = c(0, 5),
-  ylim = c(0, 1), lwd = 2, col = "black", lty = 2
-)
-title("B External data with PGR", adj = 0)
-```
-
-
-### 1.3 Overall performance measures
+### 1.4 Overall performance measures
 Some overall performance measures are proposed using survival data:
 
 + Brier score: it is the squared differences between observed and predicted values at fixed time point (e.g. at 5 years);
