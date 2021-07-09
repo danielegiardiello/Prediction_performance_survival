@@ -19,6 +19,8 @@ Performance assessment of survival prediction models
             point](#132-weak-calibration---fixed-time-point)
         -   [1.3.3 Moderate calibration - fixed time
             point](#133-moderate-calibration---fixed-time-point)
+        -   [1.3.4 Calibration when only coefficients of the model are
+            available](#134-calibration-when-only-coefficients-of-the-model-are-available)
     -   [1.4 Overall performance
         measures](#14-overall-performance-measures)
 -   [2. Clinical utility](#2-clinical-utility)
@@ -1020,6 +1022,61 @@ External data + PGR
 
 In the validation, ICI at 5 years was 0.04 and 0.03 for the basic and
 extended model, respectively.
+
+#### 1.3.4 Calibration when only coefficients of the model are available
+
+When only coefficients of the development model is available and the
+baseline survival is not provided, only visual assessment of calibration
+is possible based on Kaplan-Meier curves between risk groups.
+
+``` r
+# PI by groups
+gbsg5$group1 <- cut(gbsg5$PI, 
+                    breaks = quantile(gbsg5$PI, 
+                                      probs = seq(0, 1, 0.25)),
+                    include.lowest = TRUE)
+
+
+par(las = 1, xaxs = "i", yaxs = "i")
+plot(survfit(Surv(ryear, rfs) ~ group1, data = gbsg5),
+  bty = "n", 
+  xlim = c(0, 5), 
+  ylim = c(0, 1), 
+  lwd = 2, 
+  col = "black",
+  lty = 2, 
+  xlab = "Time (years)", 
+  ylab = "Survival probability"
+)
+title("A - basic model", adj = 0)
+```
+
+<img src="imgs/02_predsurv/km-1.png" width="672" />
+
+``` r
+# Extended model
+gbsg5$group1_pgr <- cut(gbsg5$PI_pgr, 
+                    breaks = quantile(gbsg5$PI_pgr, 
+                                      probs = seq(0, 1, 0.25)),
+                    include.lowest = TRUE)
+
+
+par(las = 1, xaxs = "i", yaxs = "i")
+plot(survfit(Surv(ryear, rfs) ~ group1_pgr, 
+             data = gbsg5),
+     bty = "n",
+     xlim = c(0, 5), 
+     ylim = c(0, 1), 
+     lwd = 2, 
+     col = "black",
+     lty = 2, 
+     xlab = "Time (years)", 
+     ylab = "Survival probability"
+)
+title("B - extended model", adj = 0)
+```
+
+<img src="imgs/02_predsurv/km-2.png" width="672" />
 
 ### 1.4 Overall performance measures
 
