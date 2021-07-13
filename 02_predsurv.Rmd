@@ -108,7 +108,7 @@ where: \
 *S*<sub>0</sub>*(t)* is the baseline survival at time *t*. \
 <img src="https://render.githubusercontent.com/render/math?math=%5Csf%7BPI%20%3D%20%5Cbeta_1X_1%2B%5Ccdots%2B%5Cbeta_pX_p%7D"> is the predictor index: the combination of the coefficients estimated by the statistical model (i.e Cox model) and the predictors. \
 
-In some software, the baseline survival might be already internally rescaled including the centercept. For example, the function ```rms::cph()``` in the ```rms``` R package provides the centercept the formula above included also the centercept in the model equation. More information can be found in 
+In some software, the baseline survival might be already internally rescaled including the centercept. For example, the function ```rms::cph()``` in the ```rms``` R package provides the centercept to be included  in the model equation (see formula below and  ```rms::cph()$center```). More information can be found in 
 ```help(cph)``` . 
 In ```survival``` package the baseline survival can be obtained using
 ```survival::basehaz()``` then ```exp(-survival::basehaz()$hazard)``` to calculate *S*<sub>0</sub>*(t)* . For details see ```help(basehaz)```, especially the argument ```centered```. 
