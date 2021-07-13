@@ -160,14 +160,15 @@ the statistical model (i.e Cox model) and the predictors.
 
 In some software, the baseline survival might be already internally
 rescaled including the centercept. For example, the function
-`rms::cph()` in the `rms` R package provides the centercept the formula
-above included also the centercept in the model equation. More
-information can be found in `help(cph)` . In `survival` package the
-baseline survival can be obtained using `survival::basehaz()` then
-`exp(-survival::basehaz()$hazard)` to calculate *S*<sub>0</sub>*(t)* .
-For details see `help(basehaz)`, especially the argument `centered`. If
-the centercept is mentioned in the model equation, this can be used to
-rescaled the baseline using some easy algebraic steps.
+`rms::cph()` in the `rms` R package provides the centercept to be
+included in the model equation (see formula below and
+`rms::cph()$center`). More information can be found in `help(cph)` . In
+`survival` package the baseline survival can be obtained using
+`survival::basehaz()` then `exp(-survival::basehaz()$hazard)` to
+calculate *S*<sub>0</sub>*(t)* . For details see `help(basehaz)`,
+especially the argument `centered`. If the centercept is mentioned in
+the model equation, this can be used to rescaled the baseline using some
+easy algebraic steps.
 
 <img src="https://render.githubusercontent.com/render/math?math=%5Clarge%7BS(t)%20%3D%20%7BS_%7B0%7D(t)%7D%5E%7Bexp(PI-c)%7D%20%3D%20%5B%7BS_%7B0%7D(t)%7D%5E%7Bexp(-c)%7D%5D%5E%7Bexp(PI)%7D%20%3D%7BS_%7B0%7D(t)_%7Bresc%7D%7D%5E%7Bexp(PI)%7D%7D">
 
