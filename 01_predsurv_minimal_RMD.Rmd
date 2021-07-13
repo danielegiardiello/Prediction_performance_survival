@@ -183,7 +183,7 @@ More explanations and details are in the paper.
 
 The time horizon to calculate the time-dependent measures was set to 5 years.
 Values close to 1 indicate good discrimination ability, while values close to 0.5 indicated poor discrimination ability.  
-We used the time horizon at 4.95 and not 5 years since controls are considered patients at risk after the time horizon and we administratively censored at 5 years to minimize the violation of PH assumption.
+We used the time horizon at 4.95 and not 5 years since non-cases are considered patients at risk after the time horizon and we administratively censored at 5 years to minimize the violation of PH assumption.
 
 ```{r, concordance,warning=FALSE}
 # Libraries needed
