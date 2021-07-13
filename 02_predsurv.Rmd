@@ -420,6 +420,7 @@ center_pgr <- mean(lp.val_pgr)  # center
 
 
 ### Model with a slope and an intercept
+horizon <- 5
 f.val <- coxph(Surv(gbsg5$ryear, gbsg5$rfs) ~ lp.val)  
 slope <- f.val$coefficients[1]
 slope.se <- sqrt(vcov(f.val)[[1, 1]])
@@ -454,14 +455,13 @@ res_cal <- matrix(c(
                 int - qnorm( 1- alpha / 2) * int.se,
                 int + qnorm( 1- alpha / 2) * int.se,
                 
+                int_pgr,
+                int_pgr - qnorm( 1- alpha / 2) * int.se_pgr,
+                int_pgr + qnorm( 1- alpha / 2) * int.se_pgr,
                 
                 slope,
                 slope - qnorm( 1- alpha / 2) * slope.se,
                 slope + qnorm( 1- alpha / 2) * slope.se,
-                
-                int_pgr,
-                int_pgr - qnorm( 1- alpha / 2) * int.se_pgr,
-                int_pgr + qnorm( 1- alpha / 2) * int.se_pgr,
                 
                 slope_pgr,
                 slope_pgr - qnorm( 1- alpha / 2) * slope.se_pgr,
