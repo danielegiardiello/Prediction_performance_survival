@@ -661,6 +661,7 @@ center_pgr <- mean(lp.val_pgr)  # center
 
 
 ### Model with a slope and an intercept
+horizon <- 5
 f.val <- coxph(Surv(gbsg5$ryear, gbsg5$rfs) ~ lp.val)  
 slope <- f.val$coefficients[1]
 slope.se <- sqrt(vcov(f.val)[[1, 1]])
@@ -749,20 +750,6 @@ Calibration intercept
 0.29
 </td>
 <td style="text-align:right;">
-1.08
-</td>
-<td style="text-align:right;">
-0.84
-</td>
-<td style="text-align:right;">
-1.32
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-Calibration slope
-</td>
-<td style="text-align:right;">
 0.14
 </td>
 <td style="text-align:right;">
@@ -770,6 +757,20 @@ Calibration slope
 </td>
 <td style="text-align:right;">
 0.28
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Calibration slope
+</td>
+<td style="text-align:right;">
+1.08
+</td>
+<td style="text-align:right;">
+0.84
+</td>
+<td style="text-align:right;">
+1.32
 </td>
 <td style="text-align:right;">
 1.17
@@ -1415,7 +1416,7 @@ sessioninfo::session_info()
     ##  collate  English_United States.1252  
     ##  ctype    English_United States.1252  
     ##  tz       Europe/Berlin               
-    ##  date     2021-07-09                  
+    ##  date     2021-07-13                  
     ## 
     ## - Packages -------------------------------------------------------------------
     ##  package        * version    date       lib source        
