@@ -259,7 +259,7 @@ More explanations and details are in the paper.
 The time horizon to calculate the time-dependent measures was set to 5
 years. Values close to 1 indicate good discrimination ability, while
 values close to 0.5 indicated poor discrimination ability.  
-We used the time horizon at 4.95 and not 5 years since controls are
+We used the time horizon at 4.95 and not 5 years since non-cases are
 considered patients at risk after the time horizon and we
 administratively censored at 5 years to minimize the violation of PH
 assumption.
@@ -586,7 +586,7 @@ df_boots <- do.call(rbind.data.frame, boots_ls)
 
     ##                                Estimate Lower .95  Upper .95
     ## Brier - Validation data            0.22       0.20      0.24
-    ## Scaled Brier - Validation data     0.12       0.07      0.17
+    ## Scaled Brier - Validation data     0.12       0.06      0.19
 
 Brier and scaled Brier score were 0.22 and 0.12, respectively.
 
@@ -780,7 +780,7 @@ sessioninfo::session_info()
     ##  collate  English_United States.1252  
     ##  ctype    English_United States.1252  
     ##  tz       Europe/Berlin               
-    ##  date     2021-07-07                  
+    ##  date     2021-07-13                  
     ## 
     ## - Packages -------------------------------------------------------------------
     ##  package        * version    date       lib source        
