@@ -8,8 +8,6 @@ The R/SAS functions are:
 
 + Rsquared.R: calculation of R<sup>2</sup> and Royston's D as additional overall and discrimation measures to evaluate a model over the entire follow-up and not at a fixed time horizon;
 
-+ UnoC.R: calculation of Uno's C-index as a discrimination measure for all follow-up time as proposed by [Uno et al](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3079915/);
-
 + File RCSPLINE macro.sas is a SAS macro that calculates the restricted cubic spline.
 
 
