@@ -1198,13 +1198,14 @@ res_cal <- matrix(c(
     int_summary[1] - qnorm(1 - alpha / 2) * int_summary[2],
     int_summary[1] + qnorm(1 - alpha / 2) * int_summary[2],
     
-    int_summary_pgr[1],
-    int_summary_pgr[1] - qnorm(1 - alpha / 2) * int_summary_pgr[2],
-    int_summary_pgr[1] + qnorm(1 - alpha / 2) * int_summary_pgr[2],
   
     slope_summary[2, 1],
     slope_summary[2, 1] - qnorm(1 - alpha / 2) * slope_summary[2, 2],
     slope_summary[2, 1] + qnorm(1 - alpha / 2) * slope_summary[2, 2],
+    
+    int_summary_pgr[1],
+    int_summary_pgr[1] - qnorm(1 - alpha / 2) * int_summary_pgr[2],
+    int_summary_pgr[1] + qnorm(1 - alpha / 2) * int_summary_pgr[2],
     
     slope_summary_pgr[2, 1],
     slope_summary_pgr[2, 1] - qnorm(1 - alpha / 2) * slope_summary_pgr[2, 2],
