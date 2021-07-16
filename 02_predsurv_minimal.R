@@ -141,7 +141,7 @@ Uno_AUC_res
 
 # Calibration -----------------------------------------
 
-# Observed / Expected ration
+# Observed / Expected ratio
 t_horizon <- 5
 
 # Observed
@@ -321,9 +321,6 @@ res_ov
 
 
 # Clinical utility --------------------------------
-
-# Minimal version (better to use stdca function in the repository):
-# source("Functions/stdca.R")
 
 # 1. Set grid of thresholds
 thresholds <- seq(0, 1.0, by = 0.01)
