@@ -1267,7 +1267,7 @@ Harrell C
 0.69
 </td>
 <td style="text-align:right;">
-0.67
+0.68
 </td>
 <td style="text-align:right;">
 NA
@@ -1326,7 +1326,7 @@ Uno C
 0.69
 </td>
 <td style="text-align:right;">
-0.67
+0.68
 </td>
 <td style="text-align:right;">
 NA
@@ -1570,7 +1570,7 @@ Uno AUC
 0.73
 </td>
 <td style="text-align:right;">
-0.71
+0.72
 </td>
 <td style="text-align:right;">
 NA
@@ -1588,7 +1588,7 @@ NA
 0.74
 </td>
 <td style="text-align:right;">
-0.71
+0.72
 </td>
 <td style="text-align:right;">
 NA
@@ -2349,7 +2349,21 @@ Calibration intercept
 -0.03
 </td>
 <td style="text-align:right;">
-0.2
+0.20
+</td>
+<td style="text-align:right;">
+1.37
+</td>
+<td style="text-align:right;">
+1.14
+</td>
+<td style="text-align:right;">
+1.60
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Calibration slope
 </td>
 <td style="text-align:right;">
 0.05
@@ -2359,20 +2373,6 @@ Calibration intercept
 </td>
 <td style="text-align:right;">
 0.16
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-Calibration slope
-</td>
-<td style="text-align:right;">
-1.37
-</td>
-<td style="text-align:right;">
-1.14
-</td>
-<td style="text-align:right;">
-1.6
 </td>
 <td style="text-align:right;">
 1.40
@@ -3372,7 +3372,7 @@ sessioninfo::session_info()
     ##  collate  English_United States.1252  
     ##  ctype    English_United States.1252  
     ##  tz       Europe/Berlin               
-    ##  date     2021-07-09                  
+    ##  date     2021-07-16                  
     ## 
     ## - Packages -------------------------------------------------------------------
     ##  package        * version    date       lib source        
@@ -3476,7 +3476,7 @@ sessioninfo::session_info()
     ##  readr          * 1.4.0      2020-10-05 [1] CRAN (R 4.0.5)
     ##  readxl           1.3.1      2019-03-13 [1] CRAN (R 4.0.5)
     ##  reprex           2.0.0      2021-04-02 [1] CRAN (R 4.0.5)
-    ##  rio            * 0.5.26     2021-03-01 [1] CRAN (R 4.0.5)
+    ##  rio            * 0.5.27     2021-06-21 [1] CRAN (R 4.0.5)
     ##  riskRegression * 2020.12.08 2020-12-09 [1] CRAN (R 4.0.5)
     ##  rlang            0.4.10     2020-12-30 [1] CRAN (R 4.0.5)
     ##  rmarkdown        2.7        2021-02-19 [1] CRAN (R 4.0.5)
