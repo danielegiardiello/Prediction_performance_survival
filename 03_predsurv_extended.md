@@ -1267,7 +1267,7 @@ Harrell C
 0.69
 </td>
 <td style="text-align:right;">
-0.68
+0.67
 </td>
 <td style="text-align:right;">
 NA
@@ -1326,7 +1326,7 @@ Uno C
 0.69
 </td>
 <td style="text-align:right;">
-0.68
+0.67
 </td>
 <td style="text-align:right;">
 NA
@@ -1344,7 +1344,7 @@ NA
 0.69
 </td>
 <td style="text-align:right;">
-0.68
+0.67
 </td>
 <td style="text-align:right;">
 NA
@@ -1570,7 +1570,7 @@ Uno AUC
 0.73
 </td>
 <td style="text-align:right;">
-0.72
+0.71
 </td>
 <td style="text-align:right;">
 NA
@@ -1588,7 +1588,7 @@ NA
 0.74
 </td>
 <td style="text-align:right;">
-0.72
+0.71
 </td>
 <td style="text-align:right;">
 NA
@@ -2187,20 +2187,6 @@ Calibration intercept
 0.29
 </td>
 <td style="text-align:right;">
-1.08
-</td>
-<td style="text-align:right;">
-0.84
-</td>
-<td style="text-align:right;">
-1.32
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-Calibration slope
-</td>
-<td style="text-align:right;">
 0.14
 </td>
 <td style="text-align:right;">
@@ -2208,6 +2194,20 @@ Calibration slope
 </td>
 <td style="text-align:right;">
 0.28
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Calibration slope
+</td>
+<td style="text-align:right;">
+1.08
+</td>
+<td style="text-align:right;">
+0.84
+</td>
+<td style="text-align:right;">
+1.32
 </td>
 <td style="text-align:right;">
 1.17
@@ -2349,21 +2349,7 @@ Calibration intercept
 -0.03
 </td>
 <td style="text-align:right;">
-0.20
-</td>
-<td style="text-align:right;">
-1.37
-</td>
-<td style="text-align:right;">
-1.14
-</td>
-<td style="text-align:right;">
-1.60
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-Calibration slope
+0.2
 </td>
 <td style="text-align:right;">
 0.05
@@ -2373,6 +2359,20 @@ Calibration slope
 </td>
 <td style="text-align:right;">
 0.16
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Calibration slope
+</td>
+<td style="text-align:right;">
+1.37
+</td>
+<td style="text-align:right;">
+1.14
+</td>
+<td style="text-align:right;">
+1.6
 </td>
 <td style="text-align:right;">
 1.40
@@ -3364,160 +3364,160 @@ sessioninfo::session_info()
 
     ## - Session info ---------------------------------------------------------------
     ##  setting  value                       
-    ##  version  R version 4.0.5 (2021-03-31)
+    ##  version  R version 4.0.3 (2020-10-10)
     ##  os       Windows 10 x64              
     ##  system   x86_64, mingw32             
     ##  ui       RTerm                       
     ##  language (EN)                        
-    ##  collate  English_United States.1252  
-    ##  ctype    English_United States.1252  
+    ##  collate  English_Netherlands.1252    
+    ##  ctype    English_Netherlands.1252    
     ##  tz       Europe/Berlin               
-    ##  date     2021-07-16                  
+    ##  date     2021-08-29                  
     ## 
     ## - Packages -------------------------------------------------------------------
     ##  package        * version    date       lib source        
-    ##  assertthat       0.2.1      2019-03-21 [1] CRAN (R 4.0.5)
+    ##  assertthat       0.2.1      2019-03-21 [1] CRAN (R 4.0.3)
     ##  backports        1.2.1      2020-12-09 [1] CRAN (R 4.0.3)
     ##  base64enc        0.1-3      2015-07-28 [1] CRAN (R 4.0.3)
-    ##  bit              4.0.4      2020-08-04 [1] CRAN (R 4.0.5)
-    ##  bit64            4.0.5      2020-08-30 [1] CRAN (R 4.0.5)
-    ##  blob             1.2.1      2020-01-20 [1] CRAN (R 4.0.5)
-    ##  boot           * 1.3-27     2021-02-12 [2] CRAN (R 4.0.5)
-    ##  broom            0.7.6      2021-04-05 [1] CRAN (R 4.0.5)
-    ##  broom.helpers    1.2.1      2021-02-26 [1] CRAN (R 4.0.5)
-    ##  cachem           1.0.4      2021-02-13 [1] CRAN (R 4.0.5)
-    ##  cellranger       1.1.0      2016-07-27 [1] CRAN (R 4.0.5)
-    ##  checkmate        2.0.0      2020-02-06 [1] CRAN (R 4.0.5)
-    ##  chron            2.3-56     2020-08-18 [1] CRAN (R 4.0.5)
-    ##  cli              2.4.0      2021-04-05 [1] CRAN (R 4.0.5)
-    ##  cluster          2.1.1      2021-02-14 [2] CRAN (R 4.0.5)
-    ##  cmprsk           2.2-10     2020-06-09 [1] CRAN (R 4.0.5)
-    ##  codetools        0.2-18     2020-11-04 [2] CRAN (R 4.0.5)
-    ##  colorspace       2.0-0      2020-11-11 [1] CRAN (R 4.0.5)
-    ##  conquer          1.0.2      2020-08-27 [1] CRAN (R 4.0.5)
+    ##  bit              4.0.4      2020-08-04 [1] CRAN (R 4.0.3)
+    ##  bit64            4.0.5      2020-08-30 [1] CRAN (R 4.0.3)
+    ##  blob             1.2.2      2021-07-23 [1] CRAN (R 4.0.5)
+    ##  boot           * 1.3-25     2020-04-26 [2] CRAN (R 4.0.3)
+    ##  broom            0.7.9      2021-07-27 [1] CRAN (R 4.0.5)
+    ##  broom.helpers    1.3.0      2021-04-10 [1] CRAN (R 4.0.5)
+    ##  cachem           1.0.6      2021-08-19 [1] CRAN (R 4.0.5)
+    ##  cellranger       1.1.0      2016-07-27 [1] CRAN (R 4.0.3)
+    ##  checkmate        2.0.0      2020-02-06 [1] CRAN (R 4.0.3)
+    ##  chron            2.3-56     2020-08-18 [1] CRAN (R 4.0.3)
+    ##  cli              3.0.1      2021-07-17 [1] CRAN (R 4.0.5)
+    ##  cluster          2.1.0      2019-06-19 [2] CRAN (R 4.0.3)
+    ##  cmprsk           2.2-10     2020-06-09 [1] CRAN (R 4.0.3)
+    ##  codetools        0.2-16     2018-12-24 [2] CRAN (R 4.0.3)
+    ##  colorspace       2.0-2      2021-06-24 [1] CRAN (R 4.0.5)
+    ##  conquer          1.0.2      2020-08-27 [1] CRAN (R 4.0.3)
     ##  crayon           1.4.1      2021-02-08 [1] CRAN (R 4.0.5)
-    ##  curl             4.3        2019-12-02 [1] CRAN (R 4.0.5)
+    ##  curl             4.3.2      2021-06-23 [1] CRAN (R 4.0.5)
     ##  data.table       1.14.0     2021-02-21 [1] CRAN (R 4.0.5)
-    ##  DBI              1.1.1      2021-01-15 [1] CRAN (R 4.0.5)
+    ##  DBI              1.1.1      2021-01-15 [1] CRAN (R 4.0.3)
     ##  dbplyr           2.1.1      2021-04-06 [1] CRAN (R 4.0.5)
-    ##  digest           0.6.27     2020-10-24 [1] CRAN (R 4.0.5)
-    ##  dplyr          * 1.0.5      2021-03-05 [1] CRAN (R 4.0.5)
-    ##  ellipsis         0.3.1      2020-05-15 [1] CRAN (R 4.0.5)
-    ##  evaluate         0.14       2019-05-28 [1] CRAN (R 4.0.5)
-    ##  fansi            0.4.2      2021-01-15 [1] CRAN (R 4.0.5)
-    ##  fastmap          1.1.0      2021-01-25 [1] CRAN (R 4.0.5)
-    ##  forcats        * 0.5.1      2021-01-27 [1] CRAN (R 4.0.5)
-    ##  foreach          1.5.1      2020-10-15 [1] CRAN (R 4.0.5)
-    ##  foreign          0.8-81     2020-12-22 [2] CRAN (R 4.0.5)
+    ##  digest           0.6.27     2020-10-24 [1] CRAN (R 4.0.3)
+    ##  dplyr          * 1.0.7      2021-06-18 [1] CRAN (R 4.0.5)
+    ##  ellipsis         0.3.2      2021-04-29 [1] CRAN (R 4.0.5)
+    ##  evaluate         0.14       2019-05-28 [1] CRAN (R 4.0.3)
+    ##  fansi            0.5.0      2021-05-25 [1] CRAN (R 4.0.5)
+    ##  fastmap          1.1.0      2021-01-25 [1] CRAN (R 4.0.3)
+    ##  forcats        * 0.5.1      2021-01-27 [1] CRAN (R 4.0.3)
+    ##  foreach          1.5.1      2020-10-15 [1] CRAN (R 4.0.3)
+    ##  foreign          0.8-80     2020-05-24 [2] CRAN (R 4.0.3)
     ##  Formula        * 1.2-4      2020-10-16 [1] CRAN (R 4.0.3)
-    ##  fs               1.5.0      2020-07-31 [1] CRAN (R 4.0.5)
-    ##  furrr            0.2.2      2021-01-29 [1] CRAN (R 4.0.5)
-    ##  future           1.21.0     2020-12-10 [1] CRAN (R 4.0.5)
-    ##  generics         0.1.0      2020-10-31 [1] CRAN (R 4.0.5)
-    ##  ggplot2        * 3.3.3      2020-12-30 [1] CRAN (R 4.0.5)
+    ##  fs               1.5.0      2020-07-31 [1] CRAN (R 4.0.3)
+    ##  furrr            0.2.3      2021-06-25 [1] CRAN (R 4.0.5)
+    ##  future           1.22.1     2021-08-25 [1] CRAN (R 4.0.5)
+    ##  generics         0.1.0      2020-10-31 [1] CRAN (R 4.0.3)
+    ##  ggplot2        * 3.3.5      2021-06-25 [1] CRAN (R 4.0.5)
     ##  globals          0.14.0     2020-11-22 [1] CRAN (R 4.0.3)
-    ##  glue             1.4.2      2020-08-27 [1] CRAN (R 4.0.5)
-    ##  gridExtra      * 2.3        2017-09-09 [1] CRAN (R 4.0.5)
-    ##  gsubfn         * 0.7        2018-03-16 [1] CRAN (R 4.0.5)
-    ##  gt               0.2.2      2020-08-05 [1] CRAN (R 4.0.5)
-    ##  gtable           0.3.0      2019-03-25 [1] CRAN (R 4.0.5)
-    ##  gtsummary      * 1.3.7      2021-02-26 [1] CRAN (R 4.0.5)
-    ##  haven            2.3.1      2020-06-01 [1] CRAN (R 4.0.5)
-    ##  here             1.0.1      2020-12-13 [1] CRAN (R 4.0.5)
-    ##  highr            0.8        2019-03-20 [1] CRAN (R 4.0.5)
+    ##  glue             1.4.2      2020-08-27 [1] CRAN (R 4.0.3)
+    ##  gridExtra      * 2.3        2017-09-09 [1] CRAN (R 4.0.3)
+    ##  gsubfn         * 0.7        2018-03-16 [1] CRAN (R 4.0.3)
+    ##  gt               0.3.1      2021-08-07 [1] CRAN (R 4.0.5)
+    ##  gtable           0.3.0      2019-03-25 [1] CRAN (R 4.0.3)
+    ##  gtsummary      * 1.4.2      2021-07-13 [1] CRAN (R 4.0.5)
+    ##  haven            2.4.3      2021-08-04 [1] CRAN (R 4.0.5)
+    ##  here             1.0.1      2020-12-13 [1] CRAN (R 4.0.4)
+    ##  highr            0.9        2021-04-16 [1] CRAN (R 4.0.5)
     ##  Hmisc          * 4.5-0      2021-02-28 [1] CRAN (R 4.0.5)
-    ##  hms              1.0.0      2021-01-13 [1] CRAN (R 4.0.5)
-    ##  htmlTable        2.1.0      2020-09-16 [1] CRAN (R 4.0.5)
-    ##  htmltools        0.5.1.1    2021-01-22 [1] CRAN (R 4.0.5)
-    ##  htmlwidgets      1.5.3      2020-12-10 [1] CRAN (R 4.0.5)
-    ##  httr             1.4.2      2020-07-20 [1] CRAN (R 4.0.5)
-    ##  iterators        1.0.13     2020-10-15 [1] CRAN (R 4.0.5)
-    ##  jpeg             0.1-8.1    2019-10-24 [1] CRAN (R 4.0.3)
-    ##  jsonlite         1.7.2      2020-12-09 [1] CRAN (R 4.0.5)
+    ##  hms              1.1.0      2021-05-17 [1] CRAN (R 4.0.5)
+    ##  htmlTable        2.2.1      2021-05-18 [1] CRAN (R 4.0.5)
+    ##  htmltools        0.5.2      2021-08-25 [1] CRAN (R 4.0.5)
+    ##  htmlwidgets      1.5.3      2020-12-10 [1] CRAN (R 4.0.3)
+    ##  httr             1.4.2      2020-07-20 [1] CRAN (R 4.0.3)
+    ##  iterators        1.0.13     2020-10-15 [1] CRAN (R 4.0.3)
+    ##  jpeg             0.1-9      2021-07-24 [1] CRAN (R 4.0.5)
+    ##  jsonlite         1.7.2      2020-12-09 [1] CRAN (R 4.0.3)
     ##  kableExtra     * 1.3.4      2021-02-20 [1] CRAN (R 4.0.5)
-    ##  knitr          * 1.31       2021-01-27 [1] CRAN (R 4.0.5)
-    ##  lattice        * 0.20-41    2020-04-02 [2] CRAN (R 4.0.5)
-    ##  latticeExtra     0.6-29     2019-12-19 [1] CRAN (R 4.0.5)
+    ##  knitr          * 1.33       2021-04-24 [1] CRAN (R 4.0.5)
+    ##  lattice        * 0.20-41    2020-04-02 [2] CRAN (R 4.0.3)
+    ##  latticeExtra     0.6-29     2019-12-19 [1] CRAN (R 4.0.3)
     ##  lava             1.6.9      2021-03-11 [1] CRAN (R 4.0.5)
     ##  lifecycle        1.0.0      2021-02-15 [1] CRAN (R 4.0.5)
-    ##  listenv          0.8.0      2019-12-05 [1] CRAN (R 4.0.5)
+    ##  listenv          0.8.0      2019-12-05 [1] CRAN (R 4.0.3)
     ##  lubridate        1.7.10     2021-02-26 [1] CRAN (R 4.0.5)
-    ##  magrittr         2.0.1      2020-11-17 [1] CRAN (R 4.0.5)
-    ##  MASS             7.3-53.1   2021-02-12 [2] CRAN (R 4.0.5)
-    ##  Matrix           1.3-2      2021-01-06 [2] CRAN (R 4.0.5)
+    ##  magrittr         2.0.1      2020-11-17 [1] CRAN (R 4.0.3)
+    ##  MASS             7.3-53     2020-09-09 [2] CRAN (R 4.0.3)
+    ##  Matrix           1.2-18     2019-11-27 [2] CRAN (R 4.0.3)
     ##  MatrixModels     0.5-0      2021-03-02 [1] CRAN (R 4.0.5)
-    ##  matrixStats      0.58.0     2021-01-29 [1] CRAN (R 4.0.5)
-    ##  memoise          2.0.0      2021-01-26 [1] CRAN (R 4.0.5)
-    ##  mets             1.2.8.1    2020-09-28 [1] CRAN (R 4.0.5)
-    ##  modelr           0.1.8      2020-05-19 [1] CRAN (R 4.0.5)
-    ##  mstate         * 0.3.1      2020-12-17 [1] CRAN (R 4.0.5)
-    ##  multcomp         1.4-16     2021-02-08 [1] CRAN (R 4.0.5)
-    ##  munsell          0.5.0      2018-06-12 [1] CRAN (R 4.0.5)
-    ##  mvtnorm          1.1-1      2020-06-09 [1] CRAN (R 4.0.3)
-    ##  nlme             3.1-152    2021-02-04 [2] CRAN (R 4.0.5)
-    ##  nnet             7.3-15     2021-01-24 [2] CRAN (R 4.0.5)
+    ##  matrixStats      0.60.1     2021-08-23 [1] CRAN (R 4.0.5)
+    ##  memoise          2.0.0      2021-01-26 [1] CRAN (R 4.0.3)
+    ##  mets             1.2.8.1    2020-09-28 [1] CRAN (R 4.0.3)
+    ##  modelr           0.1.8      2020-05-19 [1] CRAN (R 4.0.3)
+    ##  mstate         * 0.3.1      2020-12-17 [1] CRAN (R 4.0.3)
+    ##  multcomp         1.4-17     2021-04-29 [1] CRAN (R 4.0.5)
+    ##  munsell          0.5.0      2018-06-12 [1] CRAN (R 4.0.3)
+    ##  mvtnorm          1.1-2      2021-06-07 [1] CRAN (R 4.0.5)
+    ##  nlme             3.1-149    2020-08-23 [2] CRAN (R 4.0.3)
+    ##  nnet             7.3-14     2020-04-26 [2] CRAN (R 4.0.3)
     ##  numDeriv         2016.8-1.1 2019-06-06 [1] CRAN (R 4.0.3)
-    ##  openxlsx         4.2.3      2020-10-27 [1] CRAN (R 4.0.5)
-    ##  pacman         * 0.5.1      2019-03-11 [1] CRAN (R 4.0.5)
-    ##  parallelly       1.24.0     2021-03-14 [1] CRAN (R 4.0.4)
-    ##  pec            * 2020.11.17 2020-11-16 [1] CRAN (R 4.0.5)
-    ##  pillar           1.5.1      2021-03-05 [1] CRAN (R 4.0.5)
-    ##  pkgconfig        2.0.3      2019-09-22 [1] CRAN (R 4.0.5)
+    ##  openxlsx         4.2.4      2021-06-16 [1] CRAN (R 4.0.5)
+    ##  pacman         * 0.5.1      2019-03-11 [1] CRAN (R 4.0.4)
+    ##  parallelly       1.27.0     2021-07-19 [1] CRAN (R 4.0.5)
+    ##  pec            * 2020.11.17 2020-11-16 [1] CRAN (R 4.0.3)
+    ##  pillar           1.6.2      2021-07-29 [1] CRAN (R 4.0.5)
+    ##  pkgconfig        2.0.3      2019-09-22 [1] CRAN (R 4.0.3)
     ##  plotrix        * 3.8-1      2021-01-21 [1] CRAN (R 4.0.3)
     ##  png              0.1-7      2013-12-03 [1] CRAN (R 4.0.3)
     ##  polspline        1.1.19     2020-05-15 [1] CRAN (R 4.0.3)
-    ##  prodlim        * 2019.11.13 2019-11-17 [1] CRAN (R 4.0.5)
-    ##  proto          * 1.0.0      2016-10-29 [1] CRAN (R 4.0.5)
-    ##  purrr          * 0.3.4      2020-04-17 [1] CRAN (R 4.0.5)
-    ##  quantreg         5.85       2021-02-24 [1] CRAN (R 4.0.5)
-    ##  R6               2.5.0      2020-10-28 [1] CRAN (R 4.0.5)
+    ##  prodlim        * 2019.11.13 2019-11-17 [1] CRAN (R 4.0.3)
+    ##  proto          * 1.0.0      2016-10-29 [1] CRAN (R 4.0.3)
+    ##  purrr          * 0.3.4      2020-04-17 [1] CRAN (R 4.0.3)
+    ##  quantreg         5.86       2021-06-06 [1] CRAN (R 4.0.5)
+    ##  R6               2.5.1      2021-08-19 [1] CRAN (R 4.0.5)
     ##  RColorBrewer     1.1-2      2014-12-07 [1] CRAN (R 4.0.3)
-    ##  Rcpp             1.0.6      2021-01-15 [1] CRAN (R 4.0.4)
-    ##  readr          * 1.4.0      2020-10-05 [1] CRAN (R 4.0.5)
-    ##  readxl           1.3.1      2019-03-13 [1] CRAN (R 4.0.5)
-    ##  reprex           2.0.0      2021-04-02 [1] CRAN (R 4.0.5)
+    ##  Rcpp             1.0.7      2021-07-07 [1] CRAN (R 4.0.5)
+    ##  readr          * 2.0.1      2021-08-10 [1] CRAN (R 4.0.5)
+    ##  readxl           1.3.1      2019-03-13 [1] CRAN (R 4.0.3)
+    ##  reprex           2.0.1      2021-08-05 [1] CRAN (R 4.0.5)
     ##  rio            * 0.5.27     2021-06-21 [1] CRAN (R 4.0.5)
     ##  riskRegression * 2020.12.08 2020-12-09 [1] CRAN (R 4.0.5)
-    ##  rlang            0.4.10     2020-12-30 [1] CRAN (R 4.0.5)
-    ##  rmarkdown        2.7        2021-02-19 [1] CRAN (R 4.0.5)
+    ##  rlang            0.4.10     2020-12-30 [1] CRAN (R 4.0.3)
+    ##  rmarkdown        2.10       2021-08-06 [1] CRAN (R 4.0.5)
     ##  rms            * 6.2-0      2021-03-18 [1] CRAN (R 4.0.5)
-    ##  rpart            4.1-15     2019-04-12 [2] CRAN (R 4.0.5)
-    ##  rprojroot        2.0.2      2020-11-15 [1] CRAN (R 4.0.5)
-    ##  rsample        * 0.0.9      2021-02-17 [1] CRAN (R 4.0.5)
-    ##  RSQLite        * 2.2.5      2021-03-27 [1] CRAN (R 4.0.5)
-    ##  rstudioapi       0.13       2020-11-12 [1] CRAN (R 4.0.5)
-    ##  rvest            1.0.0      2021-03-09 [1] CRAN (R 4.0.5)
-    ##  sandwich         3.0-0      2020-10-02 [1] CRAN (R 4.0.5)
-    ##  scales           1.1.1      2020-05-11 [1] CRAN (R 4.0.5)
-    ##  sessioninfo      1.1.1      2018-11-05 [1] CRAN (R 4.0.5)
+    ##  rpart            4.1-15     2019-04-12 [2] CRAN (R 4.0.3)
+    ##  rprojroot        2.0.2      2020-11-15 [1] CRAN (R 4.0.3)
+    ##  rsample        * 0.1.0      2021-05-08 [1] CRAN (R 4.0.5)
+    ##  RSQLite        * 2.2.8      2021-08-21 [1] CRAN (R 4.0.5)
+    ##  rstudioapi       0.13       2020-11-12 [1] CRAN (R 4.0.3)
+    ##  rvest            1.0.1      2021-07-26 [1] CRAN (R 4.0.5)
+    ##  sandwich         3.0-1      2021-05-18 [1] CRAN (R 4.0.5)
+    ##  scales           1.1.1      2020-05-11 [1] CRAN (R 4.0.3)
+    ##  sessioninfo      1.1.1      2018-11-05 [1] CRAN (R 4.0.4)
     ##  SparseM        * 1.81       2021-02-18 [1] CRAN (R 4.0.4)
-    ##  sqldf          * 0.4-11     2017-06-28 [1] CRAN (R 4.0.5)
-    ##  stringi          1.5.3      2020-09-09 [1] CRAN (R 4.0.3)
-    ##  stringr        * 1.4.0      2019-02-10 [1] CRAN (R 4.0.5)
-    ##  survAUC        * 1.0-5      2012-09-04 [1] CRAN (R 4.0.5)
-    ##  survival       * 3.2-11     2021-04-26 [1] CRAN (R 4.0.5)
+    ##  sqldf          * 0.4-11     2017-06-28 [1] CRAN (R 4.0.3)
+    ##  stringi          1.7.4      2021-08-25 [1] CRAN (R 4.0.5)
+    ##  stringr        * 1.4.0      2019-02-10 [1] CRAN (R 4.0.3)
+    ##  survAUC        * 1.0-5      2012-09-04 [1] CRAN (R 4.0.3)
+    ##  survival       * 3.2-13     2021-08-24 [1] CRAN (R 4.0.5)
     ##  survivalROC    * 1.0.3      2013-01-13 [1] CRAN (R 4.0.3)
     ##  svglite          2.0.0      2021-02-20 [1] CRAN (R 4.0.5)
-    ##  systemfonts      1.0.1      2021-02-09 [1] CRAN (R 4.0.5)
-    ##  table1         * 1.3        2021-03-28 [1] CRAN (R 4.0.5)
-    ##  TH.data          1.0-10     2019-01-21 [1] CRAN (R 4.0.5)
-    ##  tibble         * 3.1.0      2021-02-25 [1] CRAN (R 4.0.5)
+    ##  systemfonts      1.0.2      2021-05-11 [1] CRAN (R 4.0.5)
+    ##  table1         * 1.4.2      2021-06-06 [1] CRAN (R 4.0.5)
+    ##  TH.data          1.0-10     2019-01-21 [1] CRAN (R 4.0.3)
+    ##  tibble         * 3.1.4      2021-08-25 [1] CRAN (R 4.0.5)
     ##  tidyr          * 1.1.3      2021-03-03 [1] CRAN (R 4.0.5)
-    ##  tidyselect       1.1.0      2020-05-11 [1] CRAN (R 4.0.5)
-    ##  tidyverse      * 1.3.0      2019-11-21 [1] CRAN (R 4.0.5)
-    ##  timereg          1.9.8      2020-10-05 [1] CRAN (R 4.0.5)
-    ##  timeROC        * 0.4        2019-12-18 [1] CRAN (R 4.0.5)
-    ##  usethis          2.0.1      2021-02-10 [1] CRAN (R 4.0.5)
-    ##  utf8             1.2.1      2021-03-12 [1] CRAN (R 4.0.5)
-    ##  vctrs            0.3.7      2021-03-29 [1] CRAN (R 4.0.5)
-    ##  viridisLite      0.3.0      2018-02-01 [1] CRAN (R 4.0.5)
-    ##  webshot        * 0.5.2      2019-11-22 [1] CRAN (R 4.0.5)
-    ##  withr            2.4.1      2021-01-26 [1] CRAN (R 4.0.5)
-    ##  xfun             0.22       2021-03-11 [1] CRAN (R 4.0.5)
-    ##  xml2             1.3.2      2020-04-23 [1] CRAN (R 4.0.5)
-    ##  yaml             2.2.1      2020-02-01 [1] CRAN (R 4.0.4)
-    ##  zip              2.1.1      2020-08-27 [1] CRAN (R 4.0.5)
+    ##  tidyselect       1.1.1      2021-04-30 [1] CRAN (R 4.0.5)
+    ##  tidyverse      * 1.3.1      2021-04-15 [1] CRAN (R 4.0.5)
+    ##  timereg          2.0.0      2021-05-20 [1] CRAN (R 4.0.5)
+    ##  timeROC        * 0.4        2019-12-18 [1] CRAN (R 4.0.3)
+    ##  tzdb             0.1.2      2021-07-20 [1] CRAN (R 4.0.5)
+    ##  utf8             1.2.2      2021-07-24 [1] CRAN (R 4.0.5)
+    ##  vctrs            0.3.8      2021-04-29 [1] CRAN (R 4.0.5)
+    ##  viridisLite      0.4.0      2021-04-13 [1] CRAN (R 4.0.5)
+    ##  webshot        * 0.5.2      2019-11-22 [1] CRAN (R 4.0.3)
+    ##  withr            2.4.2      2021-04-18 [1] CRAN (R 4.0.5)
+    ##  xfun             0.25       2021-08-06 [1] CRAN (R 4.0.5)
+    ##  xml2             1.3.2      2020-04-23 [1] CRAN (R 4.0.3)
+    ##  yaml             2.2.1      2020-02-01 [1] CRAN (R 4.0.3)
+    ##  zip              2.2.0      2021-05-31 [1] CRAN (R 4.0.5)
     ##  zoo              1.8-9      2021-03-09 [1] CRAN (R 4.0.5)
     ## 
-    ## [1] C:/Users/dgiardiello/Documents/R/win-library/4.0
-    ## [2] C:/Program Files/R/R-4.0.5/library
+    ## [1] C:/Users/danie/Documents/R/win-library/4.0
+    ## [2] C:/Program Files/R/R-4.0.3/library
