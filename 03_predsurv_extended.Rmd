@@ -1097,14 +1097,13 @@ res_cal <- matrix(c(
                 int - qnorm( 1- alpha / 2) * int.se,
                 int + qnorm( 1- alpha / 2) * int.se,
                 
+                int_pgr,
+                int_pgr - qnorm( 1- alpha / 2) * int.se_pgr,
+                int_pgr + qnorm( 1- alpha / 2) * int.se_pgr,
                 
                 slope,
                 slope - qnorm( 1- alpha / 2) * slope.se,
                 slope + qnorm( 1- alpha / 2) * slope.se,
-                
-                int_pgr,
-                int_pgr - qnorm( 1- alpha / 2) * int.se_pgr,
-                int_pgr + qnorm( 1- alpha / 2) * int.se_pgr,
                 
                 slope_pgr,
                 slope_pgr - qnorm( 1- alpha / 2) * slope.se_pgr,
@@ -1198,14 +1197,14 @@ res_cal <- matrix(c(
     int_summary[1] - qnorm(1 - alpha / 2) * int_summary[2],
     int_summary[1] + qnorm(1 - alpha / 2) * int_summary[2],
     
-  
-    slope_summary[2, 1],
-    slope_summary[2, 1] - qnorm(1 - alpha / 2) * slope_summary[2, 2],
-    slope_summary[2, 1] + qnorm(1 - alpha / 2) * slope_summary[2, 2],
     
     int_summary_pgr[1],
     int_summary_pgr[1] - qnorm(1 - alpha / 2) * int_summary_pgr[2],
     int_summary_pgr[1] + qnorm(1 - alpha / 2) * int_summary_pgr[2],
+    
+    slope_summary[2, 1],
+    slope_summary[2, 1] - qnorm(1 - alpha / 2) * slope_summary[2, 2],
+    slope_summary[2, 1] + qnorm(1 - alpha / 2) * slope_summary[2, 2],
     
     slope_summary_pgr[2, 1],
     slope_summary_pgr[2, 1] - qnorm(1 - alpha / 2) * slope_summary_pgr[2, 2],
