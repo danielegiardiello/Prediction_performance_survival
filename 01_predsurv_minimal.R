@@ -3,14 +3,8 @@
 
 # Libraries and options ----------------------------------
 
-library(survival)
-library(rms)
-library(pec)
-library(riskRegression)
-library(timeROC)
-
 # General packages
-pkgs <- c("survival", "pec", "rms")
+pkgs <- c("survival", "pec", "rms", "timeROC")
 vapply(pkgs, function(pkg) {
   if (!require(pkg, character.only = TRUE)) install.packages(pkg)
   require(pkg, character.only = TRUE, quietly = TRUE)
