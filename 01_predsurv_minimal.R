@@ -9,9 +9,21 @@ library(pec)
 library(riskRegression)
 library(timeROC)
 
+# General packages
+pkgs <- c("survival", "pec", "rms")
+vapply(pkgs, function(pkg) {
+  if (!require(pkg, character.only = TRUE)) install.packages(pkg)
+  require(pkg, character.only = TRUE, quietly = TRUE)
+}, FUN.VALUE = logical(length = 1L))
+
+# Install latest development version of riskRegression
+if (!require("devtools", character.only = TRUE)) install.packages("devtools")
+if (!require("riskRegression", character.only = TRUE)) devtools::install_github("tagteam/riskRegression")
+require("riskRegression", character.only = TRUE)
+
+
 options(show.signif.stars = FALSE)  # display statistical intelligence
 palette("Okabe-Ito")  # color-blind friendly  (needs R 4.0)
-
 
 
 # Data and recoding ----------------------------------
@@ -309,7 +321,6 @@ list_nb <- lapply(thresholds, function(ps) {
 
 # Combine into data frame
 df_nb <- do.call(rbind.data.frame, list_nb)
-head(df_nb)
 
 # Make basic decision curve plot
 par(
