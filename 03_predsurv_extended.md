@@ -1344,7 +1344,7 @@ NA
 0.69
 </td>
 <td style="text-align:right;">
-0.67
+0.68
 </td>
 <td style="text-align:right;">
 NA
@@ -3273,7 +3273,7 @@ gbsg5$pred5_pgr <- 1 - predictSurvProb(efit1_pgr, newdata = gbsg5, times = 5)
 # Model without PGR
 gbsg5 <- as.data.frame(gbsg5)
 dca_gbsg5 <- stdca(
-  data = gbsg5, outcome = "status", ttoutcome = "ryear",
+  data = gbsg5, outcome = "rfs", ttoutcome = "ryear",
   timepoint = 5, predictors = "pred5", xstop = 1.0,
   ymin = -0.01, graph = FALSE
 )
@@ -3284,7 +3284,7 @@ dca_gbsg5 <- stdca(
 ``` r
 # Model with PGR
 dca_gbsg5_pgr <- stdca(
-  data = gbsg5, outcome = "status", ttoutcome = "ryear",
+  data = gbsg5, outcome = "rfs", ttoutcome = "ryear",
   timepoint = 5, predictors = "pred5_pgr", xstop = 1,
   ymin = -0.01, graph = FALSE
 )
@@ -3345,7 +3345,7 @@ respectively. This means that the model might identify approximately
 27/28 patients out of 100 who may develop recurrence or may die within 5
 years since diagnosis and thus adjuvant chemotherapy may help to reduce
 recurrence or mortality. For validation data, the potential net benefit
-was 0.42 for the basic and extended model.
+was 0.36 for the basic and extended model.
 
 Moreover, potential net benefit can be defined in terms of reduction of
 avoidable interventions (e.g adjuvant chemotherapy per 100 patients) by:
@@ -3372,7 +3372,7 @@ sessioninfo::session_info()
     ##  collate  English_Netherlands.1252    
     ##  ctype    English_Netherlands.1252    
     ##  tz       Europe/Berlin               
-    ##  date     2021-08-29                  
+    ##  date     2021-09-02                  
     ## 
     ## - Packages -------------------------------------------------------------------
     ##  package        * version    date       lib source        
