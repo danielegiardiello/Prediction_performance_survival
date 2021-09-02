@@ -1893,13 +1893,13 @@ gbsg5$pred5_pgr <- 1 - predictSurvProb(efit1_pgr, newdata = gbsg5, times = 5)
 # Model without PGR
 gbsg5 <- as.data.frame(gbsg5)
 dca_gbsg5 <- stdca(
-  data = gbsg5, outcome = "status", ttoutcome = "ryear",
+  data = gbsg5, outcome = "rfs", ttoutcome = "ryear",
   timepoint = 5, predictors = "pred5", xstop = 1.0,
   ymin = -0.01, graph = FALSE
 )
 # Model with PGR
 dca_gbsg5_pgr <- stdca(
-  data = gbsg5, outcome = "status", ttoutcome = "ryear",
+  data = gbsg5, outcome = "rfs", ttoutcome = "ryear",
   timepoint = 5, predictors = "pred5_pgr", xstop = 1,
   ymin = -0.01, graph = FALSE
 )
@@ -1951,7 +1951,7 @@ title("B External data", adj = 0, cex = 1.5)
 
 The potential net benefit at 23% threshold of the prediction model was 0.27, 0.28 for the basic and extended model in the development data, respectively.
 This means that the model might identify approximately 27/28 patients out of 100 who may develop recurrence or may die within 5 years since diagnosis and thus adjuvant chemotherapy may help to reduce recurrence or mortality.
-For validation data, the potential net benefit was 0.42 for the basic and extended model. 
+For validation data, the potential net benefit was 0.36 for the basic and extended model. 
 
 Moreover, potential net benefit can be defined in terms of reduction of avoidable interventions (e.g adjuvant chemotherapy per 100 patients) by:
   
