@@ -34,6 +34,7 @@ both rmarkdown files, or run them line-by-line.
 | ------------------------------------------------------------ | ------------------------------------- | ----------------------|
 | [Daniele Giardiello](https://github.com/danielegiardiello/)  | The Netherlands Cancer Institute (NL) | Author/maintainer     |
 | [David McLernon](https://twitter.com/davemclernon?lang=en) | University of Aberdeen (UK) | Author of SAS code              |
+| [Laure Wynants](https://www.maastrichtuniversity.nl/laure.wynants) | Maastrict University (NL) and KU Leuven (BE) | Contributor |
 | [Edouard Bonneville](https://www.lumc.nl/org/bds/medewerkers/1968807) | Leiden University Medical Center (NL) | Contributor  |
 | [Terry Therneau](https://www.mayo.edu/research/faculty/therneau-terry-m-ph-d/bio-00025991) | Mayo Clinic (US)| Contributor  |
 
