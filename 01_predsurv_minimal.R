@@ -4,17 +4,11 @@
 # Libraries and options ----------------------------------
 
 # General packages
-pkgs <- c("survival", "pec", "rms", "timeROC")
+pkgs <- c("survival", "pec", "rms", "timeROC", "riskRegression")
 vapply(pkgs, function(pkg) {
   if (!require(pkg, character.only = TRUE)) install.packages(pkg)
   require(pkg, character.only = TRUE, quietly = TRUE)
 }, FUN.VALUE = logical(length = 1L))
-
-# Install latest development version of riskRegression
-if (!require("devtools", character.only = TRUE)) install.packages("devtools")
-if (!require("riskRegression", character.only = TRUE)) devtools::install_github("tagteam/riskRegression")
-require("riskRegression", character.only = TRUE)
-
 
 options(show.signif.stars = FALSE)  # display statistical intelligence
 palette("Okabe-Ito")  # color-blind friendly  (needs R 4.0)
@@ -24,15 +18,31 @@ palette("Okabe-Ito")  # color-blind friendly  (needs R 4.0)
 # Development data
 
 rotterdam$ryear <- rotterdam$rtime/365.25  # time in years
-rotterdam$rfs <- with(rotterdam, pmax(recur, death))
+rotterdam$rfs <- with(rotterdam, pmax(recur, death)) #The variable rfs is a status indicator, 0 = alive without relapse, 1 = death or relapse.
+
+# Fix the outcome for 43 patients who have died but 
+# censored at time of recurrence which was less than death time. 
+# The actual death time should be used rather than the earlier censored recurrence time.
+
+rotterdam$ryear[rotterdam$rfs == 1 & 
+                  rotterdam$recur == 0 & 
+                  rotterdam$death == 1 & 
+                  (rotterdam$rtime < rotterdam$dtime)] <- 
+  
+rotterdam$dtime[rotterdam$rfs == 1 &
+                rotterdam$recur == 0 & 
+                rotterdam$death == 1 & 
+                (rotterdam$rtime < rotterdam$dtime)]/365.25  
 
 # variables used in the analysis
 pgr99 <- quantile(rotterdam$pgr, .99) # there is a large outlier of 5000
 rotterdam$pgr2 <- pmin(rotterdam$pgr, pgr99) # Winsorized value
 rotterdam$csize <- rotterdam$size           # categorized size
 rotterdam$cnode <- cut(rotterdam$nodes, 
-                       c(-1,0, 3, 50),
+                       c(-1,0, 3, 51),
                        c("0", "1-3", ">3"))   # categorized node
+rotterdam$grade3 <- as.factor(rotterdam$grade)
+levels(rotterdam$grade3) <- c("1-2", "3")
 
 # Save in the data the restricted cubic spline term using Hmisc::rcspline.eval() package
 rcs3_pgr <- rcspline.eval(rotterdam$pgr2, 
@@ -51,38 +61,34 @@ gbsg$csize <- cut(gbsg$size,
                   c(-1, 20, 50, 500), #categorized size
                   c("<=20", "20-50", ">50"))
 gbsg$pgr2 <- pmin(gbsg$pgr, pgr99) # Winsorized value
-
+gbsg$grade3 <- as.factor(gbsg$grade)
+levels(gbsg$grade3) <- c("1-2", "1-2", "3")
 
 # Restricted cubic spline for PGR
-rcs3_pgr <- rcspline.eval(gbsg$pgr2, 
-                          knots = c(0, 41, 486))
+# Restricted cubic spline for PGR
+rcs3_pgr <- rcspline.eval(gbsg$pgr2, knots = c(0, 41, 486))
 attr(rcs3_pgr, "dim") <- NULL
 attr(rcs3_pgr, "knots") <- NULL
 gbsg$pgr3 <- rcs3_pgr
 
 
-# The analysis will focus on the first 5 years: create
-# data sets that are censored at 5 years
-temp <- survSplit(Surv(ryear, rfs) ~ ., 
-                  data = rotterdam, 
-                  cut = 5,
-                  episode = "epoch")
+# Much of the analysis will focus on the first 5 years: create
+#  data sets that are censored at 5
+temp <- survSplit(Surv(ryear, rfs) ~ ., data = rotterdam, cut=5,
+                  episode="epoch")
 rott5 <- subset(temp, epoch==1)  # only the first 5 years
-temp <- survSplit(Surv(ryear, rfs) ~ ., 
-                  data = gbsg, 
-                  cut = 5,
-                  episode = "epoch")
-gbsg5 <- subset(temp, epoch == 1)
+temp <- survSplit(Surv(ryear, rfs) ~ ., data = gbsg, cut=5,
+                  episode ="epoch")
+gbsg5 <- subset(temp, epoch==1)
 
 # Relevel
-rott5$cnode <- relevel(rotterdam$cnode, "1-3")
-gbsg5$cnode <- relevel(gbsg$cnode, "1-3")
-
+rott5$cnode <- relevel(rotterdam$cnode, "0")
+gbsg5$cnode <- relevel(gbsg$cnode, "0")
 
 
 # Model development -------------------------------------
 
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
                data = rott5, 
                x = T, 
                y = T)
@@ -254,7 +260,6 @@ numsum_cph
 
 
 # Overall performance ---------------------------------------
-# COMMENT: I will wait for brier function created by Terry
 score_gbsg5 <-
   Score(list("cox" = efit1),
         formula = Surv(ryear, rfs) ~ 1, 
