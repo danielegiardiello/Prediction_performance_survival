@@ -182,7 +182,7 @@ More explanations and details are in the paper.
 
 The time horizon to calculate the time-dependent measures was set to 5 years.
 Values close to 1 indicate good discrimination ability, while values close to 0.5 indicated poor discrimination ability.  
-We used the time horizon at 4.95 and not 5 years since non-cases are considered patients at risk after the time horizon and we administratively censored at 5 years to minimize the violation of PH assumption.
+We used the time horizon at 4.99 and not 5 years since non-cases are considered patients at risk after the time horizon and we administratively censored at 5 years to minimize the violation of PH assumption.
 
 ```{r, concordance,warning=FALSE}
 # Libraries needed
@@ -242,7 +242,7 @@ res_C  <- matrix(temp,
 res_C <- round(res_C, 2) # Digit
 res_C
 ```
-Harrell C and Uno C were 0.66 and 0.65, respectively.
+Harrell C and Uno C were 0.65 and 0.64, respectively.
 
 
 ```{r, AUC,warning=FALSE,echo=FALSE}
@@ -256,7 +256,7 @@ Uno_gbsg5 <-
     marker = gbsg5$lp,
     cause = 1, 
     weighting = "marginal", 
-    times = 4.95,
+    times = 4.99,
     iid = TRUE
   )
 
@@ -268,12 +268,12 @@ Uno_gbsg5 <-
 alpha <- .05
 k <- 2
 res_discr <- c(
-  "Uno AUC" = unname(Uno_gbsg5$AUC["t=4.95"]),
-  "Lower .95" = unname(Uno_gbsg5$AUC["t=4.95"] -
-                         qnorm(1 - alpha / 2) * Uno_gbsg5$inference$vect_sd_1["t=4.95"]),
+  "Uno AUC" = unname(Uno_gbsg5$AUC["t=4.99"]),
+  "Lower .95" = unname(Uno_gbsg5$AUC["t=4.99"] -
+                         qnorm(1 - alpha / 2) * Uno_gbsg5$inference$vect_sd_1["t=4.99"]),
   
-  "Upper .95" = unname(Uno_gbsg5$AUC["t=4.95"] +
-                         qnorm(1 - alpha / 2) * Uno_gbsg5$inference$vect_sd_1["t=4.95"])
+  "Upper .95" = unname(Uno_gbsg5$AUC["t=4.99"] +
+                         qnorm(1 - alpha / 2) * Uno_gbsg5$inference$vect_sd_1["t=4.99"])
 )
 res_discr <- round(res_discr, k)
 res_discr
@@ -464,7 +464,7 @@ score_gbsg5 <-
     formula = Surv(ryear, rfs) ~ 1, 
     data = gbsg5, 
     conf.int = TRUE, 
-    times = 4.95,
+    times = 4.99,
     cens.model = "km", 
     metrics = "brier",
     summary = "ipa"
@@ -472,7 +472,7 @@ score_gbsg5 <-
 
 # Extra: bootstrap confidence intervals for IPA ------
 B <- 100
-horizon <- 4.95
+horizon <- 4.99
 boots_ls <- lapply(seq_len(B), function(b) {
   
   # Resample validation data
@@ -529,7 +529,7 @@ res_ov
 # NOTE: asymptotic confidence intervals can also be calculated since
 # the are provided using riskRegression::Score(.., conf.int = TRUE).
 ```
-Brier and scaled Brier score were 0.22 and 0.12, respectively.
+Brier and scaled Brier score were 0.22 and 0.11, respectively.
 
 
 ## Goal 3 - Clinical utility
