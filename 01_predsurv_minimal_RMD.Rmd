@@ -441,7 +441,6 @@ We calculate the Brier Score and the Index of Prediction Accuracy (IPA, the scal
 We calculate the overall performance measures: Brier score, Scaled Brier (IPA) and the corresponding confidence intervals.
 
 ```{r, overall, warning=FALSE}
-# COMMENT: Terry will send or publish in survival package survival::brier() 
 
 # Libraries needed
 if (!require("pacman")) install.packages("pacman")
@@ -529,7 +528,6 @@ res_ov <- round(res_ov, 2) # Digit
 res_ov
 # NOTE: asymptotic confidence intervals can also be calculated since
 # the are provided using riskRegression::Score(.., conf.int = TRUE).
-# However, Terry should provide his own function to calculate Brier.
 ```
 Brier and scaled Brier score were 0.22 and 0.12, respectively.
 
