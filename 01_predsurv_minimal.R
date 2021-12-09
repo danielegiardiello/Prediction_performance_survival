@@ -146,16 +146,16 @@ Uno_gbsg5 <-
     marker = gbsg5$lp,
     cause = 1, 
     weighting = "marginal", 
-    times = 4.95,
+    times = 4.99,
     iid = TRUE
   )
 
 Uno_AUC_res <- c(
   "Uno AUC" = unname(Uno_gbsg5$AUC[2]),
-  "2.5 %" = unname(Uno_gbsg5$AUC["t=4.95"] -
-    qnorm(1 - alpha / 2) * Uno_gbsg5$inference$vect_sd_1["t=4.95"]),
-  "97. 5 %" = unname(Uno_gbsg5$AUC["t=4.95"] +
-    qnorm(1 - alpha / 2) * Uno_gbsg5$inference$vect_sd_1["t=4.95"])
+  "2.5 %" = unname(Uno_gbsg5$AUC["t=4.99"] -
+    qnorm(1 - alpha / 2) * Uno_gbsg5$inference$vect_sd_1["t=4.99"]),
+  "97. 5 %" = unname(Uno_gbsg5$AUC["t=4.99"] +
+    qnorm(1 - alpha / 2) * Uno_gbsg5$inference$vect_sd_1["t=4.99"])
 )
 
 Uno_AUC_res
@@ -265,7 +265,7 @@ score_gbsg5 <-
         formula = Surv(ryear, rfs) ~ 1, 
         data = gbsg5, 
         conf.int = TRUE, 
-        times = 4.95,
+        times = 4.99,
         cens.model = "km", 
         metrics = "brier",
         summary = "ipa"
