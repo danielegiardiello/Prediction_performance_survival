@@ -65,7 +65,6 @@ gbsg$grade3 <- as.factor(gbsg$grade)
 levels(gbsg$grade3) <- c("1-2", "1-2", "3")
 
 # Restricted cubic spline for PGR
-# Restricted cubic spline for PGR
 rcs3_pgr <- rcspline.eval(gbsg$pgr2, knots = c(0, 41, 486))
 attr(rcs3_pgr, "dim") <- NULL
 attr(rcs3_pgr, "knots") <- NULL
