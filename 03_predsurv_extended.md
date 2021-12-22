@@ -95,6 +95,30 @@ pacman::p_load(
 )
 ```
 
+    ## package 'mstate' successfully unpacked and MD5 sums checked
+    ## 
+    ## The downloaded binary packages are in
+    ##  C:\Users\dgiardiello\AppData\Local\Temp\RtmpK0QIw9\downloaded_packages
+    ## package 'survAUC' successfully unpacked and MD5 sums checked
+    ## 
+    ## The downloaded binary packages are in
+    ##  C:\Users\dgiardiello\AppData\Local\Temp\RtmpK0QIw9\downloaded_packages
+    ## package 'survivalROC' successfully unpacked and MD5 sums checked
+    ## 
+    ## The downloaded binary packages are in
+    ##  C:\Users\dgiardiello\AppData\Local\Temp\RtmpK0QIw9\downloaded_packages
+    ## package 'table1' successfully unpacked and MD5 sums checked
+    ## 
+    ## The downloaded binary packages are in
+    ##  C:\Users\dgiardiello\AppData\Local\Temp\RtmpK0QIw9\downloaded_packages
+    ## package 'warp' successfully unpacked and MD5 sums checked
+    ## package 'furrr' successfully unpacked and MD5 sums checked
+    ## package 'slider' successfully unpacked and MD5 sums checked
+    ## package 'rsample' successfully unpacked and MD5 sums checked
+    ## 
+    ## The downloaded binary packages are in
+    ##  C:\Users\dgiardiello\AppData\Local\Temp\RtmpK0QIw9\downloaded_packages
+
 The two primary datasets from the Rotterdam study and the German Breast
 Cancer Study Group (GBSG) are included as example data sets in the
 survival package. The Rotterdam data has separate variables for time to
@@ -108,20 +132,37 @@ change any fits. A categorical variable for nodes is also added.
 
 ``` r
 # Development data
-# Recurrence free survival (RFS) is the time until the earlier of
-#  recurrence or death
+
 rotterdam$ryear <- rotterdam$rtime/365.25  # time in years
-rotterdam$rfs <- with(rotterdam, pmax(recur, death))
+rotterdam$rfs <- with(rotterdam, pmax(recur, death)) #The variable rfs is a status indicator, 0 = alive without relapse, 1 = death or relapse.
+
+# Fix the outcome for 43 patients who have died but 
+# censored at time of recurrence which was less than death time. 
+# The actual death time should be used rather than the earlier censored recurrence time.
+
+rotterdam$ryear[rotterdam$rfs == 1 & 
+                  rotterdam$recur == 0 & 
+                  rotterdam$death == 1 & 
+                  (rotterdam$rtime < rotterdam$dtime)] <- 
+  
+rotterdam$dtime[rotterdam$rfs == 1 &
+                rotterdam$recur == 0 & 
+                rotterdam$death == 1 & 
+                (rotterdam$rtime < rotterdam$dtime)]/365.25  
 
 # variables used in the analysis
 pgr99 <- quantile(rotterdam$pgr, .99) # there is a large outlier of 5000
 rotterdam$pgr2 <- pmin(rotterdam$pgr, pgr99) # Winsorized value
 rotterdam$csize <- rotterdam$size           # categorized size
-rotterdam$cnode <- cut(rotterdam$nodes, c(-1,0, 3, 51),
+rotterdam$cnode <- cut(rotterdam$nodes, 
+                       c(-1,0, 3, 51),
                        c("0", "1-3", ">3"))   # categorized node
+rotterdam$grade3 <- as.factor(rotterdam$grade)
+levels(rotterdam$grade3) <- c("1-2", "3")
 
 # Save in the data the restricted cubic spline term using Hmisc::rcspline.eval() package
-rcs3_pgr <- rcspline.eval(rotterdam$pgr2, knots = c(0, 41, 486))
+rcs3_pgr <- rcspline.eval(rotterdam$pgr2, 
+                          knots = c(0, 41, 486))
 attr(rcs3_pgr, "dim") <- NULL
 attr(rcs3_pgr, "knots") <- NULL
 rotterdam$pgr3 <- rcs3_pgr
@@ -129,12 +170,15 @@ rotterdam$pgr3 <- rcs3_pgr
 # Validation data
 gbsg$ryear <- gbsg$rfstime/365.25
 gbsg$rfs   <- gbsg$status           # the GBSG data contains RFS
-gbsg$cnode <- cut(gbsg$nodes, c(-1, 0, 3, 51),
-                       c("0", "1-3", ">3"))   # categorized node
-gbsg$csize <- cut(gbsg$size,  c(-1, 20, 50, 500), #categorized size
+gbsg$cnode <- cut(gbsg$nodes, 
+                  c(-1,0, 3, 51),
+                  c("0", "1-3", ">3"))   # categorized node
+gbsg$csize <- cut(gbsg$size,  
+                  c(-1, 20, 50, 500), #categorized size
                   c("<=20", "20-50", ">50"))
 gbsg$pgr2 <- pmin(gbsg$pgr, pgr99) # Winsorized value
-
+gbsg$grade3 <- as.factor(gbsg$grade)
+levels(gbsg$grade3) <- c("1-2", "1-2", "3")
 
 # Restricted cubic spline for PGR
 rcs3_pgr <- rcspline.eval(gbsg$pgr2, knots = c(0, 41, 486))
@@ -183,7 +227,7 @@ Size (cm)
 </tr>
 <tr>
 <td style="text-align:left;padding-left: 2em;" indentlevel="1">
-&lt;=20
+\<=20
 </td>
 <td style="text-align:left;">
 1,387 (47%)
@@ -205,7 +249,7 @@ Size (cm)
 </tr>
 <tr>
 <td style="text-align:left;padding-left: 2em;" indentlevel="1">
-&gt;50
+\>50
 </td>
 <td style="text-align:left;">
 304 (10%)
@@ -247,7 +291,7 @@ Number of nodes
 </tr>
 <tr>
 <td style="text-align:left;padding-left: 2em;" indentlevel="1">
-&gt;3
+\>3
 </td>
 <td style="text-align:left;">
 782 (26%)
@@ -495,7 +539,7 @@ p
 csize
 </td>
 <td style="text-align:right;">
-23.015
+22.347
 </td>
 <td style="text-align:right;">
 2
@@ -509,7 +553,7 @@ csize
 cnode
 </td>
 <td style="text-align:right;">
-22.685
+24.629
 </td>
 <td style="text-align:right;">
 2
@@ -523,13 +567,13 @@ cnode
 grade
 </td>
 <td style="text-align:right;">
-4.243
+4.400
 </td>
 <td style="text-align:right;">
 1
 </td>
 <td style="text-align:right;">
-0.039
+0.036
 </td>
 </tr>
 <tr>
@@ -537,7 +581,7 @@ grade
 GLOBAL
 </td>
 <td style="text-align:right;">
-35.851
+36.773
 </td>
 <td style="text-align:right;">
 5
@@ -593,13 +637,13 @@ efit3 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
 csize20-50
 </th>
 <th style="text-align:right;">
-csize&gt;50
+csize>50
 </th>
 <th style="text-align:right;">
 cnode1-3
 </th>
 <th style="text-align:right;">
-cnode&gt;3
+cnode>3
 </th>
 <th style="text-align:right;">
 grade
@@ -612,19 +656,19 @@ grade
 Epoch 1: 0-5 years
 </td>
 <td style="text-align:right;">
-0.39
-</td>
-<td style="text-align:right;">
-0.67
-</td>
-<td style="text-align:right;">
-0.35
-</td>
-<td style="text-align:right;">
-1.05
-</td>
-<td style="text-align:right;">
 0.38
+</td>
+<td style="text-align:right;">
+0.66
+</td>
+<td style="text-align:right;">
+0.36
+</td>
+<td style="text-align:right;">
+1.06
+</td>
+<td style="text-align:right;">
+0.37
 </td>
 </tr>
 <tr>
@@ -632,39 +676,39 @@ Epoch 1: 0-5 years
 Epoch 2: 5-10 years
 </td>
 <td style="text-align:right;">
-0.17
+0.19
 </td>
 <td style="text-align:right;">
 0.21
 </td>
 <td style="text-align:right;">
-0.35
+0.34
 </td>
 <td style="text-align:right;">
-0.80
+0.79
 </td>
 <td style="text-align:right;">
-0.26
+0.28
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
-Epoch 3: &gt;10 years
+Epoch 3: \>10 years
 </td>
 <td style="text-align:right;">
--0.22
-</td>
-<td style="text-align:right;">
-0.36
+-0.21
 </td>
 <td style="text-align:right;">
 0.32
 </td>
 <td style="text-align:right;">
-0.31
+0.35
 </td>
 <td style="text-align:right;">
-0.46
+0.21
+</td>
+<td style="text-align:right;">
+0.41
 </td>
 </tr>
 </tbody>
@@ -688,10 +732,10 @@ Event
 Epoch 1: 0-5 years
 </td>
 <td style="text-align:right;">
-1697
+1707
 </td>
 <td style="text-align:right;">
-1285
+1275
 </td>
 </tr>
 <tr>
@@ -699,21 +743,21 @@ Epoch 1: 0-5 years
 Epoch 2: 5-10 years
 </td>
 <td style="text-align:right;">
-1205
+1212
 </td>
 <td style="text-align:right;">
-366
+369
 </td>
 </tr>
 <tr>
 <td style="text-align:left;">
-Epoch 3: &gt;10 years
+Epoch 3: \>10 years
 </td>
 <td style="text-align:right;">
 419
 </td>
 <td style="text-align:right;">
-62
+69
 </td>
 </tr>
 </tbody>
@@ -781,23 +825,23 @@ Below the results of the models:
 <tbody>
 <tr>
 <td style='min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'>Obs 2982</td>
-<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'>LR χ<sup>2</sup> 480.83</td>
-<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>R</i><sup>2</sup> 0.149</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'>LR χ<sup>2</sup> 483.65</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>R</i><sup>2</sup> 0.150</td>
 </tr>
 <tr>
-<td style='min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'>Events 1285</td>
+<td style='min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'>Events 1275</td>
 <td style='min-width: 9em; border-right: 1px solid black; text-align: center;'>d.f. 5</td>
-<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>D</i><sub>xy</sub> 0.347</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>D</i><sub>xy</sub> 0.348</td>
 </tr>
 <tr>
-<td style='min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'>Center 1.2787</td>
+<td style='min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'>Center 1.2691</td>
 <td style='min-width: 9em; border-right: 1px solid black; text-align: center;'>Pr(>χ<sup>2</sup>) 0.0000</td>
-<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>g</i> 0.682</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>g</i> 0.685</td>
 </tr>
 <tr>
 <td style='min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'></td>
-<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'>Score χ<sup>2</sup> 552.16</td>
-<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>g</i><sub>r</sub> 1.978</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'>Score χ<sup>2</sup> 557.17</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>g</i><sub>r</sub> 1.983</td>
 </tr>
 <tr>
 <td style='min-width: 9em; border-bottom: 2px solid grey; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'></td>
@@ -820,37 +864,37 @@ Below the results of the models:
 <tbody>
 <tr>
 <td style='min-width: 7em; text-align: left;'>csize=20-50</td>
-<td style='min-width: 7em; text-align: right;'>  0.3922</td>
-<td style='min-width: 7em; text-align: right;'> 0.0648</td>
-<td style='min-width: 7em; text-align: right;'> 6.06</td>
+<td style='min-width: 7em; text-align: right;'>  0.3834</td>
+<td style='min-width: 7em; text-align: right;'> 0.0650</td>
+<td style='min-width: 7em; text-align: right;'> 5.89</td>
 <td style='min-width: 7em; text-align: right;'><0.0001</td>
 </tr>
 <tr>
 <td style='min-width: 7em; text-align: left;'>csize=>50</td>
-<td style='min-width: 7em; text-align: right;'>  0.6660</td>
-<td style='min-width: 7em; text-align: right;'> 0.0911</td>
-<td style='min-width: 7em; text-align: right;'> 7.31</td>
+<td style='min-width: 7em; text-align: right;'>  0.6639</td>
+<td style='min-width: 7em; text-align: right;'> 0.0913</td>
+<td style='min-width: 7em; text-align: right;'> 7.28</td>
 <td style='min-width: 7em; text-align: right;'><0.0001</td>
 </tr>
 <tr>
 <td style='min-width: 7em; text-align: left;'>cnode=0</td>
-<td style='min-width: 7em; text-align: right;'> -0.3538</td>
-<td style='min-width: 7em; text-align: right;'> 0.0749</td>
-<td style='min-width: 7em; text-align: right;'>-4.72</td>
+<td style='min-width: 7em; text-align: right;'> -0.3600</td>
+<td style='min-width: 7em; text-align: right;'> 0.0753</td>
+<td style='min-width: 7em; text-align: right;'>-4.78</td>
 <td style='min-width: 7em; text-align: right;'><0.0001</td>
 </tr>
 <tr>
 <td style='min-width: 7em; text-align: left;'>cnode=>3</td>
-<td style='min-width: 7em; text-align: right;'>  0.6936</td>
-<td style='min-width: 7em; text-align: right;'> 0.0722</td>
-<td style='min-width: 7em; text-align: right;'> 9.61</td>
+<td style='min-width: 7em; text-align: right;'>  0.7028</td>
+<td style='min-width: 7em; text-align: right;'> 0.0724</td>
+<td style='min-width: 7em; text-align: right;'> 9.70</td>
 <td style='min-width: 7em; text-align: right;'><0.0001</td>
 </tr>
 <tr>
 <td style='min-width: 7em; border-bottom: 2px solid grey; text-align: left;'>grade</td>
-<td style='min-width: 7em; border-bottom: 2px solid grey; text-align: right;'>  0.3766</td>
-<td style='min-width: 7em; border-bottom: 2px solid grey; text-align: right;'> 0.0710</td>
-<td style='min-width: 7em; border-bottom: 2px solid grey; text-align: right;'> 5.30</td>
+<td style='min-width: 7em; border-bottom: 2px solid grey; text-align: right;'>  0.3748</td>
+<td style='min-width: 7em; border-bottom: 2px solid grey; text-align: right;'> 0.0713</td>
+<td style='min-width: 7em; border-bottom: 2px solid grey; text-align: right;'> 5.26</td>
 <td style='min-width: 7em; border-bottom: 2px solid grey; text-align: right;'><0.0001</td>
 </tr>
 </tbody>
@@ -876,23 +920,23 @@ Below the results of the models:
 <tbody>
 <tr>
 <td style='min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'>Obs 2982</td>
-<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'>LR χ<sup>2</sup> 512.49</td>
-<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>R</i><sup>2</sup> 0.158</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'>LR χ<sup>2</sup> 516.68</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>R</i><sup>2</sup> 0.159</td>
 </tr>
 <tr>
-<td style='min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'>Events 1285</td>
+<td style='min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'>Events 1275</td>
 <td style='min-width: 9em; border-right: 1px solid black; text-align: center;'>d.f. 7</td>
-<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>D</i><sub>xy</sub> 0.362</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>D</i><sub>xy</sub> 0.365</td>
 </tr>
 <tr>
-<td style='min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'>Center 0.9277</td>
+<td style='min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'>Center 0.9059</td>
 <td style='min-width: 9em; border-right: 1px solid black; text-align: center;'>Pr(>χ<sup>2</sup>) 0.0000</td>
-<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>g</i> 0.722</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>g</i> 0.727</td>
 </tr>
 <tr>
 <td style='min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'></td>
-<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'>Score χ<sup>2</sup> 581.04</td>
-<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>g</i><sub>r</sub> 2.059</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'>Score χ<sup>2</sup> 587.23</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>g</i><sub>r</sub> 2.069</td>
 </tr>
 <tr>
 <td style='min-width: 9em; border-bottom: 2px solid grey; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'></td>
@@ -915,51 +959,51 @@ Below the results of the models:
 <tbody>
 <tr>
 <td style='min-width: 7em; text-align: left;'>csize=20-50</td>
-<td style='min-width: 7em; text-align: right;'>  0.3710</td>
-<td style='min-width: 7em; text-align: right;'> 0.0649</td>
-<td style='min-width: 7em; text-align: right;'> 5.72</td>
+<td style='min-width: 7em; text-align: right;'>  0.3615</td>
+<td style='min-width: 7em; text-align: right;'> 0.0651</td>
+<td style='min-width: 7em; text-align: right;'> 5.55</td>
 <td style='min-width: 7em; text-align: right;'><0.0001</td>
 </tr>
 <tr>
 <td style='min-width: 7em; text-align: left;'>csize=>50</td>
-<td style='min-width: 7em; text-align: right;'>  0.6441</td>
-<td style='min-width: 7em; text-align: right;'> 0.0911</td>
-<td style='min-width: 7em; text-align: right;'> 7.07</td>
+<td style='min-width: 7em; text-align: right;'>  0.6414</td>
+<td style='min-width: 7em; text-align: right;'> 0.0912</td>
+<td style='min-width: 7em; text-align: right;'> 7.03</td>
 <td style='min-width: 7em; text-align: right;'><0.0001</td>
 </tr>
 <tr>
 <td style='min-width: 7em; text-align: left;'>cnode=0</td>
-<td style='min-width: 7em; text-align: right;'> -0.3745</td>
-<td style='min-width: 7em; text-align: right;'> 0.0750</td>
-<td style='min-width: 7em; text-align: right;'>-4.99</td>
+<td style='min-width: 7em; text-align: right;'> -0.3810</td>
+<td style='min-width: 7em; text-align: right;'> 0.0754</td>
+<td style='min-width: 7em; text-align: right;'>-5.05</td>
 <td style='min-width: 7em; text-align: right;'><0.0001</td>
 </tr>
 <tr>
 <td style='min-width: 7em; text-align: left;'>cnode=>3</td>
-<td style='min-width: 7em; text-align: right;'>  0.6698</td>
-<td style='min-width: 7em; text-align: right;'> 0.0723</td>
-<td style='min-width: 7em; text-align: right;'> 9.26</td>
+<td style='min-width: 7em; text-align: right;'>  0.6782</td>
+<td style='min-width: 7em; text-align: right;'> 0.0725</td>
+<td style='min-width: 7em; text-align: right;'> 9.35</td>
 <td style='min-width: 7em; text-align: right;'><0.0001</td>
 </tr>
 <tr>
 <td style='min-width: 7em; text-align: left;'>grade</td>
-<td style='min-width: 7em; text-align: right;'>  0.3217</td>
-<td style='min-width: 7em; text-align: right;'> 0.0718</td>
-<td style='min-width: 7em; text-align: right;'> 4.48</td>
+<td style='min-width: 7em; text-align: right;'>  0.3173</td>
+<td style='min-width: 7em; text-align: right;'> 0.0721</td>
+<td style='min-width: 7em; text-align: right;'> 4.40</td>
 <td style='min-width: 7em; text-align: right;'><0.0001</td>
 </tr>
 <tr>
 <td style='min-width: 7em; text-align: left;'>pgr2</td>
 <td style='min-width: 7em; text-align: right;'> -0.0029</td>
 <td style='min-width: 7em; text-align: right;'> 0.0006</td>
-<td style='min-width: 7em; text-align: right;'>-5.10</td>
+<td style='min-width: 7em; text-align: right;'>-5.09</td>
 <td style='min-width: 7em; text-align: right;'><0.0001</td>
 </tr>
 <tr>
 <td style='min-width: 7em; border-bottom: 2px solid grey; text-align: left;'>pgr2'</td>
-<td style='min-width: 7em; border-bottom: 2px solid grey; text-align: right;'>  0.0128</td>
+<td style='min-width: 7em; border-bottom: 2px solid grey; text-align: right;'>  0.0127</td>
 <td style='min-width: 7em; border-bottom: 2px solid grey; text-align: right;'> 0.0028</td>
-<td style='min-width: 7em; border-bottom: 2px solid grey; text-align: right;'> 4.55</td>
+<td style='min-width: 7em; border-bottom: 2px solid grey; text-align: right;'> 4.47</td>
 <td style='min-width: 7em; border-bottom: 2px solid grey; text-align: right;'><0.0001</td>
 </tr>
 </tbody>
@@ -1267,7 +1311,7 @@ Harrell C
 0.69
 </td>
 <td style="text-align:right;">
-0.67
+0.68
 </td>
 <td style="text-align:right;">
 NA
@@ -1282,7 +1326,7 @@ NA
 0.67
 </td>
 <td style="text-align:right;">
-0.70
+0.7
 </td>
 <td style="text-align:right;">
 0.68
@@ -1303,7 +1347,7 @@ NA
 0.69
 </td>
 <td style="text-align:right;">
-0.68
+0.69
 </td>
 <td style="text-align:right;">
 0.65
@@ -1326,7 +1370,7 @@ Uno C
 0.69
 </td>
 <td style="text-align:right;">
-0.67
+0.68
 </td>
 <td style="text-align:right;">
 NA
@@ -1341,7 +1385,7 @@ NA
 0.67
 </td>
 <td style="text-align:right;">
-0.69
+0.7
 </td>
 <td style="text-align:right;">
 0.68
@@ -1588,7 +1632,7 @@ NA
 0.74
 </td>
 <td style="text-align:right;">
-0.71
+0.72
 </td>
 <td style="text-align:right;">
 NA
@@ -1921,7 +1965,7 @@ OE ratio
 1.2
 </td>
 <td style="text-align:right;">
-1.03
+1.04
 </td>
 <td style="text-align:right;">
 0.92
@@ -2042,10 +2086,10 @@ Calibration in-the-large
 0.09
 </td>
 <td style="text-align:right;">
--0.03
+-0.02
 </td>
 <td style="text-align:right;">
-0.2
+0.21
 </td>
 <td style="text-align:right;">
 0.05
@@ -2054,7 +2098,7 @@ Calibration in-the-large
 -0.07
 </td>
 <td style="text-align:right;">
-0.16
+0.17
 </td>
 </tr>
 </tbody>
@@ -2178,7 +2222,7 @@ Upper .95
 Calibration intercept
 </td>
 <td style="text-align:right;">
-0.15
+0.16
 </td>
 <td style="text-align:right;">
 0.02
@@ -2187,7 +2231,7 @@ Calibration intercept
 0.29
 </td>
 <td style="text-align:right;">
-0.14
+0.15
 </td>
 <td style="text-align:right;">
 0.01
@@ -2207,7 +2251,7 @@ Calibration slope
 0.84
 </td>
 <td style="text-align:right;">
-1.32
+1.31
 </td>
 <td style="text-align:right;">
 1.17
@@ -2346,10 +2390,10 @@ Calibration intercept
 0.09
 </td>
 <td style="text-align:right;">
--0.03
+-0.02
 </td>
 <td style="text-align:right;">
-0.2
+0.21
 </td>
 <td style="text-align:right;">
 0.05
@@ -2358,7 +2402,7 @@ Calibration intercept
 -0.07
 </td>
 <td style="text-align:right;">
-0.16
+0.17
 </td>
 </tr>
 <tr>
@@ -2372,7 +2416,7 @@ Calibration slope
 1.14
 </td>
 <td style="text-align:right;">
-1.6
+1.60
 </td>
 <td style="text-align:right;">
 1.40
@@ -2603,7 +2647,7 @@ External data
 0.04
 </td>
 <td style="text-align:right;">
-0.04
+0.05
 </td>
 <td style="text-align:right;">
 0.06
@@ -2620,7 +2664,7 @@ External data + PGR
 0.02
 </td>
 <td style="text-align:right;">
-0.06
+0.07
 </td>
 </tr>
 </tbody>
@@ -2981,10 +3025,10 @@ Brier
 0.21
 </td>
 <td style="text-align:right;">
-0.19
+0.20
 </td>
 <td style="text-align:right;">
-0.23
+0.22
 </td>
 <td style="text-align:right;">
 0.21
@@ -2999,10 +3043,10 @@ NA
 0.21
 </td>
 <td style="text-align:right;">
-0.19
+0.20
 </td>
 <td style="text-align:right;">
-0.23
+0.21
 </td>
 <td style="text-align:right;">
 0.21
@@ -3026,7 +3070,7 @@ NA
 0.21
 </td>
 <td style="text-align:right;">
-0.19
+0.20
 </td>
 <td style="text-align:right;">
 0.23
@@ -3064,7 +3108,7 @@ NA
 0.18
 </td>
 <td style="text-align:right;">
-0.14
+0.15
 </td>
 <td style="text-align:right;">
 NA
@@ -3363,161 +3407,175 @@ sessioninfo::session_info()
 ```
 
     ## - Session info ---------------------------------------------------------------
-    ##  setting  value                       
-    ##  version  R version 4.0.3 (2020-10-10)
-    ##  os       Windows 10 x64              
-    ##  system   x86_64, mingw32             
-    ##  ui       RTerm                       
-    ##  language (EN)                        
-    ##  collate  English_Netherlands.1252    
-    ##  ctype    English_Netherlands.1252    
-    ##  tz       Europe/Berlin               
-    ##  date     2021-09-02                  
+    ##  setting  value
+    ##  version  R version 4.1.2 (2021-11-01)
+    ##  os       Windows 10 x64 (build 19044)
+    ##  system   x86_64, mingw32
+    ##  ui       RTerm
+    ##  language (EN)
+    ##  collate  English_United States.1252
+    ##  ctype    English_United States.1252
+    ##  tz       Europe/Berlin
+    ##  date     2021-12-22
+    ##  pandoc   2.14.0.3 @ C:/Program Files/RStudio/bin/pandoc/ (via rmarkdown)
     ## 
     ## - Packages -------------------------------------------------------------------
-    ##  package        * version    date       lib source        
-    ##  assertthat       0.2.1      2019-03-21 [1] CRAN (R 4.0.3)
-    ##  backports        1.2.1      2020-12-09 [1] CRAN (R 4.0.3)
-    ##  base64enc        0.1-3      2015-07-28 [1] CRAN (R 4.0.3)
-    ##  bit              4.0.4      2020-08-04 [1] CRAN (R 4.0.3)
-    ##  bit64            4.0.5      2020-08-30 [1] CRAN (R 4.0.3)
-    ##  blob             1.2.2      2021-07-23 [1] CRAN (R 4.0.5)
-    ##  boot           * 1.3-25     2020-04-26 [2] CRAN (R 4.0.3)
-    ##  broom            0.7.9      2021-07-27 [1] CRAN (R 4.0.5)
-    ##  broom.helpers    1.3.0      2021-04-10 [1] CRAN (R 4.0.5)
-    ##  cachem           1.0.6      2021-08-19 [1] CRAN (R 4.0.5)
-    ##  cellranger       1.1.0      2016-07-27 [1] CRAN (R 4.0.3)
-    ##  checkmate        2.0.0      2020-02-06 [1] CRAN (R 4.0.3)
-    ##  chron            2.3-56     2020-08-18 [1] CRAN (R 4.0.3)
-    ##  cli              3.0.1      2021-07-17 [1] CRAN (R 4.0.5)
-    ##  cluster          2.1.0      2019-06-19 [2] CRAN (R 4.0.3)
-    ##  cmprsk           2.2-10     2020-06-09 [1] CRAN (R 4.0.3)
-    ##  codetools        0.2-16     2018-12-24 [2] CRAN (R 4.0.3)
-    ##  colorspace       2.0-2      2021-06-24 [1] CRAN (R 4.0.5)
-    ##  conquer          1.0.2      2020-08-27 [1] CRAN (R 4.0.3)
-    ##  crayon           1.4.1      2021-02-08 [1] CRAN (R 4.0.5)
-    ##  curl             4.3.2      2021-06-23 [1] CRAN (R 4.0.5)
-    ##  data.table       1.14.0     2021-02-21 [1] CRAN (R 4.0.5)
-    ##  DBI              1.1.1      2021-01-15 [1] CRAN (R 4.0.3)
-    ##  dbplyr           2.1.1      2021-04-06 [1] CRAN (R 4.0.5)
-    ##  digest           0.6.27     2020-10-24 [1] CRAN (R 4.0.3)
-    ##  dplyr          * 1.0.7      2021-06-18 [1] CRAN (R 4.0.5)
-    ##  ellipsis         0.3.2      2021-04-29 [1] CRAN (R 4.0.5)
-    ##  evaluate         0.14       2019-05-28 [1] CRAN (R 4.0.3)
-    ##  fansi            0.5.0      2021-05-25 [1] CRAN (R 4.0.5)
-    ##  fastmap          1.1.0      2021-01-25 [1] CRAN (R 4.0.3)
-    ##  forcats        * 0.5.1      2021-01-27 [1] CRAN (R 4.0.3)
-    ##  foreach          1.5.1      2020-10-15 [1] CRAN (R 4.0.3)
-    ##  foreign          0.8-80     2020-05-24 [2] CRAN (R 4.0.3)
-    ##  Formula        * 1.2-4      2020-10-16 [1] CRAN (R 4.0.3)
-    ##  fs               1.5.0      2020-07-31 [1] CRAN (R 4.0.3)
-    ##  furrr            0.2.3      2021-06-25 [1] CRAN (R 4.0.5)
-    ##  future           1.22.1     2021-08-25 [1] CRAN (R 4.0.5)
-    ##  generics         0.1.0      2020-10-31 [1] CRAN (R 4.0.3)
-    ##  ggplot2        * 3.3.5      2021-06-25 [1] CRAN (R 4.0.5)
-    ##  globals          0.14.0     2020-11-22 [1] CRAN (R 4.0.3)
-    ##  glue             1.4.2      2020-08-27 [1] CRAN (R 4.0.3)
-    ##  gridExtra      * 2.3        2017-09-09 [1] CRAN (R 4.0.3)
-    ##  gsubfn         * 0.7        2018-03-16 [1] CRAN (R 4.0.3)
-    ##  gt               0.3.1      2021-08-07 [1] CRAN (R 4.0.5)
-    ##  gtable           0.3.0      2019-03-25 [1] CRAN (R 4.0.3)
-    ##  gtsummary      * 1.4.2      2021-07-13 [1] CRAN (R 4.0.5)
-    ##  haven            2.4.3      2021-08-04 [1] CRAN (R 4.0.5)
-    ##  here             1.0.1      2020-12-13 [1] CRAN (R 4.0.4)
-    ##  highr            0.9        2021-04-16 [1] CRAN (R 4.0.5)
-    ##  Hmisc          * 4.5-0      2021-02-28 [1] CRAN (R 4.0.5)
-    ##  hms              1.1.0      2021-05-17 [1] CRAN (R 4.0.5)
-    ##  htmlTable        2.2.1      2021-05-18 [1] CRAN (R 4.0.5)
-    ##  htmltools        0.5.2      2021-08-25 [1] CRAN (R 4.0.5)
-    ##  htmlwidgets      1.5.3      2020-12-10 [1] CRAN (R 4.0.3)
-    ##  httr             1.4.2      2020-07-20 [1] CRAN (R 4.0.3)
-    ##  iterators        1.0.13     2020-10-15 [1] CRAN (R 4.0.3)
-    ##  jpeg             0.1-9      2021-07-24 [1] CRAN (R 4.0.5)
-    ##  jsonlite         1.7.2      2020-12-09 [1] CRAN (R 4.0.3)
-    ##  kableExtra     * 1.3.4      2021-02-20 [1] CRAN (R 4.0.5)
-    ##  knitr          * 1.33       2021-04-24 [1] CRAN (R 4.0.5)
-    ##  lattice        * 0.20-41    2020-04-02 [2] CRAN (R 4.0.3)
-    ##  latticeExtra     0.6-29     2019-12-19 [1] CRAN (R 4.0.3)
-    ##  lava             1.6.9      2021-03-11 [1] CRAN (R 4.0.5)
-    ##  lifecycle        1.0.0      2021-02-15 [1] CRAN (R 4.0.5)
-    ##  listenv          0.8.0      2019-12-05 [1] CRAN (R 4.0.3)
-    ##  lubridate        1.7.10     2021-02-26 [1] CRAN (R 4.0.5)
-    ##  magrittr         2.0.1      2020-11-17 [1] CRAN (R 4.0.3)
-    ##  MASS             7.3-53     2020-09-09 [2] CRAN (R 4.0.3)
-    ##  Matrix           1.2-18     2019-11-27 [2] CRAN (R 4.0.3)
-    ##  MatrixModels     0.5-0      2021-03-02 [1] CRAN (R 4.0.5)
-    ##  matrixStats      0.60.1     2021-08-23 [1] CRAN (R 4.0.5)
-    ##  memoise          2.0.0      2021-01-26 [1] CRAN (R 4.0.3)
-    ##  mets             1.2.8.1    2020-09-28 [1] CRAN (R 4.0.3)
-    ##  modelr           0.1.8      2020-05-19 [1] CRAN (R 4.0.3)
-    ##  mstate         * 0.3.1      2020-12-17 [1] CRAN (R 4.0.3)
-    ##  multcomp         1.4-17     2021-04-29 [1] CRAN (R 4.0.5)
-    ##  munsell          0.5.0      2018-06-12 [1] CRAN (R 4.0.3)
-    ##  mvtnorm          1.1-2      2021-06-07 [1] CRAN (R 4.0.5)
-    ##  nlme             3.1-149    2020-08-23 [2] CRAN (R 4.0.3)
-    ##  nnet             7.3-14     2020-04-26 [2] CRAN (R 4.0.3)
-    ##  numDeriv         2016.8-1.1 2019-06-06 [1] CRAN (R 4.0.3)
-    ##  openxlsx         4.2.4      2021-06-16 [1] CRAN (R 4.0.5)
-    ##  pacman         * 0.5.1      2019-03-11 [1] CRAN (R 4.0.4)
-    ##  parallelly       1.27.0     2021-07-19 [1] CRAN (R 4.0.5)
-    ##  pec            * 2020.11.17 2020-11-16 [1] CRAN (R 4.0.3)
-    ##  pillar           1.6.2      2021-07-29 [1] CRAN (R 4.0.5)
-    ##  pkgconfig        2.0.3      2019-09-22 [1] CRAN (R 4.0.3)
-    ##  plotrix        * 3.8-1      2021-01-21 [1] CRAN (R 4.0.3)
-    ##  png              0.1-7      2013-12-03 [1] CRAN (R 4.0.3)
-    ##  polspline        1.1.19     2020-05-15 [1] CRAN (R 4.0.3)
-    ##  prodlim        * 2019.11.13 2019-11-17 [1] CRAN (R 4.0.3)
-    ##  proto          * 1.0.0      2016-10-29 [1] CRAN (R 4.0.3)
-    ##  purrr          * 0.3.4      2020-04-17 [1] CRAN (R 4.0.3)
-    ##  quantreg         5.86       2021-06-06 [1] CRAN (R 4.0.5)
-    ##  R6               2.5.1      2021-08-19 [1] CRAN (R 4.0.5)
-    ##  RColorBrewer     1.1-2      2014-12-07 [1] CRAN (R 4.0.3)
-    ##  Rcpp             1.0.7      2021-07-07 [1] CRAN (R 4.0.5)
-    ##  readr          * 2.0.1      2021-08-10 [1] CRAN (R 4.0.5)
-    ##  readxl           1.3.1      2019-03-13 [1] CRAN (R 4.0.3)
-    ##  reprex           2.0.1      2021-08-05 [1] CRAN (R 4.0.5)
-    ##  rio            * 0.5.27     2021-06-21 [1] CRAN (R 4.0.5)
-    ##  riskRegression * 2020.12.08 2020-12-09 [1] CRAN (R 4.0.5)
-    ##  rlang            0.4.10     2020-12-30 [1] CRAN (R 4.0.3)
-    ##  rmarkdown        2.10       2021-08-06 [1] CRAN (R 4.0.5)
-    ##  rms            * 6.2-0      2021-03-18 [1] CRAN (R 4.0.5)
-    ##  rpart            4.1-15     2019-04-12 [2] CRAN (R 4.0.3)
-    ##  rprojroot        2.0.2      2020-11-15 [1] CRAN (R 4.0.3)
-    ##  rsample        * 0.1.0      2021-05-08 [1] CRAN (R 4.0.5)
-    ##  RSQLite        * 2.2.8      2021-08-21 [1] CRAN (R 4.0.5)
-    ##  rstudioapi       0.13       2020-11-12 [1] CRAN (R 4.0.3)
-    ##  rvest            1.0.1      2021-07-26 [1] CRAN (R 4.0.5)
-    ##  sandwich         3.0-1      2021-05-18 [1] CRAN (R 4.0.5)
-    ##  scales           1.1.1      2020-05-11 [1] CRAN (R 4.0.3)
-    ##  sessioninfo      1.1.1      2018-11-05 [1] CRAN (R 4.0.4)
-    ##  SparseM        * 1.81       2021-02-18 [1] CRAN (R 4.0.4)
-    ##  sqldf          * 0.4-11     2017-06-28 [1] CRAN (R 4.0.3)
-    ##  stringi          1.7.4      2021-08-25 [1] CRAN (R 4.0.5)
-    ##  stringr        * 1.4.0      2019-02-10 [1] CRAN (R 4.0.3)
-    ##  survAUC        * 1.0-5      2012-09-04 [1] CRAN (R 4.0.3)
-    ##  survival       * 3.2-13     2021-08-24 [1] CRAN (R 4.0.5)
-    ##  survivalROC    * 1.0.3      2013-01-13 [1] CRAN (R 4.0.3)
-    ##  svglite          2.0.0      2021-02-20 [1] CRAN (R 4.0.5)
-    ##  systemfonts      1.0.2      2021-05-11 [1] CRAN (R 4.0.5)
-    ##  table1         * 1.4.2      2021-06-06 [1] CRAN (R 4.0.5)
-    ##  TH.data          1.0-10     2019-01-21 [1] CRAN (R 4.0.3)
-    ##  tibble         * 3.1.4      2021-08-25 [1] CRAN (R 4.0.5)
-    ##  tidyr          * 1.1.3      2021-03-03 [1] CRAN (R 4.0.5)
-    ##  tidyselect       1.1.1      2021-04-30 [1] CRAN (R 4.0.5)
-    ##  tidyverse      * 1.3.1      2021-04-15 [1] CRAN (R 4.0.5)
-    ##  timereg          2.0.0      2021-05-20 [1] CRAN (R 4.0.5)
-    ##  timeROC        * 0.4        2019-12-18 [1] CRAN (R 4.0.3)
-    ##  tzdb             0.1.2      2021-07-20 [1] CRAN (R 4.0.5)
-    ##  utf8             1.2.2      2021-07-24 [1] CRAN (R 4.0.5)
-    ##  vctrs            0.3.8      2021-04-29 [1] CRAN (R 4.0.5)
-    ##  viridisLite      0.4.0      2021-04-13 [1] CRAN (R 4.0.5)
-    ##  webshot        * 0.5.2      2019-11-22 [1] CRAN (R 4.0.3)
-    ##  withr            2.4.2      2021-04-18 [1] CRAN (R 4.0.5)
-    ##  xfun             0.25       2021-08-06 [1] CRAN (R 4.0.5)
-    ##  xml2             1.3.2      2020-04-23 [1] CRAN (R 4.0.3)
-    ##  yaml             2.2.1      2020-02-01 [1] CRAN (R 4.0.3)
-    ##  zip              2.2.0      2021-05-31 [1] CRAN (R 4.0.5)
-    ##  zoo              1.8-9      2021-03-09 [1] CRAN (R 4.0.5)
+    ##  package        * version    date (UTC) lib source
+    ##  assertthat       0.2.1      2019-03-21 [1] CRAN (R 4.1.2)
+    ##  backports        1.3.0      2021-10-27 [1] CRAN (R 4.1.1)
+    ##  base64enc        0.1-3      2015-07-28 [1] CRAN (R 4.1.1)
+    ##  bit              4.0.4      2020-08-04 [1] CRAN (R 4.1.2)
+    ##  bit64            4.0.5      2020-08-30 [1] CRAN (R 4.1.2)
+    ##  blob             1.2.2      2021-07-23 [1] CRAN (R 4.1.2)
+    ##  boot           * 1.3-28     2021-05-03 [2] CRAN (R 4.1.2)
+    ##  broom            0.7.10     2021-10-31 [1] CRAN (R 4.1.2)
+    ##  broom.helpers    1.5.0      2021-12-07 [1] CRAN (R 4.1.2)
+    ##  cachem           1.0.6      2021-08-19 [1] CRAN (R 4.1.2)
+    ##  caret            6.0-90     2021-10-09 [1] CRAN (R 4.1.2)
+    ##  cellranger       1.1.0      2016-07-27 [1] CRAN (R 4.1.2)
+    ##  checkmate        2.0.0      2020-02-06 [1] CRAN (R 4.1.2)
+    ##  chron            2.3-56     2020-08-18 [1] CRAN (R 4.1.2)
+    ##  class            7.3-19     2021-05-03 [2] CRAN (R 4.1.2)
+    ##  cli              3.1.0      2021-10-27 [1] CRAN (R 4.1.2)
+    ##  cluster          2.1.2      2021-04-17 [2] CRAN (R 4.1.2)
+    ##  cmprsk           2.2-10     2020-06-09 [1] CRAN (R 4.1.2)
+    ##  codetools        0.2-18     2020-11-04 [2] CRAN (R 4.1.2)
+    ##  colorspace       2.0-2      2021-06-24 [1] CRAN (R 4.1.2)
+    ##  conquer          1.2.1      2021-11-01 [1] CRAN (R 4.1.2)
+    ##  crayon           1.4.2      2021-10-29 [1] CRAN (R 4.1.2)
+    ##  curl             4.3.2      2021-06-23 [1] CRAN (R 4.1.2)
+    ##  data.table       1.14.2     2021-09-27 [1] CRAN (R 4.1.2)
+    ##  DBI              1.1.1      2021-01-15 [1] CRAN (R 4.1.2)
+    ##  dbplyr           2.1.1      2021-04-06 [1] CRAN (R 4.1.2)
+    ##  digest           0.6.29     2021-12-01 [1] CRAN (R 4.1.2)
+    ##  dplyr          * 1.0.7      2021-06-18 [1] CRAN (R 4.1.2)
+    ##  ellipsis         0.3.2      2021-04-29 [1] CRAN (R 4.1.2)
+    ##  evaluate         0.14       2019-05-28 [1] CRAN (R 4.1.2)
+    ##  fansi            0.5.0      2021-05-25 [1] CRAN (R 4.1.2)
+    ##  fastmap          1.1.0      2021-01-25 [1] CRAN (R 4.1.2)
+    ##  forcats        * 0.5.1      2021-01-27 [1] CRAN (R 4.1.2)
+    ##  foreach          1.5.1      2020-10-15 [1] CRAN (R 4.1.2)
+    ##  foreign          0.8-81     2020-12-22 [2] CRAN (R 4.1.2)
+    ##  Formula        * 1.2-4      2020-10-16 [1] CRAN (R 4.1.1)
+    ##  fs               1.5.1      2021-11-30 [1] CRAN (R 4.1.2)
+    ##  furrr            0.2.3      2021-06-25 [1] CRAN (R 4.1.2)
+    ##  future           1.23.0     2021-10-31 [1] CRAN (R 4.1.2)
+    ##  future.apply     1.8.1      2021-08-10 [1] CRAN (R 4.1.2)
+    ##  generics         0.1.1      2021-10-25 [1] CRAN (R 4.1.2)
+    ##  ggplot2        * 3.3.5      2021-06-25 [1] CRAN (R 4.1.2)
+    ##  globals          0.14.0     2020-11-22 [1] CRAN (R 4.1.1)
+    ##  glue             1.5.1      2021-11-30 [1] CRAN (R 4.1.2)
+    ##  gower            0.2.2      2020-06-23 [1] CRAN (R 4.1.1)
+    ##  gridExtra      * 2.3        2017-09-09 [1] CRAN (R 4.1.2)
+    ##  gsubfn         * 0.7        2018-03-16 [1] CRAN (R 4.1.2)
+    ##  gt               0.3.1      2021-08-07 [1] CRAN (R 4.1.2)
+    ##  gtable           0.3.0      2019-03-25 [1] CRAN (R 4.1.2)
+    ##  gtsummary      * 1.5.0      2021-10-16 [1] CRAN (R 4.1.2)
+    ##  haven            2.4.3      2021-08-04 [1] CRAN (R 4.1.2)
+    ##  here             1.0.1      2020-12-13 [1] CRAN (R 4.1.2)
+    ##  highr            0.9        2021-04-16 [1] CRAN (R 4.1.2)
+    ##  Hmisc          * 4.6-0      2021-10-07 [1] CRAN (R 4.1.2)
+    ##  hms              1.1.1      2021-09-26 [1] CRAN (R 4.1.2)
+    ##  htmlTable        2.3.0      2021-10-12 [1] CRAN (R 4.1.2)
+    ##  htmltools        0.5.2      2021-08-25 [1] CRAN (R 4.1.2)
+    ##  htmlwidgets      1.5.4      2021-09-08 [1] CRAN (R 4.1.2)
+    ##  httr             1.4.2      2020-07-20 [1] CRAN (R 4.1.2)
+    ##  ipred            0.9-12     2021-09-15 [1] CRAN (R 4.1.2)
+    ##  iterators        1.0.13     2020-10-15 [1] CRAN (R 4.1.2)
+    ##  jpeg             0.1-9      2021-07-24 [1] CRAN (R 4.1.1)
+    ##  jsonlite         1.7.2      2020-12-09 [1] CRAN (R 4.1.2)
+    ##  kableExtra     * 1.3.4      2021-02-20 [1] CRAN (R 4.1.2)
+    ##  knitr          * 1.36       2021-09-29 [1] CRAN (R 4.1.2)
+    ##  lattice        * 0.20-45    2021-09-22 [2] CRAN (R 4.1.2)
+    ##  latticeExtra     0.6-29     2019-12-19 [1] CRAN (R 4.1.2)
+    ##  lava             1.6.10     2021-09-02 [1] CRAN (R 4.1.2)
+    ##  lifecycle        1.0.1      2021-09-24 [1] CRAN (R 4.1.2)
+    ##  listenv          0.8.0      2019-12-05 [1] CRAN (R 4.1.2)
+    ##  lubridate        1.8.0      2021-10-07 [1] CRAN (R 4.1.2)
+    ##  magrittr         2.0.1      2020-11-17 [1] CRAN (R 4.1.2)
+    ##  MASS             7.3-54     2021-05-03 [2] CRAN (R 4.1.2)
+    ##  Matrix           1.3-4      2021-06-01 [2] CRAN (R 4.1.2)
+    ##  MatrixModels     0.5-0      2021-03-02 [1] CRAN (R 4.1.2)
+    ##  matrixStats      0.61.0     2021-09-17 [1] CRAN (R 4.1.2)
+    ##  memoise          2.0.1      2021-11-26 [1] CRAN (R 4.1.2)
+    ##  mets             1.2.9      2021-09-06 [1] CRAN (R 4.1.2)
+    ##  ModelMetrics     1.2.2.2    2020-03-17 [1] CRAN (R 4.1.2)
+    ##  modelr           0.1.8      2020-05-19 [1] CRAN (R 4.1.2)
+    ##  mstate         * 0.3.2      2021-11-08 [1] CRAN (R 4.1.2)
+    ##  multcomp         1.4-17     2021-04-29 [1] CRAN (R 4.1.2)
+    ##  munsell          0.5.0      2018-06-12 [1] CRAN (R 4.1.2)
+    ##  mvtnorm          1.1-3      2021-10-08 [1] CRAN (R 4.1.1)
+    ##  nlme             3.1-153    2021-09-07 [2] CRAN (R 4.1.2)
+    ##  nnet             7.3-16     2021-05-03 [2] CRAN (R 4.1.2)
+    ##  numDeriv         2016.8-1.1 2019-06-06 [1] CRAN (R 4.1.1)
+    ##  openxlsx         4.2.4      2021-06-16 [1] CRAN (R 4.1.2)
+    ##  pacman         * 0.5.1      2019-03-11 [1] CRAN (R 4.1.2)
+    ##  parallelly       1.29.0     2021-11-21 [1] CRAN (R 4.1.2)
+    ##  pec            * 2021.10.11 2021-10-11 [1] CRAN (R 4.1.2)
+    ##  pillar           1.6.4      2021-10-18 [1] CRAN (R 4.1.2)
+    ##  pkgconfig        2.0.3      2019-09-22 [1] CRAN (R 4.1.2)
+    ##  plotrix        * 3.8-2      2021-09-08 [1] CRAN (R 4.1.1)
+    ##  plyr             1.8.6      2020-03-03 [1] CRAN (R 4.1.2)
+    ##  png              0.1-7      2013-12-03 [1] CRAN (R 4.1.1)
+    ##  polspline        1.1.19     2020-05-15 [1] CRAN (R 4.1.1)
+    ##  pROC             1.18.0     2021-09-03 [1] CRAN (R 4.1.2)
+    ##  prodlim        * 2019.11.13 2019-11-17 [1] CRAN (R 4.1.2)
+    ##  proto          * 1.0.0      2016-10-29 [1] CRAN (R 4.1.2)
+    ##  purrr          * 0.3.4      2020-04-17 [1] CRAN (R 4.1.2)
+    ##  quantreg         5.86       2021-06-06 [1] CRAN (R 4.1.2)
+    ##  R6               2.5.1      2021-08-19 [1] CRAN (R 4.1.2)
+    ##  RColorBrewer     1.1-2      2014-12-07 [1] CRAN (R 4.1.1)
+    ##  Rcpp             1.0.7      2021-07-07 [1] CRAN (R 4.1.2)
+    ##  readr          * 2.1.1      2021-11-30 [1] CRAN (R 4.1.2)
+    ##  readxl           1.3.1      2019-03-13 [1] CRAN (R 4.1.2)
+    ##  recipes          0.1.17     2021-09-27 [1] CRAN (R 4.1.2)
+    ##  reprex           2.0.1      2021-08-05 [1] CRAN (R 4.1.2)
+    ##  reshape2         1.4.4      2020-04-09 [1] CRAN (R 4.1.2)
+    ##  rio            * 0.5.29     2021-11-22 [1] CRAN (R 4.1.2)
+    ##  riskRegression * 2021.10.10 2021-10-11 [1] CRAN (R 4.1.2)
+    ##  rlang            0.4.12     2021-10-18 [1] CRAN (R 4.1.2)
+    ##  rmarkdown        2.11       2021-09-14 [1] CRAN (R 4.1.2)
+    ##  rms            * 6.2-0      2021-03-18 [1] CRAN (R 4.1.2)
+    ##  rpart            4.1-15     2019-04-12 [2] CRAN (R 4.1.2)
+    ##  rprojroot        2.0.2      2020-11-15 [1] CRAN (R 4.1.2)
+    ##  rsample        * 0.1.1      2021-11-08 [1] CRAN (R 4.1.2)
+    ##  RSQLite        * 2.2.9      2021-12-06 [1] CRAN (R 4.1.2)
+    ##  rstudioapi       0.13       2020-11-12 [1] CRAN (R 4.1.2)
+    ##  rvest            1.0.2      2021-10-16 [1] CRAN (R 4.1.2)
+    ##  sandwich         3.0-1      2021-05-18 [1] CRAN (R 4.1.2)
+    ##  scales           1.1.1      2020-05-11 [1] CRAN (R 4.1.2)
+    ##  sessioninfo      1.2.2      2021-12-06 [1] CRAN (R 4.1.2)
+    ##  SparseM        * 1.81       2021-02-18 [1] CRAN (R 4.1.1)
+    ##  sqldf          * 0.4-11     2017-06-28 [1] CRAN (R 4.1.2)
+    ##  stringi          1.7.6      2021-11-29 [1] CRAN (R 4.1.2)
+    ##  stringr        * 1.4.0      2019-02-10 [1] CRAN (R 4.1.2)
+    ##  survAUC        * 1.0-5      2012-09-04 [1] CRAN (R 4.1.2)
+    ##  survival       * 3.2-13     2021-08-24 [1] CRAN (R 4.1.2)
+    ##  survivalROC    * 1.0.3      2013-01-13 [1] CRAN (R 4.1.1)
+    ##  svglite          2.0.0      2021-02-20 [1] CRAN (R 4.1.2)
+    ##  systemfonts      1.0.3      2021-10-13 [1] CRAN (R 4.1.2)
+    ##  table1         * 1.4.2      2021-06-06 [1] CRAN (R 4.1.2)
+    ##  TH.data          1.1-0      2021-09-27 [1] CRAN (R 4.1.2)
+    ##  tibble         * 3.1.6      2021-11-07 [1] CRAN (R 4.1.2)
+    ##  tidyr          * 1.1.4      2021-09-27 [1] CRAN (R 4.1.2)
+    ##  tidyselect       1.1.1      2021-04-30 [1] CRAN (R 4.1.2)
+    ##  tidyverse      * 1.3.1      2021-04-15 [1] CRAN (R 4.1.2)
+    ##  timeDate         3043.102   2018-02-21 [1] CRAN (R 4.1.1)
+    ##  timereg          2.0.1      2021-10-13 [1] CRAN (R 4.1.2)
+    ##  timeROC        * 0.4        2019-12-18 [1] CRAN (R 4.1.2)
+    ##  tzdb             0.2.0      2021-10-27 [1] CRAN (R 4.1.2)
+    ##  utf8             1.2.2      2021-07-24 [1] CRAN (R 4.1.2)
+    ##  vctrs            0.3.8      2021-04-29 [1] CRAN (R 4.1.2)
+    ##  viridisLite      0.4.0      2021-04-13 [1] CRAN (R 4.1.2)
+    ##  webshot        * 0.5.2      2019-11-22 [1] CRAN (R 4.1.2)
+    ##  withr            2.4.3      2021-11-30 [1] CRAN (R 4.1.2)
+    ##  xfun             0.28       2021-11-04 [1] CRAN (R 4.1.2)
+    ##  xml2             1.3.3      2021-11-30 [1] CRAN (R 4.1.2)
+    ##  yaml             2.2.1      2020-02-01 [1] CRAN (R 4.1.1)
+    ##  zip              2.2.0      2021-05-31 [1] CRAN (R 4.1.2)
+    ##  zoo              1.8-9      2021-03-09 [1] CRAN (R 4.1.2)
     ## 
-    ## [1] C:/Users/danie/Documents/R/win-library/4.0
-    ## [2] C:/Program Files/R/R-4.0.3/library
+    ##  [1] C:/Users/dgiardiello/Documents/R/win-library/4.1
+    ##  [2] C:/Program Files/R/R-4.1.2/library
+    ## 
+    ## ------------------------------------------------------------------------------
