@@ -510,7 +510,7 @@ pacman::p_load(survival,
                pec)
 
 # Fit the model without PGR
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
   data = rott5, 
   x = T, 
   y = T)
@@ -562,7 +562,7 @@ df_boots <- do.call(rbind.data.frame, boots_ls)
 
     ##                                Estimate Lower .95  Upper .95
     ## Brier - Validation data            0.22       0.21      0.24
-    ## Scaled Brier - Validation data     0.11       0.04      0.17
+    ## Scaled Brier - Validation data     0.10       0.03      0.16
 
 Brier and scaled Brier score were 0.22 and 0.11, respectively.
 
@@ -743,7 +743,7 @@ sessioninfo::session_info()
     ##  collate  English_United States.1252
     ##  ctype    English_United States.1252
     ##  tz       Europe/Berlin
-    ##  date     2021-12-09
+    ##  date     2021-12-22
     ##  pandoc   2.14.0.3 @ C:/Program Files/RStudio/bin/pandoc/ (via rmarkdown)
     ## 
     ## - Packages -------------------------------------------------------------------
