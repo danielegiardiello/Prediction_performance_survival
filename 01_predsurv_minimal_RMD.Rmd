@@ -450,7 +450,7 @@ pacman::p_load(survival,
                pec)
 
 # Fit the model without PGR
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
   data = rott5, 
   x = T, 
   y = T)
