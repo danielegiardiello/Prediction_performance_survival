@@ -95,30 +95,6 @@ pacman::p_load(
 )
 ```
 
-    ## package 'mstate' successfully unpacked and MD5 sums checked
-    ## 
-    ## The downloaded binary packages are in
-    ##  C:\Users\dgiardiello\AppData\Local\Temp\RtmpK0QIw9\downloaded_packages
-    ## package 'survAUC' successfully unpacked and MD5 sums checked
-    ## 
-    ## The downloaded binary packages are in
-    ##  C:\Users\dgiardiello\AppData\Local\Temp\RtmpK0QIw9\downloaded_packages
-    ## package 'survivalROC' successfully unpacked and MD5 sums checked
-    ## 
-    ## The downloaded binary packages are in
-    ##  C:\Users\dgiardiello\AppData\Local\Temp\RtmpK0QIw9\downloaded_packages
-    ## package 'table1' successfully unpacked and MD5 sums checked
-    ## 
-    ## The downloaded binary packages are in
-    ##  C:\Users\dgiardiello\AppData\Local\Temp\RtmpK0QIw9\downloaded_packages
-    ## package 'warp' successfully unpacked and MD5 sums checked
-    ## package 'furrr' successfully unpacked and MD5 sums checked
-    ## package 'slider' successfully unpacked and MD5 sums checked
-    ## package 'rsample' successfully unpacked and MD5 sums checked
-    ## 
-    ## The downloaded binary packages are in
-    ##  C:\Users\dgiardiello\AppData\Local\Temp\RtmpK0QIw9\downloaded_packages
-
 The two primary datasets from the Rotterdam study and the German Breast
 Cancer Study Group (GBSG) are included as example data sets in the
 survival package. The Rotterdam data has separate variables for time to
@@ -311,24 +287,13 @@ Grade
 </tr>
 <tr>
 <td style="text-align:left;padding-left: 2em;" indentlevel="1">
-1
-</td>
-<td style="text-align:left;">
-0 (0%)
-</td>
-<td style="text-align:left;">
-81 (12%)
-</td>
-</tr>
-<tr>
-<td style="text-align:left;padding-left: 2em;" indentlevel="1">
-2
+1-2
 </td>
 <td style="text-align:left;">
 794 (27%)
 </td>
 <td style="text-align:left;">
-444 (65%)
+525 (77%)
 </td>
 </tr>
 <tr>
@@ -509,7 +474,7 @@ fit the first prediction model in the development data using size, node,
 grade. Then, we check the PH assumption.
 
 ``` r
-fit1_ph <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade, 
+fit1_ph <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3, 
                 data = rotterdam, x = T, y = T)
 
 
@@ -564,7 +529,7 @@ cnode
 </tr>
 <tr>
 <td style="text-align:left;">
-grade
+grade3
 </td>
 <td style="text-align:right;">
 4.400
@@ -617,13 +582,13 @@ edata <- survSplit(Surv(ryear, rfs) ~ .,
   data = rotterdam, cut = c(5, 10),
   episode = "epoch"
 )
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
   data = edata[edata$epoch == 1, ], x = T, y = T
 )
-efit2 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
+efit2 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
   data = edata[edata$epoch == 2, ], x = T, y = T
 )
-efit3 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
+efit3 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
   data = edata[edata$epoch == 3, ], x = T, y = T
 )
 ```
@@ -646,7 +611,7 @@ cnode1-3
 cnode>3
 </th>
 <th style="text-align:right;">
-grade
+grade33
 </th>
 </tr>
 </thead>
@@ -786,7 +751,7 @@ We also administratively censored the validation data at 5 years.
 ``` r
 # Consider the first 5-year epoch in the development set
 # Refit the model
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
   data = rott5, x = T, y = T
 )
 # Additional marker
@@ -810,7 +775,7 @@ Below the results of the models:
  <strong>Cox Proportional Hazards Model</strong>
  
  <pre>
- cph(formula = Surv(ryear, rfs) ~ csize + cnode + grade, data = rott5, 
+ cph(formula = Surv(ryear, rfs) ~ csize + cnode + grade3, data = rott5, 
      x = T, y = T, surv = T)
  </pre>
  
@@ -834,7 +799,7 @@ Below the results of the models:
 <td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>D</i><sub>xy</sub> 0.348</td>
 </tr>
 <tr>
-<td style='min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'>Center 1.2691</td>
+<td style='min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'>Center 0.5196</td>
 <td style='min-width: 9em; border-right: 1px solid black; text-align: center;'>Pr(>χ<sup>2</sup>) 0.0000</td>
 <td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>g</i> 0.685</td>
 </tr>
@@ -891,7 +856,7 @@ Below the results of the models:
 <td style='min-width: 7em; text-align: right;'><0.0001</td>
 </tr>
 <tr>
-<td style='min-width: 7em; border-bottom: 2px solid grey; text-align: left;'>grade</td>
+<td style='min-width: 7em; border-bottom: 2px solid grey; text-align: left;'>grade3=3</td>
 <td style='min-width: 7em; border-bottom: 2px solid grey; text-align: right;'>  0.3748</td>
 <td style='min-width: 7em; border-bottom: 2px solid grey; text-align: right;'> 0.0713</td>
 <td style='min-width: 7em; border-bottom: 2px solid grey; text-align: right;'> 5.26</td>
@@ -905,7 +870,7 @@ Below the results of the models:
  <strong>Cox Proportional Hazards Model</strong>
  
  <pre>
- cph(formula = Surv(ryear, rfs) ~ csize + cnode + grade + rcs(pgr2, 
+ cph(formula = Surv(ryear, rfs) ~ csize + cnode + grade3 + rcs(pgr2, 
      c(0, 41, 486)), data = rott5, x = T, y = T, surv = T)
  </pre>
  
@@ -929,7 +894,7 @@ Below the results of the models:
 <td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>D</i><sub>xy</sub> 0.365</td>
 </tr>
 <tr>
-<td style='min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'>Center 0.9059</td>
+<td style='min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'>Center 0.2713</td>
 <td style='min-width: 9em; border-right: 1px solid black; text-align: center;'>Pr(>χ<sup>2</sup>) 0.0000</td>
 <td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>g</i> 0.727</td>
 </tr>
@@ -986,7 +951,7 @@ Below the results of the models:
 <td style='min-width: 7em; text-align: right;'><0.0001</td>
 </tr>
 <tr>
-<td style='min-width: 7em; text-align: left;'>grade</td>
+<td style='min-width: 7em; text-align: left;'>grade3=3</td>
 <td style='min-width: 7em; text-align: right;'>  0.3173</td>
 <td style='min-width: 7em; text-align: right;'> 0.0721</td>
 <td style='min-width: 7em; text-align: right;'> 4.40</td>
@@ -1120,7 +1085,7 @@ More details are in the paper and in the references.
 
 ``` r
 # Models 
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
   data = rott5, x = T, y = T
 )
 # Additional marker
@@ -1338,22 +1303,22 @@ NA
 NA
 </td>
 <td style="text-align:right;">
-0.66
+0.65
 </td>
 <td style="text-align:right;">
-0.63
+0.62
 </td>
 <td style="text-align:right;">
-0.69
+0.68
 </td>
 <td style="text-align:right;">
-0.69
+0.68
 </td>
 <td style="text-align:right;">
 0.65
 </td>
 <td style="text-align:right;">
-0.72
+0.71
 </td>
 </tr>
 <tr>
@@ -1397,19 +1362,19 @@ NA
 NA
 </td>
 <td style="text-align:right;">
-0.65
+0.64
 </td>
 <td style="text-align:right;">
-0.62
-</td>
-<td style="text-align:right;">
-0.68
+0.61
 </td>
 <td style="text-align:right;">
 0.67
 </td>
 <td style="text-align:right;">
-0.64
+0.66
+</td>
+<td style="text-align:right;">
+0.63
 </td>
 <td style="text-align:right;">
 0.70
@@ -1423,7 +1388,7 @@ external validation using the basic and extended model.
 
 ``` r
 # Models 
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
   data = rott5, x = T, y = T
 )
 # Additional marker
@@ -1641,28 +1606,28 @@ NA
 NA
 </td>
 <td style="text-align:right;">
-0.7
+0.69
 </td>
 <td style="text-align:right;">
-0.65
+0.64
 </td>
 <td style="text-align:right;">
-0.76
+0.75
 </td>
 <td style="text-align:right;">
-0.73
+0.72
 </td>
 <td style="text-align:right;">
-0.68
+0.67
 </td>
 <td style="text-align:right;">
-0.78
+0.77
 </td>
 </tr>
 </tbody>
 </table>
 
-Time-dependent AUC at 5 years was between 0.71 and 0.73 in the apparent,
+Time-dependent AUC at 5 years was between 0.71 and 0.72 in the apparent,
 internal and external validation for the basic and extended model.
 
 The discrimination ability may be evaluated over the time since
@@ -1675,7 +1640,7 @@ development data.
 
 ``` r
 # Models 
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
   data = rott5, x = T, y = T
 )
 # Additional marker
@@ -1854,7 +1819,7 @@ of the event at the fixed time point.
 
 ``` r
 # Models 
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
   data = rott5, x = T, y = T
 )
 # Additional marker
@@ -1956,29 +1921,29 @@ Upper .95
 OE ratio
 </td>
 <td style="text-align:right;">
-1.07
-</td>
-<td style="text-align:right;">
-0.95
-</td>
-<td style="text-align:right;">
-1.2
-</td>
-<td style="text-align:right;">
 1.04
 </td>
 <td style="text-align:right;">
-0.92
+0.93
 </td>
 <td style="text-align:right;">
-1.16
+1.17
+</td>
+<td style="text-align:right;">
+1.02
+</td>
+<td style="text-align:right;">
+0.9
+</td>
+<td style="text-align:right;">
+1.14
 </td>
 </tr>
 </tbody>
 </table>
 
-Observed and Expected ratio is 1.07 (95% CI: 0.95 - 1.20) for the basic
-model and 1.03 (95% CI: 0.92 - 1.16) for the extended model.
+Observed and Expected ratio is 1.04 (95% CI: 0.93 - 1.17) for the basic
+model and 1.02 (95% CI: 0.90 - 1.14) for the extended model.
 
 ##### 2.2.1.2 Mean calibration - global assessment
 
@@ -1989,7 +1954,7 @@ calibration-in-the-large.
 
 ``` r
 # Models 
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
   data = rott5, x = T, y = T
 )
 
@@ -2083,28 +2048,28 @@ Upper .95
 Calibration in-the-large
 </td>
 <td style="text-align:right;">
-0.09
-</td>
-<td style="text-align:right;">
--0.02
-</td>
-<td style="text-align:right;">
-0.21
-</td>
-<td style="text-align:right;">
 0.05
 </td>
 <td style="text-align:right;">
--0.07
+-0.06
 </td>
 <td style="text-align:right;">
 0.17
+</td>
+<td style="text-align:right;">
+0.02
+</td>
+<td style="text-align:right;">
+-0.09
+</td>
+<td style="text-align:right;">
+0.14
 </td>
 </tr>
 </tbody>
 </table>
 
-Calibration-in-the-large was 0.09 and 0.05 in the basic and extended
+Calibration-in-the-large was 0.05 and 0.02 in the basic and extended
 model, respectively.
 
 #### 2.2.2 Weak calibration
@@ -2116,7 +2081,7 @@ transformation of predicted probabilities in Cox model.
 
 ``` r
 # Models 
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
   data = rott5, x = T, y = T
 )
 # Additional marker
@@ -2222,22 +2187,22 @@ Upper .95
 Calibration intercept
 </td>
 <td style="text-align:right;">
-0.16
+0.12
 </td>
 <td style="text-align:right;">
-0.02
+-0.02
 </td>
 <td style="text-align:right;">
-0.29
+0.25
 </td>
 <td style="text-align:right;">
-0.15
+0.12
 </td>
 <td style="text-align:right;">
-0.01
+-0.02
 </td>
 <td style="text-align:right;">
-0.28
+0.25
 </td>
 </tr>
 <tr>
@@ -2245,30 +2210,30 @@ Calibration intercept
 Calibration slope
 </td>
 <td style="text-align:right;">
-1.08
+1.07
 </td>
 <td style="text-align:right;">
-0.84
+0.82
 </td>
 <td style="text-align:right;">
-1.31
+1.32
 </td>
 <td style="text-align:right;">
-1.17
+1.20
 </td>
 <td style="text-align:right;">
-0.94
+0.96
 </td>
 <td style="text-align:right;">
-1.40
+1.44
 </td>
 </tr>
 </tbody>
 </table>
 
-Calibration intercept (adjusted for the slope) was 0.15 and 0.14 for the
-basic and extended model , respectively.  
-Calibration slope was 1.08 and 1.17 for the basic and extended model,
+Calibration intercept (adjusted for the slope) was 0.12 for the basic
+and extended model.  
+Calibration slope was 1.07 and 1.20 for the basic and extended model,
 respectively.
 
 ##### 2.2.2.2 Weak calibration - global assessment
@@ -2280,7 +2245,7 @@ calibration slope.
 
 ``` r
 # Models 
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
   data = rott5, x = T, y = T
 )
 # Additional marker
@@ -2387,22 +2352,22 @@ Upper .95
 Calibration intercept
 </td>
 <td style="text-align:right;">
-0.09
-</td>
-<td style="text-align:right;">
--0.02
-</td>
-<td style="text-align:right;">
-0.21
-</td>
-<td style="text-align:right;">
 0.05
 </td>
 <td style="text-align:right;">
--0.07
+-0.06
 </td>
 <td style="text-align:right;">
 0.17
+</td>
+<td style="text-align:right;">
+0.02
+</td>
+<td style="text-align:right;">
+-0.09
+</td>
+<td style="text-align:right;">
+0.14
 </td>
 </tr>
 <tr>
@@ -2410,28 +2375,28 @@ Calibration intercept
 Calibration slope
 </td>
 <td style="text-align:right;">
-1.37
+1.35
 </td>
 <td style="text-align:right;">
-1.14
+1.11
 </td>
 <td style="text-align:right;">
-1.60
+1.59
 </td>
 <td style="text-align:right;">
-1.40
+1.41
 </td>
 <td style="text-align:right;">
-1.19
+1.18
 </td>
 <td style="text-align:right;">
-1.62
+1.64
 </td>
 </tr>
 </tbody>
 </table>
 
-Calibration slope was 1.37 and 1.40 for the basic and extended model,
+Calibration slope was 1.35 and 1.41 for the basic and extended model,
 respectively.
 
 #### 2.2.3 Moderate calibration
@@ -2471,7 +2436,7 @@ in-the-large and calibration. It shows:
 
 ``` r
 # Models  ---
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
   data = rott5, x = T, y = T
 )
 # Additional marker
@@ -2644,10 +2609,10 @@ E90
 External data
 </td>
 <td style="text-align:right;">
-0.04
+0.03
 </td>
 <td style="text-align:right;">
-0.05
+0.03
 </td>
 <td style="text-align:right;">
 0.06
@@ -2658,10 +2623,10 @@ External data
 External data + PGR
 </td>
 <td style="text-align:right;">
-0.03
+0.02
 </td>
 <td style="text-align:right;">
-0.02
+0.01
 </td>
 <td style="text-align:right;">
 0.07
@@ -2670,7 +2635,7 @@ External data + PGR
 </tbody>
 </table>
 
-In the validation, ICI at 5 years was 0.04 and 0.03 for the basic and
+In the validation, ICI at 5 years was 0.03 and 0.02 for the basic and
 extended model, respectively.
 
 ##### 2.2.3.2 Moderate calibration - global assessment
@@ -2685,7 +2650,7 @@ is possible based on Kaplan-Meier curves between risk groups.
 
 ``` r
 # Models 
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
   data = rott5, x = T, y = T
 )
 # Additional marker
@@ -2788,7 +2753,7 @@ Brier score.
 
 ``` r
 # Models 
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
   data = rott5, x = T, y = T
 )
 # Additional marker
@@ -3061,7 +3026,7 @@ NA
 0.22
 </td>
 <td style="text-align:right;">
-0.20
+0.21
 </td>
 <td style="text-align:right;">
 0.24
@@ -3117,13 +3082,13 @@ NA
 NA
 </td>
 <td style="text-align:right;">
-0.12
+0.11
 </td>
 <td style="text-align:right;">
-0.05
+0.04
 </td>
 <td style="text-align:right;">
-0.14
+0.13
 </td>
 <td style="text-align:right;">
 0.15
@@ -3132,7 +3097,7 @@ NA
 0.09
 </td>
 <td style="text-align:right;">
-0.18
+0.17
 </td>
 </tr>
 </tbody>
@@ -3212,7 +3177,7 @@ However, poor discrimination and calibration lead to lower net benefit.
 
 ``` r
 # Models 
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
   data = rott5, x = T, y = T
 )
 # Additional marker
