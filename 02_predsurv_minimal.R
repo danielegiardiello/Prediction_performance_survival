@@ -27,7 +27,8 @@ gbsg$csize <- cut(gbsg$size,
                   c("<=20", "20-50", ">50"))
 pgr99 <- 1347.85 
 gbsg$pgr2 <- pmin(gbsg$pgr, pgr99) # Winsorized value
-
+gbsg$grade3 <- as.factor(gbsg$grade)
+levels(gbsg$grade3) <- c("1-2", "1-2", "3")
 
 # Restricted cubic spline for PGR
 rcs3_pgr <- rcspline.eval(gbsg$pgr2, 
