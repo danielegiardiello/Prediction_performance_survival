@@ -733,7 +733,7 @@ kable(res_AUC) %>%
 
 ```
 
-Time-dependent AUC at 5 years was between 0.71 and 0.73 in the apparent, internal and external validation for the basic and extended model.
+Time-dependent AUC at 5 years was between 0.71 and 0.72 in the apparent, internal and external validation for the basic and extended model.
 
 The discrimination ability may be evaluated over the time since diagnosis through a plot showing the AUC over the time (years) in the development and validation set in the basic and extended model. Since the calculation of the AUC and the standard errors in the development set is computationally demanding, we showed only the plot in the validation data. However, we provided the R code (as a comment) for the development data.
 
@@ -971,7 +971,7 @@ kable(res_OE) %>%
 
 ```
 
-Observed and Expected ratio is 1.07 (95% CI: 0.95 - 1.20) for the basic model and 1.03 (95% CI: 0.92 - 1.16) for the extended model.
+Observed and Expected ratio is 1.04 (95% CI: 0.93 - 1.17) for the basic model and 1.02 (95% CI: 0.90 - 1.14) for the extended model.
 
 ##### 2.2.1.2  Mean calibration - global assessment 
 The mean calibration for the entire data is calculated using the approach proposed by Crowson et al. to estimate calibration-in-the-large and slope using Poisson regression.
@@ -1049,7 +1049,7 @@ kable(res_cal) %>%
                      "External" = 3, 
                      "External + PGR" = 3))
 ```
-Calibration-in-the-large was 0.09 and 0.05 in the basic and extended model, respectively. 
+Calibration-in-the-large was 0.05 and 0.02 in the basic and extended model, respectively. 
 
 #### 2.2.2 Weak calibration 
 ##### 2.2.2.1 Weak calibration - fixed time point
@@ -1146,8 +1146,8 @@ kable(res_cal) %>%
                      "External + PGR" = 3))
 
 ```
-Calibration intercept (adjusted for the slope) was 0.15 and 0.14 for the basic and extended model , respectively.  
-Calibration slope was 1.08 and 1.17 for the basic and extended model, respectively.
+Calibration intercept (adjusted for the slope) was 0.12 for the basic and extended model.  
+Calibration slope was 1.07 and 1.20 for the basic and extended model, respectively.
 
 ##### 2.2.2.2 Weak calibration - global assessment
 The calibration for the entire data is calculated using the approach proposed by Crowson et al. to estimate calibration-in-the-large and slope using Poisson regression.
@@ -1249,7 +1249,7 @@ kable(res_cal) %>%
                      "External + PGR" = 3))
 ```
 
-Calibration slope was 1.37 and 1.40 for the basic and extended model, respectively.
+Calibration slope was 1.35 and 1.41 for the basic and extended model, respectively.
 
 
 #### 2.2.3 Moderate calibration 
@@ -1438,7 +1438,7 @@ kable(res_numcal) %>%
 
 ```
 
-In the validation, ICI at 5 years was 0.04 and 0.03 for the basic and extended model, respectively.
+In the validation, ICI at 5 years was 0.03 and 0.02 for the basic and extended model, respectively.
 
 ##### 2.2.3.2 Moderate calibration - global assessment
 Please program it in R...
