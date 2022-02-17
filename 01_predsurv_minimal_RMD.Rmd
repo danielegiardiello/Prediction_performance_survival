@@ -15,7 +15,8 @@ output:
 # Knitr options
 knitr::opts_chunk$set(
   fig.retina = 3,
-  fig.path = "imgs/01_predsurv_simplified/"
+  fig.path = "imgs/01_predsurv_simplified/",
+  echo = FALSE
 )
 ```
 
@@ -117,7 +118,9 @@ In many studies, especially in medicine, the main outcome under assessment is th
 We develop the risk prediction model in the development data considering the first 5-year follow-up to minimize the violation of proportional hazard including size, node and grade. 
 We also administratively censored the validation data at 5 years.
 
-```{r, model_development, fig.align='center'}
+<details>
+  <summary>Click to expand code</summary>
+```{r, model_development, fig.align='center', echo=TRUE, eval=FALSE}
 # Libraries needed
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load(survival,
@@ -139,6 +142,10 @@ S0_t5 <- bh$surv[bh$time == 5]
 
 # The model with additional PGR marker
 efit1_pgr  <- update(efit1, . ~ . + pgr2 + pgr3)
+```
+</details>
+
+```{r, model_development, fig.align='center', eval=TRUE}
 ```
 
 The coefficients of the models indicated that higher size, higher number of positive lymph nodes and higher grade is more associate with poorer prognosis. The association of the progesterone marker and the outcome is non-linear as investigated previously.
@@ -184,7 +191,9 @@ The time horizon to calculate the time-dependent measures was set to 5 years.
 Values close to 1 indicate good discrimination ability, while values close to 0.5 indicated poor discrimination ability.  
 We used the time horizon at 4.99 and not 5 years since non-cases are considered patients at risk after the time horizon and we administratively censored at 5 years to minimize the violation of PH assumption.
 
-```{r, concordance,warning=FALSE}
+<details>
+  <summary>Click to expand code</summary>
+```{r, concordance,warning=FALSE, echo=TRUE, eval=FALSE}
 # Libraries needed
 if (!require("pacman")) install.packages("pacman")
 library(pacman)
@@ -211,7 +220,10 @@ Uno_C_gbsg5 <- concordance(Surv(ryear, rfs) ~ lp,
                            reverse = TRUE,
                            timewt = "n/G2")
 ```
+</details>
 
+```{r, concordance, fig.align='center', warning=FALSE, eval=TRUE}
+```
 
 ```{r, concordance_table,warning=FALSE,echo=FALSE}
 alpha <- 0.05
@@ -315,7 +327,9 @@ Other calibration measures are proposed in the literature. More details are prov
 We calculate the observed/ expected ratio (OE) at 5 years in the development and validation data.
 In the development data the OE should be (close to) 1.  
 
-```{r, OE, fig.align='center',warning=FALSE,message=FALSE}
+<details>
+  <summary>Click to expand code</summary>
+```{r, OE, fig.align='center', warning=FALSE, message=FALSE, echo=TRUE, eval=FALSE}
 # Libraries needed
 if (!require("pacman")) install.packages("pacman")
 library(pacman)
@@ -352,6 +366,10 @@ OE_summary <- c(
 
 OE_summary
 ```
+</details>
+```{r, OE, fig.align='center', warning=FALSE, message=FALSE, eval=TRUE}
+```
+
 Observed and expected ratio was 1.04. 
 
 
@@ -359,7 +377,9 @@ Observed and expected ratio was 1.04.
 Calibration plots of the external validation data with and without PGR are calculated and shown using restricted cubic splines.  
 The interpretation of the calibration plot was provided in the section 2.2 reported above, in the corresponding paper and in the literature provided in the paper and at the end of this document.
 
-```{r, cal_rcs, fig.align='center',warning=FALSE,message=FALSE}
+<details>
+  <summary>Click to expand code</summary>
+```{r, cal_rcs, fig.align='center',warning=FALSE,message=FALSE, echo=TRUE, eval=FALSE}
 if (!require("pacman")) install.packages("pacman")
 library(pacman)
 pacman::p_load(survival,
@@ -431,6 +451,10 @@ numsum_cph <- c(
 )
 numsum_cph
 ```
+ </details>
+
+```{r, cal_rcs, fig.align='center',warning=FALSE,message=FALSE, eval=TRUE}
+```
 
 Good calibration was estimated using calibration plot and calibration measures.
 
@@ -440,7 +464,9 @@ We calculate the Brier Score and the Index of Prediction Accuracy (IPA, the scal
 
 We calculate the overall performance measures: Brier score, Scaled Brier (IPA) and the corresponding confidence intervals.
 
-```{r, overall, warning=FALSE}
+<details>
+  <summary>Click to expand code</summary>
+```{r, overall, warning=FALSE, echo=TRUE, eval=FALSE}
 
 # Libraries needed
 if (!require("pacman")) install.packages("pacman")
@@ -499,6 +525,10 @@ boots_ls <- lapply(seq_len(B), function(b) {
 
 df_boots <- do.call(rbind.data.frame, boots_ls)
 
+```
+</details>
+
+```{r, overall, fig.align='center', warning=FALSE, eval=TRUE}
 ```
 
 
@@ -576,7 +606,9 @@ source(here::here("Functions/stdca.R"))
 ```
 
 
-```{r, dca, message=FALSE,warning=FALSE, fig.align='center'}
+<details>
+  <summary>Click to expand code</summary>
+```{r, dca, message=FALSE,warning=FALSE, fig.align='center',echo=TRUE, eval=FALSE}
 if (!require("pacman")) install.packages("pacman")
 library(pacman)
 pacman::p_load(survival,
@@ -639,6 +671,11 @@ legend("topright",
   bty = "n"
 )
 ```
+</details>
+
+```{r, dca, message=FALSE,warning=FALSE, fig.align='center', eval=TRUE}
+```
+
 
 The potential benefit at 23% threshold of the prediction model is 0.36. This means that the model might identify a net 36 patients out of 100 who will have recurrent breast cancer or die within 5 years of surgery and thus require adjuvant chemotherapy.
 
