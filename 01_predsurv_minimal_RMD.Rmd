@@ -696,6 +696,6 @@ Potential benefit can be also defined in terms of net reduction of avoidable int
 
 ## Reproducibility ticket
 ```{r repro_ticket, echo=TRUE}
-sessioninfo::session_info()
+sessionInfo()
 ```
 
