@@ -44,76 +44,6 @@ goals, if you have not them installed, please use install.packages(’‘)
 (e.g. install.packages(’survival’)) or use the user-friendly approach if
 you are using RStudio.
 
-``` r
-# Use pacman to check whether packages are installed, if not load
-if (!require("pacman")) install.packages("pacman")
-library(pacman)
-
-pacman::p_load(
-  survival,
-  rms,
-  pec,
-  riskRegression,
-  timeROC
-)
-
-options(show.signif.stars = FALSE)  # display statistical intelligence
-palette("Okabe-Ito")  # color-blind friendly  (needs R 4.0)
-
-# Development data
-# Recurrence free survival is the time until the earlier of
-#  recurrence or death. 
-rotterdam$ryear <- rotterdam$rtime/365.25  # time in years
-rotterdam$rfs <- with(rotterdam, pmax(recur, death)) #The variable rfs is a status indicator, 0=alive without relapse, 1= death or relapse.
-rotterdam$ryear[rotterdam$rfs == 1 & rotterdam$recur == 0 & rotterdam$death==1 & (rotterdam$rtime < rotterdam$dtime)] <- rotterdam$dtime[rotterdam$rfs == 1 & rotterdam$recur==0 & rotterdam$death==1 & (rotterdam$rtime < rotterdam$dtime)]/365.25  #Fix the outcome for 43 patients who have died but censored at time of recurrence which was less than death time. The actual death time should be used rather than the earlier censored recurrence time.
-
-# variables used in the analysis
-pgr99 <- quantile(rotterdam$pgr, .99) # there is a large outlier of 5000
-rotterdam$pgr2 <- pmin(rotterdam$pgr, pgr99) # Winsorized value
-rotterdam$csize <- rotterdam$size           # categorized size
-rotterdam$cnode <- cut(rotterdam$nodes, c(-1, 0, 3, 51),
-                       c("0", "1-3", ">3"))   # categorized node
-rotterdam$grade3 <- as.factor(rotterdam$grade)
-levels(rotterdam$grade3) <- c("1-2", "3")
-
-# Save in the data the restricted cubic spline term using Hmisc::rcspline.eval() package
-rcs3_pgr <- rcspline.eval(rotterdam$pgr2, knots = c(0, 41, 486))
-attr(rcs3_pgr, "dim") <- NULL
-attr(rcs3_pgr, "knots") <- NULL
-rotterdam$pgr3 <- rcs3_pgr
-
-# Validation data
-gbsg$ryear <- gbsg$rfstime/365.25
-gbsg$rfs   <- gbsg$status           # the GBSG data contains RFS
-gbsg$cnode <- cut(gbsg$nodes, c(-1,0, 3, 51),
-                       c("0", "1-3", ">3"))   # categorized node
-gbsg$csize <- cut(gbsg$size,  c(-1, 20, 50, 500), #categorized size
-                  c("<=20", "20-50", ">50"))
-gbsg$pgr2 <- pmin(gbsg$pgr, pgr99) # Winsorized value
-gbsg$grade3 <- as.factor(gbsg$grade)
-levels(gbsg$grade3) <- c("1-2", "1-2", "3")
-
-# Restricted cubic spline for PGR
-rcs3_pgr <- rcspline.eval(gbsg$pgr2, knots = c(0, 41, 486))
-attr(rcs3_pgr, "dim") <- NULL
-attr(rcs3_pgr, "knots") <- NULL
-gbsg$pgr3 <- rcs3_pgr
-
-
-# Much of the analysis will focus on the first 5 years: create
-#  data sets that are censored at 5
-temp <- survSplit(Surv(ryear, rfs) ~ ., data = rotterdam, cut=5,
-                  episode="epoch")
-rott5 <- subset(temp, epoch==1)  # only the first 5 years
-temp <- survSplit(Surv(ryear, rfs) ~ ., data = gbsg, cut=5,
-                  episode ="epoch")
-gbsg5 <- subset(temp, epoch==1)
-
-# Relevel
-rott5$cnode <- relevel(rotterdam$cnode, "0")
-gbsg5$cnode <- relevel(gbsg$cnode, "0")
-```
-
 We loaded the development (rotterdam) and the validation data (gbsg)
 from survival package. The Rotterdam breast cancer data was used to
 predict the risk of recurrence or death using size, stage and tumor size
@@ -147,6 +77,11 @@ the first 5-year follow-up to minimize the violation of proportional
 hazard including size, node and grade. We also administratively censored
 the validation data at 5 years.
 
+<details>
+<summary>
+Click to expand code
+</summary>
+
 ``` r
 # Libraries needed
 if (!require("pacman")) install.packages("pacman")
@@ -160,7 +95,18 @@ efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
   x = T, 
   y = T)
 efit1
+
+# Baseline at 5 years
+bh <- basehaz(efit1, centered = FALSE) # uncentered
+bh$surv <- exp(-bh$hazard) # baseline survival
+S0_t5 <- bh$surv[bh$time == 5] 
+# NOTE: this can be used to calculate S(t = 5) = S0(t = 5)**exp(X*beta)
+
+# The model with additional PGR marker
+efit1_pgr  <- update(efit1, . ~ . + pgr2 + pgr3)
 ```
+
+</details>
 
     ## Call:
     ## coxph(formula = Surv(ryear, rfs) ~ csize + cnode + grade3, data = rott5, 
@@ -175,17 +121,6 @@ efit1
     ## 
     ## Likelihood ratio test=483.6  on 5 df, p=< 2.2e-16
     ## n= 2982, number of events= 1275
-
-``` r
-# Baseline at 5 years
-bh <- basehaz(efit1, centered = FALSE) # uncentered
-bh$surv <- exp(-bh$hazard) # baseline survival
-S0_t5 <- bh$surv[bh$time == 5] 
-# NOTE: this can be used to calculate S(t = 5) = S0(t = 5)**exp(X*beta)
-
-# The model with additional PGR marker
-efit1_pgr  <- update(efit1, . ~ . + pgr2 + pgr3)
-```
 
 The coefficients of the models indicated that higher size, higher number
 of positive lymph nodes and higher grade is more associate with poorer
@@ -270,6 +205,11 @@ considered patients at risk after the time horizon and we
 administratively censored at 5 years to minimize the violation of PH
 assumption.
 
+<details>
+<summary>
+Click to expand code
+</summary>
+
 ``` r
 # Libraries needed
 if (!require("pacman")) install.packages("pacman")
@@ -297,6 +237,8 @@ Uno_C_gbsg5 <- concordance(Surv(ryear, rfs) ~ lp,
                            reverse = TRUE,
                            timewt = "n/G2")
 ```
+
+</details>
 
     ##                              Estimate Lower .95 Upper .95
     ## Harrell C - Validation data      0.65      0.62      0.68
@@ -359,6 +301,11 @@ We calculate the observed/ expected ratio (OE) at 5 years in the
 development and validation data. In the development data the OE should
 be (close to) 1.
 
+<details>
+<summary>
+Click to expand code
+</summary>
+
 ``` r
 # Libraries needed
 if (!require("pacman")) install.packages("pacman")
@@ -397,6 +344,8 @@ OE_summary <- c(
 OE_summary
 ```
 
+</details>
+
     ##        OE     2.5 %    97.5 % 
     ## 1.0444489 0.9299645 1.1730270
 
@@ -409,6 +358,11 @@ are calculated and shown using restricted cubic splines.
 The interpretation of the calibration plot was provided in the section
 2.2 reported above, in the corresponding paper and in the literature
 provided in the paper and at the end of this document.
+
+<details>
+<summary>
+Click to expand code
+</summary>
 
 ``` r
 if (!require("pacman")) install.packages("pacman")
@@ -471,11 +425,7 @@ lines(dat_cal$pred,
       lty = 2, 
       lwd = 2)
 abline(0, 1, lwd = 2, lty = 2, col = "red")
-```
 
-<img src="imgs/01_predsurv_simplified/cal_rcs-1.png" width="672" style="display: block; margin: auto;" />
-
-``` r
 # Numerical measures
 absdiff_cph <- abs(dat_cal$pred - dat_cal$obs)
 
@@ -486,6 +436,10 @@ numsum_cph <- c(
 )
 numsum_cph
 ```
+
+</details>
+
+<img src="imgs/01_predsurv_simplified/cal_rcs-1.png" width="672" style="display: block; margin: auto;" />
 
     ##        ICI        E50        E90       Emax 
     ## 0.02724664 0.02973399 0.06101062 0.06912009
@@ -500,6 +454,11 @@ the scaled Brier) as a overall performance measure.
 
 We calculate the overall performance measures: Brier score, Scaled Brier
 (IPA) and the corresponding confidence intervals.
+
+<details>
+<summary>
+Click to expand code
+</summary>
 
 ``` r
 # Libraries needed
@@ -560,9 +519,11 @@ boots_ls <- lapply(seq_len(B), function(b) {
 df_boots <- do.call(rbind.data.frame, boots_ls)
 ```
 
+</details>
+
     ##                                Estimate Lower .95  Upper .95
     ## Brier - Validation data            0.22       0.21      0.24
-    ## Scaled Brier - Validation data     0.10       0.03      0.16
+    ## Scaled Brier - Validation data     0.10       0.04      0.15
 
 Brier and scaled Brier score were 0.22 and 0.11, respectively.
 
@@ -634,6 +595,11 @@ Given some thresholds, the model/strategy with higher net benefit
 represents the one that potentially improves clinical decision making.
 However, poor discrimination and calibration lead to lower net benefit.
 
+<details>
+<summary>
+Click to expand code
+</summary>
+
 ``` r
 if (!require("pacman")) install.packages("pacman")
 library(pacman)
@@ -655,11 +621,7 @@ dca_gbsg5 <- stdca(
   ymin = -0.01, 
   graph = FALSE
 )
-```
 
-    ## [1] "pred: No observations with risk greater than 84%, and therefore net benefit not calculable in this range."
-
-``` r
 # Decision curves plot
 par(xaxs = "i", yaxs = "i", las = 1)
 plot(dca_gbsg5$net.benefit$threshold,
@@ -702,6 +664,10 @@ legend("topright",
 )
 ```
 
+</details>
+
+    ## [1] "pred: No observations with risk greater than 84%, and therefore net benefit not calculable in this range."
+
 <img src="imgs/01_predsurv_simplified/dca-1.png" width="672" style="display: block; margin: auto;" />
 
 The potential benefit at 23% threshold of the prediction model is 0.36.
@@ -743,7 +709,7 @@ sessioninfo::session_info()
     ##  collate  English_United States.1252
     ##  ctype    English_United States.1252
     ##  tz       Europe/Berlin
-    ##  date     2021-12-22
+    ##  date     2022-02-17
     ##  pandoc   2.14.0.3 @ C:/Program Files/RStudio/bin/pandoc/ (via rmarkdown)
     ## 
     ## - Packages -------------------------------------------------------------------
