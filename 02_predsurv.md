@@ -50,21 +50,6 @@ have not them installed, please use install.packages(’‘)
 (e.g. install.packages(’survival’)) or use the user-friendly approach if
 you are using RStudio.
 
-``` r
-# Use pacman to check whether packages are installed, if not load
-if (!require("pacman")) install.packages("pacman")
-library(pacman)
-pacman::p_load(survival,
-               Hmisc,
-               pec,
-               timeROC,
-               rms,
-               knitr,
-               kableExtra,
-               tidyverse,
-               gtsummary)
-```
-
 ### Data preparation
 
 Outcome and predictors in the new data must be coded as provided in the
@@ -77,36 +62,6 @@ proportional hazards was detected for some predictors and the
 development data was administratively censored at 5 years. For this
 reason, we also administratively censor patients in the new (validation)
 data at 5 years.
-
-``` r
-# Validation data
-gbsg$ryear <- gbsg$rfstime/365.25
-gbsg$rfs   <- gbsg$status           # the GBSG data contains RFS
-gbsg$cnode <- cut(gbsg$nodes, c(-1,0, 3, 51),
-                       c("0", "1-3", ">3"))   # categorized node
-gbsg$csize <- cut(gbsg$size,  c(-1, 20, 50, 500), #categorized size
-                  c("<=20", "20-50", ">50"))
-pgr99 <- 1347.85 
-gbsg$pgr2 <- pmin(gbsg$pgr, pgr99) # Winsorized value
-gbsg$grade3 <- as.factor(gbsg$grade)
-levels(gbsg$grade3) <- c("1-2", "1-2", "3")
-
-# Restricted cubic spline for PGR
-rcs3_pgr <- rcspline.eval(gbsg$pgr2, knots = c(0, 41, 486))
-attr(rcs3_pgr, "dim") <- NULL
-attr(rcs3_pgr, "knots") <- NULL
-gbsg$pgr3 <- rcs3_pgr
-
-
-# Much of the analysis will focus on the first 5 years: create
-#  data sets that are censored at 5
-temp <- survSplit(Surv(ryear, rfs) ~ ., data = gbsg, cut=5,
-                  episode ="epoch")
-gbsg5 <- subset(temp, epoch==1)
-
-# Relevel
-gbsg5$cnode <- relevel(gbsg$cnode, "1-3")
-```
 
 ## Goal 1: Assessing performance of a developed survival model in a new data
 
@@ -178,37 +133,6 @@ easy algebraic steps.
 This part must be run. Then, the user can also focus on one prediction
 performance is interested in (e.g. discrimination).
 
-``` r
-### Absolute risk  at 5 yrs - Basic model ---------------
-# Baseline survival at 5 years - basic model
-S0.5yr <- .8604385 
-# Design matrix of predictors
-des_matr <- as.data.frame(model.matrix(~ csize + cnode + grade, data = gbsg5))
-des_matr$`(Intercept)` <- NULL
-# Coefficients
-coef <- c(0.3922098, 0.6656456, -0.3538533, 0.6936283,  0.3766110)
-# Prognostic index (PI)
-gbsg5$PI <- as.vector(as.matrix(des_matr) %*% cbind(coef))
-# Absolute risk at 5 years (1 - S(t), 1 - survival at time t)
-gbsg5$pred5 <-  as.vector(1 - S0.5yr**exp(gbsg5$PI))
-
-
-### Absolute risk  at 5 yrs - Extended model with PGR ---------------
-# Baseline survival at 5 years - basic model
-S0.5yr_pgr <- .8084657  
-# Design matrix of predictors
-des_matr <- as.data.frame(model.matrix(~ csize + cnode + grade + 
-                                        I(pgr2) + I(pgr3), data = gbsg5))
-des_matr$`(Intercept)` <- NULL
-# Coefficients
-coef <- c(0.37096136, 0.64380754, -0.37445717, 
-          0.66988919, 0.32169223, -0.00293231, 0.01281538)
-# Prognostic index (PI)
-gbsg5$PI_pgr <- as.vector(as.matrix(des_matr) %*% cbind(coef))
-# Absolute risk at 5 years (1 - S(t), 1 - survival at time t)
-gbsg5$pred5_pgr <-  as.vector(1 - S0.5yr_pgr**exp(gbsg5$PI_pgr))
-```
-
 ### 1.2 Discrimination measures
 
 Discrimination is the ability to differentiate between subjects who have
@@ -252,6 +176,11 @@ The time horizon to calculate the time-dependent measures was set to 5
 years. Values close to 1 indicate good discrimination ability, while
 values close to 0.5 indicated poor discrimination ability.
 
+<details>
+<summary>
+Click to expand code
+</summary>
+
 ``` r
 if (!require("pacman")) install.packages("pacman")
 library(pacman)
@@ -280,6 +209,7 @@ Uno_C_gbsg5_pgr <- concordance(Surv(ryear, rfs) ~ PI_pgr,
                            timewt = "n/G2")
 ```
 
+</details>
 <table class="table table-striped" style="margin-left: auto; margin-right: auto;">
 <thead>
 <tr>
@@ -380,6 +310,11 @@ Uno C - Validation data
 Concordance was between 0.64 and 0.68. The extended model slightly
 improved discrimination ability compared to the basic model.
 
+<details>
+<summary>
+Click to expand code
+</summary>
+
 ``` r
 if (!require("pacman")) install.packages("pacman")
 library(pacman)
@@ -409,6 +344,7 @@ Uno_gbsg5_pgr <-
 # In that case, please use bootstrap percentile to calculate confidence intervals.
 ```
 
+</details>
 <table class="table table-striped" style="margin-left: auto; margin-right: auto;">
 <thead>
 <tr>
@@ -545,6 +481,11 @@ estimated using the complementary of the Kaplan-Meier curve at the fixed
 time point. The expected is estimated using the average predicted risk
 of the event at the fixed time point.
 
+<details>
+<summary>
+Click to expand code
+</summary>
+
 ``` r
 if (!require("pacman")) install.packages("pacman")
 library(pacman)
@@ -564,6 +505,7 @@ OE <- (1 - obj$surv) / mean(gbsg5$pred5)
 OE_pgr <- (1 - obj$surv) / mean(gbsg5$pred5_pgr)
 ```
 
+</details>
 <table class="table table-striped" style="margin-left: auto; margin-right: auto;">
 <thead>
 <tr>
@@ -646,6 +588,11 @@ model and 1.03 (95% CI: 0.92 - 1.16) for the extended model.
 Weak calibration using intercept and slope as the coefficient of cloglog
 transformation of predicted probabilities in Cox model.
 
+<details>
+<summary>
+Click to expand code
+</summary>
+
 ``` r
 if (!require("pacman")) install.packages("pacman")
 library(pacman)
@@ -690,6 +637,7 @@ log.H.upper_pgr <- log(-log(tail(sf_pgr$upper,1)))
 int.se_pgr <- (log.H_pgr-log.H.upper_pgr)/qnorm(.975)
 ```
 
+</details>
 <table class="table table-striped" style="margin-left: auto; margin-right: auto;">
 <thead>
 <tr>
@@ -825,6 +773,11 @@ in-the-large and calibration. It shows:
     difference between observed and predicted probabilities of the
     outcome at time *t*;
 
+<details>
+<summary>
+Click to expand code
+</summary>
+
 ``` r
 if (!require("pacman")) install.packages("pacman")
 library(pacman)
@@ -920,11 +873,8 @@ lines(dat_cal$pred,
       lwd = 2)
 abline(0, 1, lwd = 2, lty = 2, col = "red")
 title("Basic model - validation data ")
-```
 
-<img src="imgs/02_predsurv/cal_rcs_metrics-1.png" width="672" style="display: block; margin: auto;" />
 
-``` r
 # Flexible calibration curve - extended model
 dat_cal <- dat_cal[order(dat_cal$pred_pgr), ]
 par(xaxs = "i", yaxs = "i", las = 1)
@@ -952,11 +902,7 @@ lines(dat_cal$pred_pgr,
       lwd = 2)
 abline(0, 1, lwd = 2, lty = 2, col = "red")
 title("Extended model - validation data ")
-```
 
-<img src="imgs/02_predsurv/cal_rcs_metrics-2.png" width="672" style="display: block; margin: auto;" />
-
-``` r
 # Numerical measures ---------------
 # Basic model
 absdiff_cph <- abs(dat_cal$pred - dat_cal$obs)
@@ -974,6 +920,10 @@ numsum_cph_pgr <- c(
   setNames(quantile(absdiff_cph_pgr, c(0.5, 0.9)), c("E50", "E90"))
 )
 ```
+
+</details>
+
+<img src="imgs/02_predsurv/cal_rcs_metrics-1.png" width="672" style="display: block; margin: auto;" /><img src="imgs/02_predsurv/cal_rcs_metrics-2.png" width="672" style="display: block; margin: auto;" />
 
 <table class="table table-striped" style="margin-left: auto; margin-right: auto;">
 <thead>
@@ -1032,6 +982,11 @@ When only coefficients of the development model is available and the
 baseline survival is not provided, only visual assessment of calibration
 is possible based on Kaplan-Meier curves between risk groups.
 
+<details>
+<summary>
+Click to expand code
+</summary>
+
 ``` r
 # PI by groups
 gbsg5$group1 <- cut(gbsg5$PI, 
@@ -1052,11 +1007,7 @@ plot(survfit(Surv(ryear, rfs) ~ group1, data = gbsg5),
   ylab = "Survival probability"
 )
 title("A - basic model", adj = 0)
-```
 
-<img src="imgs/02_predsurv/km-1.png" width="672" />
-
-``` r
 # Extended model
 gbsg5$group1_pgr <- cut(gbsg5$PI_pgr, 
                     breaks = quantile(gbsg5$PI_pgr, 
@@ -1079,7 +1030,9 @@ plot(survfit(Surv(ryear, rfs) ~ group1_pgr,
 title("B - extended model", adj = 0)
 ```
 
-<img src="imgs/02_predsurv/km-2.png" width="672" />
+</details>
+
+<img src="imgs/02_predsurv/km-1.png" width="672" /><img src="imgs/02_predsurv/km-2.png" width="672" />
 
 ### 1.4 Overall performance measures
 
@@ -1090,6 +1043,11 @@ Some overall performance measures are proposed using survival data:
 
 -   Scaled Brier score (known as Index of prediction accuracy): it
     improves interpretability by scaling the Brier Score.
+
+<details>
+<summary>
+Click to expand code
+</summary>
 
 ``` r
 brier_gbsg5 <-
@@ -1142,6 +1100,7 @@ boots_ls <- lapply(seq_len(B), function(b) {
 df_boots <- do.call(rbind.data.frame, boots_ls)
 ```
 
+</details>
 <table class="table table-striped" style="margin-left: auto; margin-right: auto;">
 <thead>
 <tr>
@@ -1311,6 +1270,11 @@ Given some thresholds, the model/strategy with higher net benefit
 represents the one that potentially improves clinical decision making.
 However, poor discrimination and calibration lead to lower net benefit.
 
+<details>
+<summary>
+Click to expand code
+</summary>
+
 ``` r
 # External data
 # Run decision curve analysis
@@ -1323,22 +1287,13 @@ dca_gbsg5 <- stdca(
   timepoint = 5, predictors = "pred5", xstop = 1.0,
   ymin = -0.01, graph = FALSE
 )
-```
-
-    ## [1] "pred5: No observations with risk greater than 84%, and therefore net benefit not calculable in this range."
-
-``` r
 # Model with PGR
 dca_gbsg5_pgr <- stdca(
   data = gbsg5, outcome = "status", ttoutcome = "ryear",
   timepoint = 5, predictors = "pred5_pgr", xstop = 1,
   ymin = -0.01, graph = FALSE
 )
-```
 
-    ## [1] "pred5_pgr: No observations with risk greater than 88%, and therefore net benefit not calculable in this range."
-
-``` r
 # Decision curves plot
 par(xaxs = "i", yaxs = "i", las = 1)
 plot(dca_gbsg5$net.benefit$threshold,
@@ -1383,6 +1338,12 @@ legend("topright",
 title("B External data", adj = 0, cex = 1.5)
 ```
 
+</details>
+
+    ## [1] "pred5: No observations with risk greater than 84%, and therefore net benefit not calculable in this range."
+
+    ## [1] "pred5_pgr: No observations with risk greater than 88%, and therefore net benefit not calculable in this range."
+
 <img src="imgs/02_predsurv/dca-1.png" width="672" style="display: block; margin: auto;" />
 
 The potential net benefit at 23% threshold of the prediction model was
@@ -1418,7 +1379,7 @@ sessioninfo::session_info()
     ##  collate  English_United States.1252
     ##  ctype    English_United States.1252
     ##  tz       Europe/Berlin
-    ##  date     2021-12-22
+    ##  date     2022-02-17
     ##  pandoc   2.14.0.3 @ C:/Program Files/RStudio/bin/pandoc/ (via rmarkdown)
     ## 
     ## - Packages -------------------------------------------------------------------

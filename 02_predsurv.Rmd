@@ -12,7 +12,8 @@ output:
 # Knitr options
 knitr::opts_chunk$set(
   fig.retina = 3,
-  fig.path = "imgs/02_predsurv/"
+  fig.path = "imgs/02_predsurv/",
+  echo = FALSE
 )
 ```
 
@@ -181,7 +182,9 @@ More explanations and details are in the paper.
 The time horizon to calculate the time-dependent measures was set to 5 years.
 Values close to 1 indicate good discrimination ability, while values close to 0.5 indicated poor discrimination ability.  
 
-```{r, concordance ,message=FALSE, warning=FALSE}
+<details>
+  <summary>Click to expand code</summary>
+```{r, concordance ,message=FALSE, warning=FALSE, echo=TRUE, eval=FALSE}
 if (!require("pacman")) install.packages("pacman")
 library(pacman)
 pacman::p_load(survival,
@@ -207,6 +210,10 @@ Uno_C_gbsg5_pgr <- concordance(Surv(ryear, rfs) ~ PI_pgr,
                            gbsg5, 
                            reverse = TRUE,
                            timewt = "n/G2")
+```
+</details>
+
+```{r, concordance ,message=FALSE, warning=FALSE, eval=TRUE}
 ```
 
 ```{r, concordance_table,warning=FALSE,echo=FALSE}
@@ -255,8 +262,9 @@ kable(res_C) %>%
 Concordance was between 0.64 and 0.68. The extended model slightly improved
 discrimination ability compared to the basic model.  
 
-
-```{r, AUC ,message=FALSE, warning=FALSE}
+<details>
+  <summary>Click to expand code</summary>
+```{r, AUC ,message=FALSE, warning=FALSE, echo=TRUE, eval=FALSE}
 if (!require("pacman")) install.packages("pacman")
 library(pacman)
 pacman::p_load(survival,
@@ -283,6 +291,10 @@ Uno_gbsg5_pgr <-
   )
 # NOTE: if you have a lot of data n > 2000, standard error computation may be really long.
 # In that case, please use bootstrap percentile to calculate confidence intervals.
+```
+</details>
+
+```{r, AUC ,message=FALSE, warning=FALSE, eval=TRUE}
 ```
 
 ```{r, AUC_table,echo=FALSE}
@@ -352,7 +364,9 @@ The mean calibration at fixed time point (e.g. at 5 years) can be estimated usin
 The observed is estimated using the complementary of the Kaplan-Meier curve at the fixed time point.
 The expected is estimated using the average predicted risk of the event at the fixed time point.
 
-```{r, mean_cal_t, message=FALSE, warning=FALSE}
+<details>
+  <summary>Click to expand code</summary>
+```{r, mean_cal_t, message=FALSE, warning=FALSE, echo=TRUE, eval=FALSE}
 if (!require("pacman")) install.packages("pacman")
 library(pacman)
 pacman::p_load(survival,
@@ -370,6 +384,11 @@ obj <- summary(survfit(Surv(ryear, rfs) ~ 1,
 OE <- (1 - obj$surv) / mean(gbsg5$pred5)
 OE_pgr <- (1 - obj$surv) / mean(gbsg5$pred5_pgr)
 ```
+</details>
+
+```{r, mean_cal_t, message=FALSE, warning=FALSE, eval=TRUE}
+```
+
 
 ```{r, res_OE, message=FALSE, warning=FALSE, echo=FALSE}
 alpha <- 0.05
@@ -403,8 +422,11 @@ kable(res_OE) %>%
 Observed and Expected ratio is 1.07 (95% CI: 0.95 - 1.20) for the basic model and 1.03 (95% CI: 0.92 - 1.16) for the extended model.
 
 #### 1.3.2 Weak calibration - fixed time point
-Weak calibration using intercept and slope as the coefficient of cloglog transformation of predicted probabilities in Cox model.  
-```{r, weak_cal_t, echo=TRUE,message=FALSE,warning=FALSE}
+Weak calibration using intercept and slope as the coefficient of cloglog transformation of predicted probabilities in Cox model. 
+
+<details>
+  <summary>Click to expand code</summary>
+```{r, weak_cal_t, echo=TRUE,message=FALSE,warning=FALSE, echo=TRUE, eval=FALSE}
 if (!require("pacman")) install.packages("pacman")
 library(pacman)
 pacman::p_load(survival,
@@ -446,8 +468,12 @@ log.H_pgr <- log(-log(tail(sf_pgr$surv[sf_pgr$time <= horizon], 1)))
 int_pgr <- log.H_pgr - mean(slope_pgr*lp.val_pgr)
 log.H.upper_pgr <- log(-log(tail(sf_pgr$upper,1)))
 int.se_pgr <- (log.H_pgr-log.H.upper_pgr)/qnorm(.975)
-
 ```
+</details>
+
+```{r, weak_cal_t, message=FALSE, warning=FALSE, eval=TRUE}
+```
+
 
 ```{r, res_cal, message=FALSE, warning=FALSE, echo=FALSE}
 alpha <- 0.05
@@ -484,6 +510,8 @@ kable(res_cal) %>%
                      "External" = 3, 
                      "External + PGR" = 3))
 ```
+
+
 Calibration intercept (adjusted for the slope) was 0.15 and 0.14 for the basic and extended model , respectively.  
 Calibration slope was 1.08 and 1.17 for the basic and extended model, respectively.
 
@@ -506,8 +534,9 @@ in which observations are weighted by the empirical density function of the pred
 
 + E50 and E90 denote the median, the 90th percentile of the absolute difference between observed and predicted probabilities of the outcome at time *t*;  
 
-
-```{r, cal_rcs_metrics, fig.align='center'}
+<details>
+  <summary>Click to expand code</summary>
+```{r, cal_rcs_metrics, fig.align='center', echo=TRUE, eval=FALSE}
 if (!require("pacman")) install.packages("pacman")
 library(pacman)
 pacman::p_load(survival,
@@ -650,6 +679,10 @@ numsum_cph_pgr <- c(
 )
 
 ```
+</details>
+ 
+```{r, cal_rcs_metrics, fig.align='center', eval=TRUE}
+```
 
 ```{r, res_numcal, message=FALSE,warning=FALSE, fig.align='center',include=TRUE, echo=FALSE}
 res_numcal <- matrix(c(numsum_cph,
@@ -673,7 +706,9 @@ In the validation, ICI at 5 years was 0.04 and 0.03 for the basic and extended m
 #### 1.3.4 Calibration when only coefficients of the model are available
 When only coefficients of the development model is available and the baseline survival is not provided, only visual assessment of calibration is possible based on Kaplan-Meier curves between risk groups.
 
-```{r, km,message=FALSE, warning=FALSE}
+<details>
+  <summary>Click to expand code</summary>
+```{r, km,message=FALSE, warning=FALSE, echo=TRUE, eval=FALSE}
 
 # PI by groups
 gbsg5$group1 <- cut(gbsg5$PI, 
@@ -716,7 +751,10 @@ plot(survfit(Surv(ryear, rfs) ~ group1_pgr,
 )
 title("B - extended model", adj = 0)
 ```
+</details>
 
+```{r, km,message=FALSE, warning=FALSE, eval=TRUE}
+```
 
 ### 1.4 Overall performance measures
 Some overall performance measures are proposed using survival data:
@@ -730,8 +768,9 @@ Some overall performance measures are proposed using survival data:
 source(here::here("Functions/brier_score.R"))
 ```
 
-
-```{r, overall, warning=FALSE, message=FALSE}
+<details>
+  <summary>Click to expand code</summary>
+```{r, overall, warning=FALSE, message=FALSE, echo=TRUE, eval=FALSE}
 brier_gbsg5 <-
   brier_score(
     tfup = gbsg5$ryear, status = gbsg5$rfs,
@@ -780,6 +819,10 @@ boots_ls <- lapply(seq_len(B), function(b) {
 })
 
 df_boots <- do.call(rbind.data.frame, boots_ls)
+```
+</details>
+
+```{r, overall, warning=FALSE, message=FALSE, eval=TRUE}
 ```
 
 ```{r, overall_table, echo=FALSE}
@@ -892,8 +935,10 @@ However, poor discrimination and calibration lead to lower net benefit.
 source(here::here('Functions/stdca.R'))
 ```
 
-
-```{r, dca, message=FALSE,warning=FALSE, fig.align='center'}
+<details>
+  <summary>Click to expand code</summary>
+  
+```{r, dca, message=FALSE,warning=FALSE, fig.align='center', echo=TRUE, eval=FALSE}
 # External data
 # Run decision curve analysis
 
@@ -955,7 +1000,10 @@ legend("topright",
 )
 title("B External data", adj = 0, cex = 1.5)
 ```
-
+ </details>
+ 
+```{r, dca, message=FALSE,warning=FALSE, fig.align='center', eval=TRUE}
+```
 
 The potential net benefit at 23% threshold of the prediction model was 0.27, 0.28 for the basic and extended model in the development data, respectively.
 This means that the model might identify approximately 27/28 patients out of 100 who may develop recurrence or may die within 5 years since diagnosis and thus adjuvant chemotherapy may help to reduce recurrence or mortality.
