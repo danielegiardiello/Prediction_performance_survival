@@ -1020,6 +1020,6 @@ where *NB*<sub>model</sub> is the net benefit of the prediction model,
 ## Reproducibility ticket
 
 ```{r repro_ticket, echo=TRUE}
-sessioninfo::session_info()
+sessionInfo()
 ```
   
