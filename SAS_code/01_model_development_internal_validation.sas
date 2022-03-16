@@ -1,1401 +1,1138 @@
 *******************************************************************************;
-* Program:			STRATOS Cox model development and internal validation.sas *;
-* Author:			David McLernon        					 				  *;
-* Date: 			26 FEB 2021          					 				  *;
-* Purpose: 			Model development and internal validation				  *;
-*					Bootstrap to examine optimism  			 				  *;
-* Note:				This programme is not currently automated. It is coded	  *;
-*					based on the case study in the article. Therefore, 		  *;
-*					adapting this code for your own study will require careful*;
-*					editing according to your data							  *;
+* Program:			STRATOS Model development and internal validation.sas 	   ;
+* Author:			David McLernon        					 				   ;
+* Date: 			24th Jan 2022          					 				   ;
+* Purpose: 			This is SAS code for the STRATOS paper on validation of	   ;
+*					survival risk prediction models. This programme covers     ;
+*					model development internal validation 					   ;
+* Note:				This programme is not currently automated. It is coded	   ;
+*					based on the case study in the article. Therefore, 		   ;
+*					adapting this code for your own study will require careful ;
+*					editing according to your data							   ;
+*					Readers can skip the sections that create "nice" graphs,   ;
+*					these all have surrounding comments of  "Optional Block"   ;
+*					and "End Optional Block". Though an essential skill for    ;
+*					published papers, such maniuplation is outside the primary ;
+*					scope of this work.										   ;
+* Data:				The Rotterdam and GBSG data sets can be found on the web   ;
+*					in various locations and various formats.  For this 	   ;
+*					exercise we have used the versions found in the R package. ;
+*					(Older web sites have a habit of disappearing and we 	   ;
+*					expect R to be more stable). In R we used 				   ;
+*				   library(survival)									       ;
+*			       write.csv(rotterdam, row.names=FALSE, file="rotterdam.csv") ;
+*			       write.csv(gbsg,      row.names=FALSE, file="gbsg.csv")	   ;
+*				       to create the csv files.								   ;
 *******************************************************************************;	
+options ls=80 mprint mlogic nonumber nodate source2 spool;
 
 * NB Edit folder locations to your own;
-OPTIONS MPRINT MLOGIC NONUMBER NODATE SOURCE2 MAXMEMQUERY=MAX /*(fmtsearch = (formats)*/; 
-LIBNAME STRATOS 'C:\Users\sme544\Documents\STRATOS';
+* i call libname stratos but you can change to whatever name and location you 
+* wish - you may not even wish to use a libname;
+libname stratos 'c:\users\sme544\documents\stratos';
 
-*macros required;
-%INCLUDE 'C:\Users\sme544\Documents\STRATOS\RCSPLINE macro.SAS';
-%INCLUDE 'C:\Users\sme544\Documents\STRATOS\STDCA.SAS';
-
-
-****** DATA CODING, FUNCTIONAL FORM, AND ASSUMPTION CHECKS;
-
-* The model we base our case study on is the Nottingham Prognostic Index;
-* I = 0.2 X size + stage + grade;
-* size = max tumour diameter in cms where 0 is <=20, 1=21-50, 2 is >50;
-* stage = number of pos lymph nodes where 0=zero, 1=1 to 3, 2=4+ pos nodes;
-* grade = tumour grade 0=Grade 1 or 2, 1=Grade 3;
+* macros required - download and save and specify the correct location after 
+* %include;
+* - Frank Harrells RCSPLINE macro for calculating the spline terms - found here: 
+* http://biostat.mc.vanderbilt.edu/wiki/Main/SasMacros;
+%include 'c:\users\sme544\documents\stratos\rcspline macro.sas';
+* - Andrew Vickers DCA SAS macro see: 
+* https://www.mskcc.org/departments/epidemiology-biostatistics/biostatistics/
+* decision-curve-analysis;
+%include 'c:\users\sme544\documents\stratos\stdca.sas';
 
 
-*input data to fit new Nottingham PI and code predictors to be consistent with both development and validation datasets;
-*(ideally you do not want to categorise predictors but we have no choice given the limitations of the data we are using);
-DATA RO(RENAME=(_D=STATUS));
-	SET STRATOS.Rotterdam_br_ca;
-	NODESCAT=0;
-	if 1<=NODES<=3 then NODESCAT=1;
-	if NODES>3 then NODESCAT=2;
-	GRADE = GRADE-2;
-	SURVTIME=_T;
-	*Winzorise PGR to the 99th percentile to deal with very large influential values;
-	IF PGR>1360 THEN PGR=1360;
-	KEEP PID SIZE NODES NODESCAT GRADE _T SURVTIME _D MENO AGE PGR ER;
-	proc freq; tables nodes SIZE NODESCAT GRADE STATUS;
-RUN;
+****** Read in the Rotterdam datset;
+proc import out= rotterdam 
+            datafile= "c:\users\sme544\documents\stratos\rotterdam.csv" 
+            dbms=csv replace;
+run;
+
+/*
+** Create the categorical variables that we use in the model fit
+** grade of 1-2 vs 3
+** node categories of 0, 1-3, > 3
+** size of  <=20, 21-50, >50
+**  The size variable is already categorized in this way, in both data sets
+*/
 
 *** descriptive statistics for age and PGR;
-PROC UNIVARIATE DATA=RO;
-	VAR AGE PGR;
-RUN;
+proc univariate data=rotterdam;
+	var age pgr;
+run;
+
+proc format;  * make them print in a nice order;
+    value nodef 0 = "0"
+                1 = "1-3"
+                2 = ">3";
+    value sizef 0 = "<=20"
+                1 = "20-50"
+                2 = ">50";
+    value gradef 0 = "1-2"
+                 1 = "3";
+
+data r1(rename=(pr=pgr)); set rotterdam;
+    format nodescat nodef. sizecat sizef. gradecat gradef.;
+
+    nodescat = 1* (1 <= nodes <=3) + 2*(nodes > 3);
+    sizecat =  1* (size= "20-50")  + 2*(size = ">50");
+    gradecat = grade -2;  * rotterdam has only grade 2 and 3 subjects;
+
+    * recurrence free survival (RFS) = earlier of recurrence or death;
+    if (recur = 1) then do;
+        survtime = rtime/365.25;  * days to years;
+        status = recur;
+    end;
+    else do;
+        survtime = dtime/365.25;
+        status = death;
+    end;
+    
+    * Winzorise PGR to the 99th percentile to deal with large influential
+    *  values;
+    if (pgr > 1360) then pr = 1360; else pr = pgr;
+	drop pgr;
+run;
+
+* Descriptive statistics at baseline for Table 1;
+proc freq data=r1;
+    table nodescat gradecat sizecat;
+run;
+
+
+* Plot the overall Kaplan-Meier, as motivation for using a 5 year cut-off;
+* - n=1275 events by 5 years;
+proc lifetest data=r1 method=pl plots=(s, ls, lls) outsurv=outkm;
+        time survtime*status(0);
+		ods exclude ProductLimitEstimates;   * suppress the long table;
+		title "Overall Kaplan-Meier";
+run;
+
+******* Optional Block ****** ;
+** to create a nicer Kaplan-Meier plot;
+
+data outkm1; 
+	set outkm; 
+	if _censor_=1 then delete; 
+	keep survival survtime; 
+run;
+
+*Create kaplan meier plot for development dataset;
+title;
+footnote;
+*- this allows editing of the .sge file;
+ods listing sge=on style=printer image_dpi=300 gpath='c:';
+ods graphics on / reset=all noborder outputfmt=tiff /*width=4in*/ 
+imagename="dev km" antialias=off/*antialiasmax=*/;
+
+* create graph; 
+proc sgplot data=outkm1;
+	yaxis values=(0 to 1 by 0.2) label="Recurrence-free survival probability";
+	xaxis values=(0 to 16 by 1) label="Years";
+	step y=survival x=survtime / lineattrs=(color=blue thickness=2 pattern=solid) 
+	name="all";
+run;
+
+ods graphics off;
+
+******  End Optional Block ************;
+
 
 *get median follow-up using reverse kaplan-meier method;
-PROC LIFETEST DATA=RO METHOD=pl ATRISK;
-        TIME SURVTIME*STATUS(1);
-RUN;
+proc lifetest data=r1 method=pl atrisk;
+    time survtime*status(1);
+    ods exclude ProductLimitEstimates;   * suppress the long table;
+    title "Median follow-up time";
+run;
 
-*The ZPH command option requests diagnostics on weight Schoenfeld residuals to check proportional hazards assumption;
-*model shows strong evidence of non-proportional hazards for SIZE;
-PROC PHREG DATA=RO ZPH(GLOBAL TRANSFORM=LOG);
-	CLASS SIZE (REF=FIRST) NODESCAT (REF='1') GRADE (REF=FIRST);
-	MODEL SURVTIME*STATUS(0)=SIZE NODESCAT GRADE / TIES=EFRON RL;
-RUN;
+/*
+** The ZPH command option requests diagnostics using scaled Schoenfeld
+**  residuals, to check proportional hazards assumption;
+**  The model shows strong evidence of non-proportional hazards for all.
+*/
+proc phreg data=r1 zph(global transform=log);
+	class sizecat (ref=first) nodescat (ref=first) gradecat (ref=first);
+	model survtime*status(0)=sizecat nodescat gradecat / ties=efron rl;
+run;
 
 *Administrative censor at 5 years since this is our prediction horizon; 
-DATA ROTT;
-	SET RO;
+data rott;
+	set r1;
 	*administrative censoring at 5 years;
-	IF _T > 5 THEN STATUS=0;
-	IF SURVTIME > 5 THEN SURVTIME=5;
-RUN;
+	if survtime > 5 then status=0;
+	if survtime > 5 then survtime=5;
+run;
 
-
-*CHECK FUNCTIONAL FORM OF PGR;
+** Check functional form of pgr;
 * Code PGR as a restricted cubic spline with 3 knots;
-*First calculate the 10th, 50th and 90th percentiles for knots;
-PROC UNIVARIATE DATA = ROTT;
-	VAR PGR;
-	OUTPUT OUT=KNOTS PCTLPRE=P_PGR PCTLPTS= 10 50 90;
-RUN;
+* First calculate the 10th, 50th and 90th percentiles for knots;
+proc univariate data = rott noprint;
+	var pgr;
+	output out=knots pctlpre=p_pgr pctlpts= 10 50 90;
+run;
 
-PROC PRINT DATA=KNOTS; RUN;
+proc print data=knots; run;
 
 /* here we find the following values:
 P_PGR10 P_PGR50 P_PGR90 
 0 		41 		486 
 */
 
-*Use Frank Harrell's RCSPLINE macro for calculating the spline terms - found here: http://biostat.mc.vanderbilt.edu/wiki/Main/SasMacros;
-DATA FFPGR;
-	SET ROTT;
-	%RCSPLINE(PGR, 0, 41, 486);
-RUN;
+*Use Frank Harrell's RCSPLINE macro for calculating the spline terms - found 
+*here: http://biostat.mc.vanderbilt.edu/wiki/Main/SasMacros;
+data ffpgr;
+	set rott;
+	%rcspline(pgr, 0, 41, 486);
+run;
 
-*make copy to keep for making predictions in PROC PHREG;
-DATA FFPGR1;
-	SET FFPGR;
-RUN;
 
-*The following code will produce Suppl Fig 1 - restricted cubic spline plot for PGR;
+******* Optional Block ****** ;
+*The following code will produce Suppl Fig 1 - restricted cubic spline plot for 
+*PGR;
+data ffpgr1;
+	set ffpgr;
+run;
 
-*Fit Cox model with PGR terms and save predictions at 5 years;
-PROC PHREG DATA=FFPGR;
-	MODEL SURVTIME*STATUS(0)=PGR PGR1/ TIES=EFRON;
-	TEST1: TEST PGR, PGR1;
-	TEST2: TEST PGR+PGR1=0;
-	BASELINE COVARIATES=FFPGR1 OUT=PGRVAL SURVIVAL=PREDPGR LOWER=PREDPGRL UPPER=PREDPGRUP TIMELIST=5;
-RUN;
+title 'Fit Cox model with PGR terms and save predictions at 5 years';
+proc phreg data=ffpgr;
+	model survtime*status(0)=pgr pgr1/ ties=efron;
+	test1: test pgr, pgr1;
+	test2: test pgr+pgr1=0;
+	baseline covariates=ffpgr1 out=pgrval survival=predpgr lower=predpgrl 
+	upper=predpgrup timelist=5;
+run;
 
-*- Manipulate data so that we can plot the diagonal ref line and probability of death (not survival);
-DATA PGRVAL1;
-	SET PGRVAL;
-	IF PID=3 THEN DIAG1=0;
-	IF PID=3 THEN DIAG2=0;
-	IF PID=7 THEN DIAG1=100;
-	IF PID=7 THEN DIAG2=100;
-	PREDPGR_DTH=1-PREDPGR;
-	PREDPGR_LOW=1-PREDPGRL;
-	PREDPGR_UPP=1-PREDPGRUP;
-	KEEP PID PGR PREDPGR_DTH PREDPGR_LOW PREDPGR_UPP DIAG1 DIAG2;
-RUN;
+* Manipulate data so that we can plot the diagonal ref line and probability 
+* of death (not survival);
+data pgrval1;
+	set pgrval;
+	if pid=3 then diag1=0;
+	if pid=3 then diag2=0;
+	if pid=7 then diag1=100;
+	if pid=7 then diag2=100;
+	predpgr_dth=1-predpgr;
+	predpgr_low=1-predpgrl;
+	predpgr_upp=1-predpgrup;
+	keep pid pgr predpgr_dth predpgr_low predpgr_upp diag1 diag2;
+run;
 
-PROC SORT DATA=PGRVAL1;
-	BY PGR;
-RUN;
+proc sort data=pgrval1;
+	by pgr;
+run;
 
 title;
-FOOTNOTE;
+footnote;
 *- this allows editing of the .sge file!;
-ODS LISTING SGE=ON STYLE=PRINTER IMAGE_DPI=300 GPATH='C:\';
-ODS GRAPHICS ON / RESET=ALL NOBORDER OUTPUTFMT=TIFF /*WIDTH=4IN*/ IMAGENAME="Spline of PGR" ANTIALIAS=OFF/*ANTIALIASMAX=*/;
+ods listing sge=on style=printer image_dpi=300 
+gpath='C:';
+ods graphics on / reset=all noborder outputfmt=tiff /*width=4in*/ 
+imagename="Spline of PGR" antialias=off/*antialiasmax=*/;
 
-*- Plot the restricted cubic spline of PGR with predicted probability of death within 5 years;
-PROC SGPLOT DATA=PGRVAL1 NOAUTOLEGEND;
-XAXIS       	LABEL="PGR" VALUES=(0 TO 1400 BY 100) /*edit labels and value range as appropriate here and below*/;
-YAXIS        	LABEL="Predicted probability of mortality" VALUES=(0 TO 0.5 BY 0.1);
-  BAND X=PGR LOWER=PREDPGR_LOW UPPER=PREDPGR_UPP / NOFILL LINEATTRS=(COLOR=BLACK PATTERN=MEDIUMDASH THICKNESS=3) NOEXTEND OUTLINE;
-  SERIES Y=PREDPGR_DTH X=PGR / LINEATTRS=(COLOR=BLACK THICKNESS=3) ;
+* Plot the restricted cubic spline of PGR with predicted probability of death 
+* within 5 years;
+proc sgplot data=pgrval1 noautolegend;
+	xaxis       	label="PGR" values=(0 to 1400 by 100) /*edit labels and value 
+		range as appropriate here and below*/;
+	yaxis        	label="Predicted probability of recurrence or death" 
+				values=(0 to 0.6 by 0.1);
+  	band x=pgr lower=predpgr_low upper=predpgr_upp / nofill lineattrs=
+		(color=black pattern=mediumdash thickness=3) noextend outline;
+  	series y=predpgr_dth x=pgr / lineattrs=(color=black thickness=3) ;
 run;
 
 ods graphics off;
 
+******  End Optional Block ************;
 
-****************************************FIT SIMPLE MODEL FIRST (without PGR)******************************************************;
 
-*store original model;
-PROC PHREG DATA=ROTT;
-	CLASS SIZE (REF=FIRST) NODESCAT (REF=FIRST) GRADE (REF=FIRST);
-	MODEL SURVTIME*STATUS(0)=SIZE NODESCAT GRADE   / TIES=EFRON RL;
-	STORE SimpModel;
-	*BASELINE COVARIATES=ROTVAL OUT=ROTTVALRD XBETA=XB /*TIMELIST=5 SURVIVAL=FIVEYRSURV*/;
-	OUTPUT OUT=ROTTX XBETA=XB;
-RUN;
-
+********************FIT BASIC MODEL (without PGR)*******************;
 *** Estimating Baseline Survival Function under PH;
-* - I calculated the baseline survival backwards using predicted probs and PI for 2 different patients and got S0=0.82267 (S0=0.75566136 WHEN NODES REF=1) which would;
-* - suggest that the lowest values are not used
-*use cards;
+* - Take lowest values to calculate baseline survival;
 data inrisk;
-	input SIZE NODESCAT GRADE;
-	cards;
-1 0 0
-;
+	set rott;
+	where sizecat=0 & nodescat=0 & gradecat=0;
+	n+1;
+	if n>1 then delete;
+	keep sizecat nodescat gradecat;
+run;
 
-proc phreg data=ROTT;
-CLASS SIZE (REF=FIRST) NODESCAT (REF=FIRST) GRADE (REF=FIRST);
-model SURVTIME*STATUS(0)= SIZE NODESCAT GRADE / TIES=EFRON RL ;
-baseline covariates=inrisk out=outph survival=ps timepoint=(1,2,3,4,5) / method=breslow;
+*Fit model;
+title 'Basic model';
+
+proc phreg data=ffpgr;
+	class sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
+	model survtime*status(0)=sizecat nodescat gradecat  / ties=efron rl;
+	* store model for easy validation later;
+	store simpmodel;
+	* This statement estimates baseline survival at yearly times;
+	baseline covariates=inrisk out=outph survival=ps timepoint=(1,2,3,4,5) /
+	method=breslow;
+	* Save the PI to the original dataset;
+	output out=rottx xbeta=xb;
 run;
 
 proc print data=outph;
 run;
 
-/*Obs SIZE NODESCAT GRADE SURVTIME ps 
-1 1 0 0 1 0.97067 
-2 1 0 0 2 0.92195 
-3 1 0 0 3 0.88126 
-4 1 0 0 4 0.85000 
-5 1 0 0 5 0.82267 
- */
+*we find following results for baseline survival at yearly timepoints;
+/*nodescat 	sizecat gradecat 	survtime 	ps */
+/*0 		<=20 	1-2 		1 			0.96786 */
+/*0 		<=20 	1-2 		2 			0.91505 */
+/*0 		<=20 	1-2 		3 			0.86973 */
+/*0 		<=20 	1-2 		4 			0.83315 */
+/*0 		<=20 	1-2 		5 			0.80153 */
 
 
-
-************** FIRST, RESAMPLE 500 VERSIONS OF THE EXTERNAL DATASET WITH REPLACEMENT TO ALLOW CALCULATION OF 95% CI AND INTERNAL VALIDATION ********************;
+******Resample 500 versions of the internal dataset with replacement to allow 
+******calculation of 95% CI and internal validation;
 
 
 *some bootstrap code to edit;
 
-SASFILE FFPGR LOAD; /* a way of loading the dataset into RAM - speeds it up */
+sasfile ffpgr load; /* a way of loading the dataset into ram - speeds it up */
 
-PROC SURVEYSELECT DATA=FFPGR OUT=OUTBOOT /* Use PROC SURVEYSELECT and provide input and output dataset names */
-SEED=4817 /* can enter 0 for it to select a random seed but remember to type it in here from the output otherwise cannot replicate results */
-METHOD=URS /* Unrestricted Random Sampling - simple random sampling */
-SAMPRATE=1 /* can accept proportions or percentages but we want n to be size of original database so =1 (or 100) */
-OUTHITS /* with replacement */
-REP=500; /* number of bootstrap samples */
-RUN;
-
-SASFILE FFPGR CLOSE; /* closes frees RAM buffers when done */
-
-ODS LISTING CLOSE; /* turns off ODS listing so no printing of all output. Better than using NOPRINT as it doesn't allow storage of data in output dataset at end */
-
-*save for later use in PGR programme;
-DATA STRATOS.OUTBOOT;
-	SET OUTBOOT;
-RUN;
-
-
-*APPLY BOOTSTRAP MODEL TO BOOTSTRAPPED DATASET AND THE ORIGINAL DATASET;
-
-PROC PHREG DATA=OUTBOOT NOPRINT;
-	*WHERE REPLICATE in (1,2) /*useful line to use when testing out*/;
-	BY REPLICATE;
-	CLASS SIZE (REF=FIRST) NODESCAT (REF=FIRST) GRADE (REF=FIRST);
-	MODEL SURVTIME*STATUS(0)=SIZE NODESCAT GRADE   / TIES=EFRON RL;
-	STORE SimpModelBoot;
-	*baseline statement applies each of the 500 models to the original dataset - ext validation;
-	BASELINE COVARIATES=ROTT OUT=ROTTBOOT XBETA=XB TIMELIST=5 /*SURVIVAL=FIVEYRSURV*/;
-	*output statement applies each of the 500 models to the corresponding dataset - apparent;
-	OUTPUT OUT=ROTTAPP XBETA=XB;
-RUN;
-
-PROC SORT DATA=ROTTBOOT;
-	BY PID REPLICATE;
-RUN;
-
-PROC SORT DATA=ROTT;
-	BY PID;
-RUN;
-
-*select first xbeta per person per replicate and merge original data ; 
-DATA ROTTBOOT1;
-	SET ROTTBOOT;
-	BY PID REPLICATE;
-	IF FIRST.REPLICATE;
-	KEEP REPLICATE PID XB;
-RUN;
-
-DATA ROTTBOOTRD;
-	MERGE ROTTBOOT1 ROTT;
-	BY PID;
-	PROC SORT; BY REPLICATE PID;
-RUN;
-
-
-
-
-*****GLOBAL ASSESSMENT FOR OVERALL PERFORMANCE;
-
-
-
-***** WE FIRST PRESENT (FOR INTEREST) HOW TO CALCULATE COX-SNELL, NAGELKERKE, AND SCHEMPER AND HENDERSON R SQUARED;
-***calculate Generalised R squared - Cox and Snell 1989, Magee 1990, Allison;
-*Global LR chi-sq stat for model with all 3 preds Gsq =  Likelihood Ratio = 465.8;
-* Cox and Snell Rsq = 1 - exp(-Gsq/n) = 1 - exp (-466/2982)= 14.5;
-* Schemper and Henderson = 10.7% (outputted from below model when you block the ODS OUTPUT line);
-*The EV option in the PROC statement provides Schemper-Henderson measure (Schemper and Henderson 2000) of the proportion of variation that is explained by a Cox regression;
-ods select none;
-*fit model and extract likelihood ratio chi-square statistic for testing global=0;
-PROC PHREG DATA=ROTT ev;
-	CLASS SIZE (REF=FIRST) NODESCAT (REF=FIRST) GRADE (REF=FIRST);
-	MODEL SURVTIME*STATUS(0)=SIZE NODESCAT GRADE / TIES=EFRON RL;
-	ODS OUTPUT GlobalTests=GlobalChiSq CensoredSummary=Total FitStatistics=Null;
-RUN;
-ods select all;
-
-DATA GlobalChiSq1;
-	SET GlobalChiSq;
-	IF TEST NOT IN ('Likelihood Ratio') THEN DELETE;
-	FLAG=1;
-	KEEP FLAG ChiSq;
-RUN;
-
-DATA Total1;
-	SET Total;
-	FLAG=1;
-	KEEP FLAG Total;
-RUN;
-
-DATA Null1;
-	SET Null;
-	IF Criterion NOT IN ('-2 LOG L') THEN DELETE;
-	FLAG=1;
-	KEEP FLAG WithOutCovariates;
-RUN;
-
-*dataset contains Cox Snell and Nagelkerke's R squared;
-DATA RSQUARE;
-	MERGE GlobalChiSq1 Total1 Null1;
-	BY FLAG;
-	RSQ_CS = 1 - EXP((-1)*ChiSq/Total);
-	RSQ_N = RSQ_CS/(1-(EXP((-1)*WithOutCovariates/Total)));
-	KEEP RSQ_CS RSQ_N;
-RUN;
-
-** AS IN PAPER, WE CALCULATE Royston and Sauerbrei’s R SQUARED D AND BOOTSTRAP PERFORMANCE;
-
-*Royston and Sauerbrei’s D;
-/*1. To compute D, first the Cox PH model is fitted. 
-  2. Then the prognostic index of the model, XB, is transformed to give standard normal order rank statistics (rankits - formed using Blom’s approximation). 
-  3. The rankits are multiplied by a factor of SQRT(8/pi) to give Zi (i = 1, n subjects). 
-  4. Finally a Cox PH model is fitted to these values; D is the coefficient of Z, say a*, from this second model. 
-NOTE: Royston and Sauerbrei (2004) showed that D most accurately measures separation of survival curves when the underlying prognostic index values, XB, are normally distributed. 
-The regression on the Z in the second model is then linear and a* is an approximately unbiased estimate of a. They explained that when the XB are not normally distributed, 
-linearity in the second model breaks down. D still measures separation because a* in the second model still estimates a, but with bias.*/
-
-**Estimate D for apparent validation;
- *2. Then the prognostic index of the model, XB, is transformed to give standard normal order rank statistics (rankits - formed using Blom’s approximation); 
-
-PROC UNIVARIATE DATA=ROTTX;
-	HISTOGRAM;
-	VAR XB;
-RUN;
-
-PROC RANK DATA=ROTTX NORMAL=BLOM OUT= ROTT_d;
-	VAR XB;
-RUN;
-
-PROC UNIVARIATE DATA=ROTT_d;
-	HISTOGRAM;
-	VAR XB;
-RUN;
-
-proc freq data=rott_d;
+proc surveyselect data=ffpgr out=outboot 
+seed=4817 /* can enter 0 for it to select a random seed but remember to type 
+				it in here from the output otherwise cannot replicate results */
+method=urs /* unrestricted random sampling - simple random sampling */
+samprate=1 /* can accept proportions or percentages but we want n to be size 
+				of original database so =1 (or 100) */
+outhits /* with replacement */
+rep=500; /* number of bootstrap samples */
 run;
 
-*  3. The rankits are multiplied by a factor of SQRT(8/pi) to give Zi (i = 1, n subjects);
-DATA X;
-	SET ROTT_d;
-	PIE = CONSTANT("pi");
-	Z=XB/(SQRT(8/PIE));
-RUN;
+sasfile ffpgr close; /* closes frees ram buffers when done */
 
-PROC UNIVARIATE DATA=x;
-	HISTOGRAM;
-	VAR z;
-RUN;
+ods listing close; /* turns off ods listing so no printing of all output. 
+					Better than using noprint as it doesn't allow storage of 
+					data in output dataset at end */
 
-*  4. Finally a Cox PH model is fitted to these values, D is the coefficient of Z, say a*, from this second model;
-*Royston's D is parameter estimate of Z, D = 1.05755;
-ODS SELECT NONE;
-PROC PHREG DATA=X;
-	MODEL SURVTIME*STATUS(0)=Z / TIES=EFRON;
-	ODS OUTPUT ParameterEstimates=PAREST;
-RUN;
-ODS SELECT ALL;
+*save for later use in PGR programme;
+data stratos.outboot;
+	set outboot;
+run;
 
-*Calculate RsqD from D;
-DATA ROYSTON(RENAME=(ESTIMATE=D));
-	SET PAREST;
-	PIE = CONSTANT("pi");
-	*R2D=((ESTIMATE**2)/(8/PI))/(((ESTIMATE**2)/(8/PI))+(1));
-	R2D=((ESTIMATE**2)/(8/PIE))/(((ESTIMATE**2)/(8/PIE))+((PIE**2)/6));
-	VALIDATE='Apparent';
-	ind=1;
-	KEEP VALIDATE ESTIMATE R2D IND;
-	PROC PRINT; TITLE "Royston's D and RsqD";
-RUN;
+
+*Apply bootstrap model to bootstrapped dataset and the original dataset;
+
+proc phreg data=outboot noprint;
+	*where replicate in (1,2) /*useful line to use when testing out*/;
+	by replicate;
+	class sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
+	model survtime*status(0)=sizecat nodescat gradecat   / ties=efron rl;
+	store simpmodelboot;
+	*baseline statement applies each of the 500 models to the original dataset 
+	external bootstrap validation;
+	baseline covariates=rott out=rottboot xbeta=xb timelist=5;
+	*output statement applies each of the 500 models to the corresponding 
+	dataset - apparent bootstrap validation;
+	output out=rottapp xbeta=xb;
+run;
 
 
 
-*** - GET 95% CI;
+*****TIME RANGE ASSESSMENT OF DISCRIMINATION;
 
-DATA GETXB;
-	SET ROTTX;
-	KEEP PID XB;
-	PROC SORT;
-		BY PID;
-RUN;
+*Apparent discrimination;
 
-PROC SORT DATA=OUTBOOT;
-	BY PID;
-RUN;
+*Harrell's C - Need tau to equal event time of interest;
+title 'Apparent Harrells C';
+proc phreg data=rott concordance=harrell(se) tau=5;
+	class sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
+	model survtime*status(0)=sizecat nodescat gradecat / ties=efron rl;
+run;
 
-DATA OUTBOOT1;
-	MERGE OUTBOOT GETXB;
-	BY PID;
-RUN;
+*Uno's C - Need tau to equal event time of interest;
+title 'Apparent Unos C';
+proc phreg data=rott concordance=uno(se seed=8754 iter=50) tau=5;
+	class sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
+	model survtime*status(0)=sizecat nodescat gradecat / ties=efron rl;
+run;
 
-PROC SORT DATA=OUTBOOT1;
-	BY REPLICATE PID;
-RUN;
+*Internal validation: Bootstrap to assess optimism in performance;
+*Only run the below for the C statistic you wish to use;
 
-PROC RANK DATA=OUTBOOT1 NORMAL=BLOM OUT= ROTT_dAX;
-	BY REPLICATE;
-	VAR XB;
-RUN;
+*Get apparent bootstrap performance for Harrell's C in 500 datasets;
+proc phreg data=outboot concordance=harrell(se) tau=5 noprint;
+	*This line is useful to test bootstrap on first 2 resampled datasets only;
+	*where replicate in (1,2);
+	by replicate;
+	class sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
+	model survtime*status(0)=sizecat nodescat gradecat / ties=efron rl;
+	ods output concordance=apphar(rename=(estimate=apphar stderr=appseh) 
+		drop=source);
+run;
 
-DATA XAX;
-	SET ROTT_dAX;
-	PIE = CONSTANT("pi");
-	Z=XB/(SQRT(8/PIE));
-RUN;
+*Get apparent bootstrap performance for Uno's C in 500 datasets;
+proc phreg data=outboot concordance=uno(se seed=8754 iter=50) tau=5 noprint;
+	*This line is useful to test bootstrap on first 2 resampled datasets only;
+	*where replicate in (1,2);
+	by replicate;
+	class sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
+	model survtime*status(0)=sizecat nodescat gradecat / ties=efron rl;
+	ods output concordance=appuno(rename=(estimate=appuno stderr=appseu) 
+		drop=source);
+run;
 
-ODS SELECT NONE;
-PROC PHREG DATA=XAX;
-	BY REPLICATE;
-	MODEL SURVTIME*STATUS(0)=Z / TIES=EFRON;
-	ODS OUTPUT ParameterEstimates=PARESTAX;
-RUN;
-ODS SELECT ALL;
+*Next run the external bootstrap performance on original dataset;
+sasfile rott load; /* a way of loading the dataset into ram - speeds it up */
 
-DATA ROYSTONAX(RENAME=(ESTIMATE=AppD));
-	SET PARESTAX;
-	PIE = CONSTANT("pi");
-	AppR2D=((ESTIMATE**2)/(8/PIE))/(((ESTIMATE**2)/(8/PIE))+((PIE**2)/6));
-	KEEP REPLICATE ESTIMATE AppR2D;
-RUN;
+*This should replicate the dataset 500 times without replacement - trick to get 
+*500 copies - needed for concordance to work below;
+proc surveyselect data=rott out=outrott
+seed=853794 
+method=srs /* simple random sampling without replacement */
+samprate=1 /* can accept proportions or percentages but we want n to be size of 
+			orginal database so =1 (or 100) */
+rep=500; /* number of bootstrap samples */
+run;
 
-PROC UNIVARIATE DATA=ROYSTONAX NOPRINT;
-	VAR AppD AppR2D;
-	OUTPUT OUT = CONFINT PCTLPTS=2.5 97.5 PCTLPRE= AppD_ AppR2D_ PCTLNAME=LOWER95 UPPER95;
-RUN;
+sasfile rott close; /* closes frees ram buffers when done */
 
-DATA CONFINT1;
-	SET CONFINT;
-	IND=1;
-RUN;
+ods listing close; 
 
-DATA ROYSTONAX2;
-	MERGE ROYSTON CONFINT1;
-	BY IND;
-	PROC PRINT; TITLE "Royston's D and R2D with 95% CI";
-RUN;
+*Get external bootstrap performance for Harrell's C in 500 copies of Rotterdam 
+*dataset;
+proc phreg data=outrott concordance=harrell(se) tau=5 noprint;
+	*where replicate in (1,2);
+	by replicate;	
+	class sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
+	model survtime*status(0)=sizecat nodescat gradecat / ties=efron rl;
+	roc source=simpmodelboot;
+	ods output concordance=boothar(rename=(estimate=boothar stderr=bootseh) 
+		drop=source);
+run;
 
+*get external bootstrap performance for Uno's c in 500 copies of rotterdam 
+	dataset;
+proc phreg data=outrott concordance=uno(se seed=8754 iter=50) tau=5 noprint;
+	*where replicate in (1,2);
+	by replicate;	
+	class sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
+	model survtime*status(0)=sizecat nodescat gradecat / ties=efron rl;
+	roc source=simpmodelboot;
+	ods output concordance=bootuno(rename=(estimate=bootuno stderr=bootseu) 
+		drop=source);
+run;
 
+*calculate optimism for Harrell's C per replicate;
+data harcon;
+	merge apphar boothar;
+	by replicate;
+	optharc = apphar - boothar;
+run;
 
-
-*** - NOW WE ASSESS INTERNAL VALIDATION WITH BOOTSTRAP;
-* APPARENT BOOTSTRAP;
-
-PROC RANK DATA=ROTTAPP NORMAL=BLOM OUT= ROTT_dA;
-	BY REPLICATE;
-	VAR XB;
-RUN;
-
-DATA XA;
-	SET ROTT_dA;
-	PIE = CONSTANT("pi");
-	Z=XB/(SQRT(8/PIE));
-RUN;
-
-ODS SELECT NONE;
-PROC PHREG DATA=XA;
-	BY REPLICATE;
-	MODEL SURVTIME*STATUS(0)=Z / TIES=EFRON;
-	ODS OUTPUT ParameterEstimates=PARESTA;
-RUN;
-ODS SELECT ALL;
-
-DATA ROYSTONA(RENAME=(ESTIMATE=AppD));
-	SET PARESTA;
-	PIE = CONSTANT("pi");
-	AppR2D=((ESTIMATE**2)/(8/PIE))/(((ESTIMATE**2)/(8/PIE))+((PIE**2)/6));
-	KEEP REPLICATE ESTIMATE AppR2D;
-RUN;
-
-**EXTERNAL BOOTSTRAP;
-PROC RANK DATA=ROTTBOOTRD NORMAL=BLOM OUT= ROTVALRDD;
-	BY REPLICATE;
-	VAR XB;
-RUN;
-
-DATA XD;
-	SET ROTVALRDD;
-	PIE = CONSTANT("pi");
-	Z=XB/(SQRT(8/PIE));
-RUN;
-
-*Royston's D is parameter estimate of Z, D = 0.95979;
-ODS SELECT NONE;
-PROC PHREG DATA=XD;
-	BY REPLICATE;
-	MODEL SURVTIME*STATUS(0)=Z / TIES=EFRON;
-	ODS OUTPUT ParameterEstimates=PAREST;
-RUN;
-ODS SELECT ALL;
-
-DATA ROYSTONEXT(RENAME=(ESTIMATE=BootD));
-	SET PAREST;
-	PIE = CONSTANT("pi");
-	BootR2D=((ESTIMATE**2)/(8/PIE))/(((ESTIMATE**2)/(8/PIE))+((PIE**2)/6));
-	KEEP REPLICATE ESTIMATE BootR2D;
-RUN;
-
-*merge;
-DATA ROYSTONBOOT;
-	MERGE ROYSTONa ROYSTONEXT;
-	BY REPLICATE;
-	OptD = AppD - BootD;
-	OptR2D = AppR2D - BootR2D;
-	PROC PRINT; TITLE "Royston's D and RsqD Bootstrap values";
-RUN;
+*calculate optimism for Uno's C per replicate;
+data unocon;
+	merge appuno bootuno;
+	by replicate;
+	optunoc = appuno - bootuno;
+run;
 
 
+****FIXED TIME POINT ASSESSMENT OF DISCRIMINATION;
+title 'Apparent Unos AUC';
+proc phreg data=rott tau=5 rocoptions(auc at=4.98 method=ipcw (cl seed=134));
+	class sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
+	model survtime*status(0)=sizecat nodescat gradecat / ties=efron rl;
+	roc 'npi' source=simpmodel;
+run;
+
+*Internal validation: Bootstrap performance;
+*Get apparent bootstrap performance for Uno's AUC in 500 datasets;
+proc phreg data=outboot tau=5 rocoptions(auc at=4.98 method=ipcw (cl seed=134))
+		noprint;
+	*where replicate in (1,2);
+	by replicate;
+	class sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
+	model survtime*status(0)=sizecat nodescat gradecat / ties=efron rl;
+	ods output auc=apptduno(rename=(estimate=apptduno stderr=apptdse) 
+		drop=sourceid upper lower source);
+run;
+
+*Get external bootstrap performance for Uno's AUC in 500 copies of rotterdam 
+	dataset;
+proc phreg data=outrott tau=5 rocoptions(auc at=4.98 method=ipcw (cl seed=134)) 
+		noprint;
+	*where replicate in (1,2);
+	by replicate;
+	class sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
+	model survtime*status(0)=sizecat nodescat gradecat / ties=efron rl;
+	roc source=simpmodelboot;
+	ods output auc=boottduno(rename=(estimate=boottduno stderr=boottdse) 
+		drop=source sourceid upper lower);
+run;
+
+*calculate optimism for Uno's AUC;
+data tdunocon;
+	merge apptduno boottduno;
+	by replicate;
+	optunoauc = apptduno - boottduno;
+run;
 
 
-*****FIXED TIME POINT ASSESSMENT FOR OVERALL PERFORMANCE;
 
+************************************ Overall performance;
 
-
-*Brier - see Graf et al 1999;
-*scaled brier score = 1-brier/briermax, briermax=mean(1-surv)= bmax * (1-bmax)2 + (1-bmax) * bmax2;
-/*Weights - Kaplan Meier with censor as event;
-3 groups - Those who have the event up to fixed event time of interest, and those who go beyond fixed t (could be event or event free), also those censored up to;
-fixed t (only first 2 groups contribute to BS but all to weights;
-Then group 1 calc -surv^2, and group 2 calc (1-surv)^2 where surv is probability of surv at t*; 
-Check weight for group 2 (G(t*)) should be came for all patients in that group;*/
-
+******* This block calculates the Brier score - see Graf et al 1999;
 title ' ';
 
 ****First for apparent validation i.e. model development;
-*calculate weights for apparent validation;
+*calculate weights using Kaplan-Meier for apparent validation;
+proc lifetest data=rottx method=pl atrisk outsurv=outkm noprint;
+        time survtime*status(1);
+run;
 
-PROC LIFETEST DATA=ROTTX METHOD=pl ATRISK OUTSURV=OUTKM /*NOPRINT*/;
-        TIME SURVTIME*STATUS(1);
-RUN;
+*Create 3 groups - Group 1-Those who have the event up to fixed event time of 
+*interest, Group 2 - those who go beyond fixed time (could be event or event 
+*free), and Group 3- those censored up to fixed time 
+*Only first 2 groups contribute to score but all to weights;
+data rott_b;
+	set rottx;
+	*Must make the time just under 5 years since we need some time remaining
+	*after timepoint of interest (5 years) and		 before administrative censoring 
+	*(5 years) for it to work;
+	if survtime<=4.99 and status=1 then cat=1;
+	if survtime>4.99 then cat=2;
+	if survtime<=4.99 and status=0 then cat=3;
+	*Duplicate survival time as sas will remove the official survival time 
+	*variable in baseline statement;
+	time=survtime;
+run;
 
-*CODE THE 3 GROUPINGS AND DUPLICATE SURVIVAL TIME AS SAS WILL REMOVE THE OFFICIAL SURVIVAL TIME VARIABLE IN BASELINE STATEMENT;
-DATA ROTT_B;
-	SET ROTTX;
-	IF SURVTIME<=4.95 AND STATUS=1 THEN CAT=1;
-	IF SURVTIME>4.95 THEN CAT=2;
-	IF SURVTIME<=4.95 AND STATUS=0 THEN CAT=3;
-	TIME=SURVTIME;
-RUN;
-
-*NOW ESTIMATE SURVIVAL AT 5 YEARS IN DEVELOPMENT DATASET;
-PROC PHREG DATA=ROTT;
-	CLASS SIZE (REF=FIRST) NODESCAT (REF=FIRST) GRADE (REF=FIRST);
-	MODEL SURVTIME*STATUS(0)=SIZE NODESCAT GRADE / TIES=EFRON RL;
-	*APPARENT;
-	BASELINE COVARIATES=ROTT_B OUT=ROTT_BS TIMELIST=5 SURVIVAL=FIVEYRSURV/ method=breslow;
-RUN;
+*Now estimate survival at 5 years in development dataset;
+title 'Basic model output';
+proc phreg data=rott;
+	class sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
+	model survtime*status(0)=sizecat nodescat gradecat / ties=efron rl;
+	*apparent;
+	baseline covariates=rott_b out=rott_bs timelist=5 survival=fiveyrsurv/ 
+			method=breslow;
+run;
 
 *code up the fixed time of 5 years;
-DATA ROTT_BS1(RENAME=(TIME=SURVTIME));
-	SET ROTT_BS;
-	TIME1=TIME;
-	IF TIME1>5 THEN TIME1=5;
-	DROP SURVTIME;
-	PROC SORT; BY TIME1;
-RUN;
+data rott_bs1(rename=(time=survtime));
+	set rott_bs;
+	time1=time;
+	if time1>5 then time1=5;
+	drop survtime;
+	proc sort; by time1;
+run;
 
-*MERGE THE KAPLAN-MEIER WEIGHTS TO THE APPROPRIATE TIMES;
-DATA OUTKM1(RENAME=(SURVTIME=TIME1));
-	SET OUTKM;
-	IF SURVTIME>5 THEN DELETE;
-	WEIGHT=1/SURVIVAL;
-	KEEP SURVTIME WEIGHT;
-RUN;
+*Merge the kaplan-meier weights to the appropriate times;
+data outkm1(rename=(survtime=time1));
+	set outkm;
+	if survtime>5 then delete;
+	weight=1/survival;
+	keep survtime weight;
+run;
 
-
-DATA ROTT_BS2;
-	MERGE ROTT_BS1 OUTKM1;
-	BY TIME1;
-	IF pID=. THEN DELETE;
-RUN;
-
-DATA ROTT_BS3;
-	SET ROTT_BS2;
-	RETAIN _WEIGHT;
-	IF NOT MISSING(WEIGHT) THEN _WEIGHT=WEIGHT;
-	ELSE WEIGHT=_WEIGHT;
-	IF CAT=3 THEN WEIGHT=0;
-	IF TIME1=0 THEN DELETE;
-	IF CAT=1 THEN CONTRIB=(-FIVEYRSURV)**2;
-	IF CAT=2 THEN CONTRIB=(1-FIVEYRSURV)**2;
-	IF CAT=3 THEN CONTRIB=0;
-	BS=CONTRIB*WEIGHT;
-	DROP _WEIGHT;
-RUN;
-
-*ESTIMATE BRIER SCORE;
-PROC UNIVARIATE DATA=ROTT_BS3 NOPRINT;
-	VAR BS WEIGHT;
-	OUTPUT OUT=SUMS SUM=SBS SWEIGHT;
-	PROC PRINT; 
-RUN;
-
-DATA SUMS;
-	RETAIN SWEIGHT SBS BRIER;
-	SET SUMS;
-	BRIER = (1/SWEIGHT)*SBS;
-	SWEIGHT=LEFT(SWEIGHT);
-	IND=1;
-	TITLE 'Brier score';
-	PROC PRINT;
-RUN;
-
-PROC FREQ DATA=ROTT_BS3;
-	TABLE CAT;
-RUN;
+data rott_bs2;
+	merge rott_bs1 outkm1;
+	by time1;
+	if pid=. then delete;
+run;
 
 
-******- BOOTSTRAP THE 95% CI FOR BRIER SCORE;
-****First for apparent validation i.e. model development;
-*calculate weights for apparent validation;
-PROC SORT DATA=OUTBOOT;
-	BY REPLICATE PID;
-RUN;
+*Then for group 1 calculate -surv^2, and group 2 calculate (1-surv)^2 where surv 
+*is probability of surv at t; 
+data rott_bs3;
+	set rott_bs2;
+	retain _weight;
+	if not missing(weight) then _weight=weight;
+	else weight=_weight;
+	if cat=3 then weight=0;
+	if time1=0 then delete;
+	if cat=1 then contrib=(-fiveyrsurv)**2;
+	if cat=2 then contrib=(1-fiveyrsurv)**2;
+	if cat=3 then contrib=0;
+	bs=contrib*weight;
+	drop _weight;
+run;
 
-PROC LIFETEST DATA=OUTBOOT METHOD=pl OUTSURV=OUTKM_ NOPRINT;
-		BY REPLICATE;
-        TIME SURVTIME*STATUS(1);
-RUN;
+*Estimate brier score;
+proc univariate data=rott_bs3 noprint;
+	var bs weight;
+	output out=sums sum=sbs sweight;
+	proc print; 
+run;
 
-DATA OUTBOOTX;
-	SET OUTBOOT;
-	KEEP REPLICATE PID;
-	PROC SORT; BY PID;
-RUN;
+data sums;
+	retain sweight sbs brier;
+	set sums;
+	brier = (1/sweight)*sbs;
+	sweight=left(sweight);
+	ind=1;
+	title 'Brier score';
+	proc print;
+run;
 
-*MERGE BOOTSTRAP SET TO THE ROTT_BS1 DATASET FROM EARLIER WITH PREDICTIONS AT 5 YEARS; 
-PROC SORT DATA=ROTT_BS1;
-	BY PID;
-RUN;
-
-DATA ROTT_BS1_;
-	MERGE OUTBOOTX ROTT_BS1;
-	BY PID;
-RUN;
-
-PROC SORT DATA=ROTT_BS1_;
-	BY REPLICATE TIME1;
-RUN;
-
-*MERGE THE KAPLAN-MEIER WEIGHTS TO THE APPROPRIATE TIMES;
-DATA OUTKM1_(RENAME=(SURVTIME=TIME1));
-	SET OUTKM_;
-	IF SURVTIME>5 THEN DELETE;
-	WEIGHT=1/SURVIVAL;
-	KEEP REPLICATE SURVTIME WEIGHT;
-RUN;
-
-DATA ROTT_BS2_;
-	MERGE ROTT_BS1_ OUTKM1_;
-	BY REPLICATE TIME1;
-	IF pID=. THEN DELETE;
-RUN;
-
-DATA ROTT_BS3_;
-	SET ROTT_BS2_;
-	RETAIN _WEIGHT;
-	IF NOT MISSING(WEIGHT) THEN _WEIGHT=WEIGHT;
-	ELSE WEIGHT=_WEIGHT;
-	IF CAT=3 THEN WEIGHT=0;
-	IF TIME1=0 THEN DELETE;
-	IF CAT=1 THEN CONTRIB=(-FIVEYRSURV)**2;
-	IF CAT=2 THEN CONTRIB=(1-FIVEYRSURV)**2;
-	IF CAT=3 THEN CONTRIB=0;
-	BS=CONTRIB*WEIGHT;
-	DROP _WEIGHT;
-RUN;
-
-*ESTIMATE BRIER SCORE;
-PROC UNIVARIATE DATA=ROTT_BS3_ NOPRINT;
-	BY REPLICATE;
-	VAR BS WEIGHT;
-	OUTPUT OUT=SUMS_ SUM=SBS SWEIGHT;
-	PROC PRINT; 
-RUN;
-
-DATA SUMS_;
-	RETAIN SWEIGHT SBS BRIER;
-	SET SUMS_;
-	BRIER = (1/SWEIGHT)*SBS;
-	SWEIGHT=LEFT(SWEIGHT);
-	TITLE 'Brier score';
-	PROC PRINT;
-RUN;
-
-*95% CIs are presented with the scaled Brier results later;
+******* End of block;
 
 
+********* This block bootstraps the 95% CI for the Brier score;
+****First calculate weights in boostrapped datasets;
+proc sort data=outboot;
+	by replicate pid;
+run;
 
-*** NOW BRIER BOOTSTRAP PERFORMANCE;
+proc lifetest data=outboot method=pl outsurv=outkm_ noprint;
+		by replicate;
+        time survtime*status(1);
+run;
 
-PROC LIFETEST DATA=ROTTAPP METHOD=pl ATRISK /*PLOTS=(S, LS, LLS)*/ OUTSURV=OUTKMA noprint;
-		BY REPLICATE;
-        TIME SURVTIME*STATUS(1);
-RUN;
+data outbootx;
+	set outboot;
+	keep replicate pid;
+	proc sort; by pid;
+run;
 
-*for BOOTSTRAPPED external validation;
-PROC LIFETEST DATA=ROTT METHOD=pl ATRISK /*PLOTS=(S, LS, LLS)*/ OUTSURV=OUTKM_EXT noprint;
-        TIME SURVTIME*STATUS(1);
-RUN;
+*Merge bootstrap set to the rott_bs1 dataset from earlier which contains the  
+*predictions at 5 years; 
+proc sort data=rott_bs1;
+	by pid;
+run;
 
-*CODE THE 3 GROUPINGS AND DUPLICATE SURVIVAL TIME AS SAS WILL REMOVE THE OFFICIAL SURVIVAL TIME VARIABLE IN BASELINE STATEMENT;
-DATA ROTT_BA;
-	SET ROTTAPP;
-	IF SURVTIME<=4.95 AND STATUS=1 THEN CAT=1;
-	IF SURVTIME>4.95 THEN CAT=2;
-	IF SURVTIME<=4.95 AND STATUS=0 THEN CAT=3;
-	TIME=SURVTIME;
-RUN;
+data rott_bs1_;
+	merge outbootx rott_bs1;
+	by pid;
+run;
 
-DATA ROTT_B_EX;
-	SET ROTT;
-	IF SURVTIME<=4.95 AND STATUS=1 THEN CAT=1;
-	IF SURVTIME>4.95 THEN CAT=2;
-	IF SURVTIME<=4.95 AND STATUS=0 THEN CAT=3;
-	TIME=SURVTIME;
-RUN;
+proc sort data=rott_bs1_;
+	by replicate time1;
+run;
 
-*NOW ESTIMATE SURVIVAL AT 5 YEARS;
-PROC PHREG DATA=ROTTAPP;
-	BY REPLICATE;
-	CLASS SIZE (REF=FIRST) NODESCAT (REF=FIRST) GRADE (REF=FIRST);
-	MODEL SURVTIME*STATUS(0)=SIZE NODESCAT GRADE   / TIES=EFRON RL;
-	*APPARENT;
-	BASELINE COVARIATES=ROTT_BA OUT=ROTT_BSA TIMELIST=5 SURVIVAL=FIVEYRSURV/ method=breslow;
-RUN;
+*Merge the kaplan-meier weights to the appropriate times;
+data outkm1_(rename=(survtime=time1));
+	set outkm_;
+	if survtime>5 then delete;
+	weight=1/survival;
+	keep replicate survtime weight;
+run;
 
-PROC PHREG DATA=ROTTAPP;
-	BY REPLICATE;
-	CLASS SIZE (REF=FIRST) NODESCAT (REF=FIRST) GRADE (REF=FIRST);
-	MODEL SURVTIME*STATUS(0)=SIZE NODESCAT GRADE   / TIES=EFRON RL;
-	*EXTERNAL;
-	BASELINE COVARIATES=ROTT_B_EX OUT=ROTTVAL_BS TIMELIST=5 SURVIVAL=FIVEYRSURV/ method=breslow;
-RUN;
+data rott_bs2_;
+	merge rott_bs1_ outkm1_;
+	by replicate time1;
+	if pid=. then delete;
+run;
 
-*apparent brier;
-*MERGE THE KAPLAN-MEIER WEIGHTS TO THE APPROPRIATE TIMES;
-DATA ROTT_BS1A(RENAME=(TIME=SURVTIME));
-	SET ROTT_BSA;
-	TIME1=TIME;
-	IF TIME1>5 THEN TIME1=5;
-	DROP SURVTIME;
-	PROC SORT; BY REPLICATE TIME1;
-RUN;
+*Create groups as before;
+data rott_bs3_;
+	set rott_bs2_;
+	retain _weight;
+	if not missing(weight) then _weight=weight;
+	else weight=_weight;
+	if cat=3 then weight=0;
+	if time1=0 then delete;
+	if cat=1 then contrib=(-fiveyrsurv)**2;
+	if cat=2 then contrib=(1-fiveyrsurv)**2;
+	if cat=3 then contrib=0;
+	bs=contrib*weight;
+	drop _weight;
+run;
 
-DATA OUTKM1A(RENAME=(SURVTIME=TIME1));
-	SET OUTKMA;
-	*IF _CENSOR_=1 THEN DELETE;
-	IF SURVTIME>5 THEN DELETE;
-	WEIGHT=1/SURVIVAL;
-	KEEP REPLICATE SURVTIME WEIGHT;
-RUN;
+*Estimate brier score;
+proc univariate data=rott_bs3_ noprint;
+	by replicate;
+	var bs weight;
+	output out=sums_ sum=sbs sweight;
+	proc print; 
+run;
 
-DATA ROTT_BS2A;
-	MERGE ROTT_BS1A OUTKM1A;
-	BY REPLICATE TIME1;
-	IF PID=. THEN DELETE;
-RUN;
+data sums_;
+	retain sweight sbs brier;
+	set sums_;
+	brier = (1/sweight)*sbs;
+	sweight=left(sweight);
+	title 'Brier score';
+	proc print;
+run;
 
-DATA ROTT_BS3A;
-	SET ROTT_BS2A;
-	RETAIN _WEIGHT;
-	IF NOT MISSING(WEIGHT) THEN _WEIGHT=WEIGHT;
-	ELSE WEIGHT=_WEIGHT;
-	IF CAT=3 THEN WEIGHT=0;
-	IF TIME1=0 THEN DELETE;
-	IF CAT=1 THEN CONTRIB=(-FIVEYRSURV)**2;
-	IF CAT=2 THEN CONTRIB=(1-FIVEYRSURV)**2;
-	IF CAT=3 THEN CONTRIB=0;
-	BS=CONTRIB*WEIGHT;
-	DROP _WEIGHT;
-RUN;
-
-*ESTIMATE BRIER SCORE;
-PROC UNIVARIATE DATA=ROTT_BS3A NOPRINT;
-	BY REPLICATE;
-	VAR BS WEIGHT;
-	OUTPUT OUT=SUMSA SUM=AppSBS SWEIGHT;
-	*PROC PRINT; 
-RUN;
-
-DATA SUMSA;
-	RETAIN SWEIGHT AppSBS AppBRIER;
-	SET SUMSA;
-	AppBRIER = (1/SWEIGHT)*AppSBS;
-	SWEIGHT=LEFT(SWEIGHT);
-	*TITLE 'Brier score';
-	*PROC PRINT;
-RUN;
-
-*external validation brier;
-*MERGE THE KAPLAN-MEIER WEIGHTS TO THE APPROPRIATE TIMES;
-DATA ROTTVAL_BS1(RENAME=(TIME=SURVTIME));
-	SET ROTTVAL_BS;
-	TIME1=TIME;
-	IF TIME1>5 THEN TIME1=5;
-	DROP SURVTIME;
-	PROC SORT; BY TIME1;
-RUN;
-
-DATA OUTKM_EXT1(RENAME=(SURVTIME=TIME1));
-	SET OUTKM_EXT;
-	*IF _CENSOR_=1 THEN DELETE;
-	IF SURVTIME>5 THEN DELETE;
-	WEIGHT=1/SURVIVAL;
-	KEEP SURVTIME WEIGHT;
-RUN;
-
-DATA ROTTVAL_BS2;
-	MERGE ROTTVAL_BS1 OUTKM_EXT1;
-	BY TIME1;
-	IF PID=. THEN DELETE;
-RUN;
-
-DATA ROTTVAL_BS3;
-	SET ROTTVAL_BS2;
-	RETAIN _WEIGHT;
-	IF NOT MISSING(WEIGHT) THEN _WEIGHT=WEIGHT;
-	ELSE WEIGHT=_WEIGHT;
-	IF CAT=3 THEN WEIGHT=0;
-	IF TIME1=0 THEN DELETE;
-	IF CAT=1 THEN CONTRIB=(-FIVEYRSURV)**2;
-	IF CAT=2 THEN CONTRIB=(1-FIVEYRSURV)**2;
-	IF CAT=3 THEN CONTRIB=0;
-	BS=CONTRIB*WEIGHT;
-	DROP _WEIGHT;
-RUN;
-
-*ESTIMATE BRIER SCORE;
-proc sort data= ROTTVAL_BS3;
-	BY REPLICATE PID;
-RUN;
-
-PROC UNIVARIATE DATA=ROTTVAL_BS3 NOPRINT;
-	BY REPLICATE;
-	VAR BS WEIGHT;
-	OUTPUT OUT=SUMSEX SUM=BootSBS SWEIGHT;
-	*PROC PRINT; 
-RUN;
-
-DATA SUMSEX;
-	RETAIN SWEIGHT BootSBS BootBRIER;
-	SET SUMSEX;
-	BootBRIER = (1/SWEIGHT)*BootSBS;
-	SWEIGHT=LEFT(SWEIGHT);
-	*TITLE 'External Brier score';
-	*PROC PRINT;
-RUN;
+*Note that the 95% CIs will be presented with the scaled Brier results later;
+********* End of block;
 
 
+************ This block performs the bootstrapped internal validation for the Brier score;
 
+
+*** Now do the Brier bootstrap apparent performance;
+proc lifetest data=rottapp method=pl outsurv=outkma noprint;
+		by replicate;
+        time survtime*status(1);
+run;
+
+*for bootstrap external validation;
+proc lifetest data=rott method=pl outsurv=outkm_ext noprint;
+        time survtime*status(1);
+run;
+
+*Create 3 groups - Group 1-Those who have the event up to fixed event time of 
+*interest, Group 2 - those who go beyond fixed time (could be event or event 
+*free), and Group 3- those censored up to fixed time 
+*Only first 2 groups contribute to score but all to weights;
+data rott_ba;
+	set rottapp;
+	*Must make the time just under 5 years since we need some time remaining
+	*after timepoint of interest (5 years) and before administrative censoring 
+	*(5 years) for it to work;
+	if survtime<=4.99 and status=1 then cat=1;
+	if survtime>4.99 then cat=2;
+	if survtime<=4.99 and status=0 then cat=3;
+	*Duplicate survival time as sas will remove the official survival time 
+	*variable in baseline statement;
+	time=survtime;
+run;
+
+*And do same for original data;
+data rott_b_ex;
+	set rott;
+	if survtime<=4.99 and status=1 then cat=1;
+	if survtime>4.99 then cat=2;
+	if survtime<=4.99 and status=0 then cat=3;
+	time=survtime;
+run;
+
+*Estimate survival at 5 years for apparent bootstrap;
+proc phreg data=rottapp noprint;
+	by replicate;
+	class sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
+	model survtime*status(0)=sizecat nodescat gradecat / ties=efron rl;
+	baseline covariates=rott_ba out=rott_bsa timelist=5 survival=fiveyrsurv/ 
+		method=breslow;
+run;
+
+*Estimate survival at 5 years for external bootstrap;
+proc phreg data=rottapp noprint;
+	by replicate;
+	class sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
+	model survtime*status(0)=sizecat nodescat gradecat / ties=efron rl;
+	baseline covariates=rott_b_ex out=rottval_bs timelist=5 survival=fiveyrsurv/ 
+		method=breslow;
+run;
+
+*Apparent bootstrap for Brier;
+*Merge the kaplan-meier weights to the appropriate times;
+data rott_bs1a(rename=(time=survtime));
+	set rott_bsa;
+	time1=time;
+	if time1>5 then time1=5;
+	drop survtime;
+	proc sort; by replicate time1;
+run;
+
+data outkm1a(rename=(survtime=time1));
+	set outkma;
+	if survtime>5 then delete;
+	weight=1/survival;
+	keep replicate survtime weight;
+run;
+
+data rott_bs2a;
+	merge rott_bs1a outkm1a;
+	by replicate time1;
+	if pid=. then delete;
+run;
+
+data rott_bs3a;
+	set rott_bs2a;
+	retain _weight;
+	if not missing(weight) then _weight=weight;
+	else weight=_weight;
+	if cat=3 then weight=0;
+	if time1=0 then delete;
+	if cat=1 then contrib=(-fiveyrsurv)**2;
+	if cat=2 then contrib=(1-fiveyrsurv)**2;
+	if cat=3 then contrib=0;
+	bs=contrib*weight;
+	drop _weight;
+run;
+
+*Estimate brier score;
+proc univariate data=rott_bs3a noprint;
+	by replicate;
+	var bs weight;
+	output out=sumsa sum=appsbs sweight;
+run;
+
+data sumsa;
+	retain sweight appsbs appbrier;
+	set sumsa;
+	appbrier = (1/sweight)*appsbs;
+	sweight=left(sweight);
+run;
+
+*External bootstrap for brier;
+*Merge the kaplan-meier weights to the appropriate times;
+data rottval_bs1(rename=(time=survtime));
+	set rottval_bs;
+	time1=time;
+	if time1>5 then time1=5;
+	drop survtime;
+	proc sort; by time1;
+run;
+
+data outkm_ext1(rename=(survtime=time1));
+	set outkm_ext;
+	if survtime>5 then delete;
+	weight=1/survival;
+	keep survtime weight;
+run;
+
+data rottval_bs2;
+	merge rottval_bs1 outkm_ext1;
+	by time1;
+	if pid=. then delete;
+run;
+
+data rottval_bs3;
+	set rottval_bs2;
+	retain _weight;
+	if not missing(weight) then _weight=weight;
+	else weight=_weight;
+	if cat=3 then weight=0;
+	if time1=0 then delete;
+	if cat=1 then contrib=(-fiveyrsurv)**2;
+	if cat=2 then contrib=(1-fiveyrsurv)**2;
+	if cat=3 then contrib=0;
+	bs=contrib*weight;
+	drop _weight;
+run;
+
+*Estimate brier score;
+proc sort data= rottval_bs3;
+	by replicate pid;
+run;
+
+proc univariate data=rottval_bs3 noprint;
+	by replicate;
+	var bs weight;
+	output out=sumsex sum=bootsbs sweight;
+run;
+
+data sumsex;
+	retain sweight bootsbs bootbrier;
+	set sumsex;
+	bootbrier = (1/sweight)*bootsbs;
+	sweight=left(sweight);
+run;
+
+
+************ End of block;
 
 
 
 
 ********************************Scaled Brier;
+*Scaled Brier = 1 - (model Brier score/null model Brier score), where null 
+*model Brier score is null cox; 
+*100% is perfect, <0 is useless, higher better, harmful models <0;
 
-/*Scaled Brier = 1 - (model Brier score/null model Brier score), where null model Brier score is null cox; 
-100% is perfect, <0 is useless, higher better, hamrful models <0;*/
+*Apparent Scaled Brier first;
+*Estimate survival at 5 years for null model;
+title 'Null model';
 
-*apparent Scaled Brier first;
-*NOW ESTIMATE SURVIVAL AT 5 YEARS for NULL model;
-PROC PHREG DATA=ROTTX;
-	MODEL SURVTIME*STATUS(0)= / TIES=EFRON RL;
-	*APPARENT;
-	BASELINE COVARIATES=ROTT_B OUT=ROTT_BSnull TIMELIST=5 SURVIVAL=FIVEYRSURV_null;
-RUN;
+proc phreg data=rottx;
+	model survtime*status(0)= / ties=efron rl;
+	baseline covariates=rott_b out=rott_bsnull timelist=5 
+		survival=fiveyrsurv_null;
+run;
 
-DATA ROTT_BS1null;
-	SET ROTT_BSnull;
-	KEEP PID FIVEYRSURV_null;
-	PROC SORT; BY PID;
-RUN;
+data rott_bs1null;
+	set rott_bsnull;
+	keep pid fiveyrsurv_null;
+	proc sort; by pid;
+run;
 
-PROC SORT DATA=ROTT_BS3;
-	BY PID;
-RUN;
+proc sort data=rott_bs3;
+	by pid;
+run;
+
+*Apparent brier for null model;
+*Merge the null model survival probabilities to brier score dataset from 
+*earlier;
+data rott_bs4;
+	merge rott_bs3 rott_bs1null;
+	by pid;
+run;
+
+data rott_bs5;
+	set rott_bs4;
+	if cat=1 then contrib_null=(-fiveyrsurv_null)**2;
+	if cat=2 then contrib_null=(1-fiveyrsurv_null)**2;
+	if cat=3 then contrib_null=0;
+	bs_null=contrib_null*weight;
+	drop fiveyrsurv_null;
+run;
+
+*Estimate brier score for null model;
+proc univariate data=rott_bs5 noprint;
+	var bs_null weight;
+	output out=sumnull sum=sbs_null sweight;
+	proc print; 
+run;
+
+data sumnull;
+	retain sweight sbs_null;
+	set sumnull;
+	sweight=left(sweight);
+run;
+
+*Calculate Scaled Brier;
+data scaledb;
+	merge sumnull sums;
+	by sweight;
+	null_brier = (1/sweight)*sbs_null;
+	scaled_b = 1-(brier/null_brier);
+	title 'Brier score and Scaled Brier';
+	proc print;
+run;
+
+
+
+
+******** This block calculates the Bootstrapped 95% CI for Scaled Brier Score;
+
+*Now estimate survival at 5 years for null model;
+data l2rott_b_exx;
+	set outboot;
+	if survtime<=4.99 and status=1 then cat=1;
+	if survtime>4.99 then cat=2;
+	if survtime<=4.99 and status=0 then cat=3;
+	proc sort; by replicate survtime;
+run;
+
+proc phreg data=outboot noprint;
+	by replicate;
+	model survtime*status(0)= / ties=efron rl;
+	baseline covariates=l2rott_b_exx out=rott_bsnull_ timelist=5 
+		survival=fiveyrsurv_null;
+run;
+
+data rott_bs1null_;
+	set rott_bsnull_;
+	keep replicate pid fiveyrsurv_null;
+	proc sort; by replicate pid;
+run;
+
+proc sort data=rott_bs3_;
+	by replicate pid;
+run;
 
 *apparent brier for null model;
-*MERGE THE NULL MODEL SURVIVAL PROBABILITIES TO BRIER SCORE DATASET FROM EARLIER;
-DATA ROTT_BS4;
-	MERGE ROTT_BS3 ROTT_BS1null;
-	BY PID;
-RUN;
+*Merge  null model survival probabilities to brier score dataset from earlier;
+data rott_bs4_;
+	merge rott_bs3_ rott_bs1null_;
+	by replicate pid;
+run;
 
-DATA ROTT_BS5;
-	SET ROTT_BS4;
-	IF CAT=1 THEN CONTRIB_NULL=(-FIVEYRSURV_null)**2;
-	IF CAT=2 THEN CONTRIB_NULL=(1-FIVEYRSURV_null)**2;
-	IF CAT=3 THEN CONTRIB_NULL=0;
-	BS_NULL=CONTRIB_NULL*WEIGHT;
-	DROP FIVEYRSURV_null;
-RUN;
+data rott_bs5_;
+	set rott_bs4_;
+	if cat=1 then contrib_null=(-fiveyrsurv_null)**2;
+	if cat=2 then contrib_null=(1-fiveyrsurv_null)**2;
+	if cat=3 then contrib_null=0;
+	bs_null=contrib_null*weight;
+	drop fiveyrsurv_null;
+run;
 
-*ESTIMATE BRIER SCORE FOR NULL MODEL;
-PROC UNIVARIATE DATA=ROTT_BS5 NOPRINT;
-	VAR BS_NULL WEIGHT;
-	OUTPUT OUT=SUMNULL SUM=SBS_NULL SWEIGHT;
-	PROC PRINT; 
-RUN;
+*Estimate brier score for null model;
+proc univariate data=rott_bs5_ noprint;
+	by replicate;
+	var bs_null weight;
+	output out=sumnull_ sum=sbs_null sweight;
+	proc print; 
+run;
 
-DATA SUMNULL;
-	RETAIN SWEIGHT SBS_NULL;
-	SET SUMNULL;
-	SWEIGHT=LEFT(SWEIGHT);
-RUN;
+data sumnull_;
+	retain sweight sbs_null;
+	set sumnull_;
+	sweight=left(sweight);
+run;
 
-*CALCULATE Scaled Brier;
-DATA SCALEDB;
-	MERGE SUMNULL SUMS;
-	BY SWEIGHT;
-	NULL_BRIER = (1/SWEIGHT)*SBS_NULL;
-	SCALED_B = 1-(BRIER/NULL_BRIER);
-	TITLE 'Brier score and Scaled Brier';
-	PROC PRINT;
-RUN;
+*Calculate Scaled Brier;
+data scaledb_;
+	merge sumnull_ sums_;
+	by replicate;
+	null_brier = (1/sweight)*sbs_null;
+	scaled_b = 1-(brier/null_brier);
+run;
+
+proc univariate data=scaledb_ noprint;
+	var brier scaled_b;
+	output out = confintr_ pctlpts=2.5 97.5 pctlpre= brier_ scaledb_ 
+		pctlname=lower95 upper95;
+run;
+
+data confintr1_;
+	set confintr_;
+	ind=1;
+run;
+
+***** End of block;
 
 
-***** 95% CI;
-
-
-*NOW ESTIMATE SURVIVAL AT 5 YEARS for NULL model;
-DATA L2ROTT_B_EXX;
-	SET OUTBOOT;
-	IF SURVTIME<=4.95 AND STATUS=1 THEN CAT=1;
-	IF SURVTIME>4.95 THEN CAT=2;
-	IF SURVTIME<=4.95 AND STATUS=0 THEN CAT=3;
-	*TIME=SURVTIME;
-	PROC SORT; BY REPLICATE SURVTIME;
-RUN;
-
-PROC PHREG DATA=OUTBOOT NOPRINT;
-	BY REPLICATE;
-	MODEL SURVTIME*STATUS(0)= / TIES=EFRON RL;
-	BASELINE COVARIATES=L2ROTT_B_EXX OUT=ROTT_BSnull_ TIMELIST=5 SURVIVAL=FIVEYRSURV_null;
-RUN;
-
-DATA ROTT_BS1null_;
-	SET ROTT_BSnull_;
-	KEEP REPLICATE PID FIVEYRSURV_null;
-	PROC SORT; BY REPLICATE PID;
-RUN;
-
-PROC SORT DATA=ROTT_BS3_;
-	BY REPLICATE PID;
-RUN;
-
-*apparent brier for null model;
-*MERGE THE NULL MODEL SURVIVAL PROBABILITIES TO BRIER SCORE DATASET FROM EARLIER;
-DATA ROTT_BS4_;
-	MERGE ROTT_BS3_ ROTT_BS1null_;
-	BY REPLICATE PID;
-RUN;
-
-DATA ROTT_BS5_;
-	SET ROTT_BS4_;
-	IF CAT=1 THEN CONTRIB_NULL=(-FIVEYRSURV_null)**2;
-	IF CAT=2 THEN CONTRIB_NULL=(1-FIVEYRSURV_null)**2;
-	IF CAT=3 THEN CONTRIB_NULL=0;
-	BS_NULL=CONTRIB_NULL*WEIGHT;
-	DROP FIVEYRSURV_null;
-RUN;
-
-*ESTIMATE BRIER SCORE FOR NULL MODEL;
-PROC UNIVARIATE DATA=ROTT_BS5_ NOPRINT;
-	BY REPLICATE;
-	VAR BS_NULL WEIGHT;
-	OUTPUT OUT=SUMNULL_ SUM=SBS_NULL SWEIGHT;
-	PROC PRINT; 
-RUN;
-
-DATA SUMNULL_;
-	RETAIN SWEIGHT SBS_NULL;
-	SET SUMNULL_;
-	SWEIGHT=LEFT(SWEIGHT);
-RUN;
-
-*CALCULATE Scaled Brier;
-DATA SCALEDB_;
-	MERGE SUMNULL_ SUMS_;
-	BY REPLICATE;
-	NULL_BRIER = (1/SWEIGHT)*SBS_NULL;
-	SCALED_B = 1-(BRIER/NULL_BRIER);
-	*PROC PRINT;
-RUN;
-
-PROC UNIVARIATE DATA=SCALEDB_ NOPRINT;
-	VAR BRIER SCALED_B;
-	OUTPUT OUT = CONFINTR_ PCTLPTS=2.5 97.5 PCTLPRE= BRIER_ SCALEDB_ PCTLNAME=LOWER95 UPPER95;
-RUN;
-
-DATA CONFINTR1_;
-	SET CONFINTR_;
-	IND=1;
-RUN;
-
-DATA BRIERAX2_;
- 	RETAIN BRIER BRIER_LOWER95 BRIER_UPPER95 SCALED_B SCALEDB_LOWER95 SCALEDB_UPPER95;
-	MERGE SCALEDB CONFINTR1_;
-	BY IND;
-	DROP IND SWEIGHT SBS;
-	TITLE 'External Brier score and Scaled Brier score with 95% CI';
-	PROC PRINT;
-RUN;
+***** This contains the Brier score and Scaled Brier score with their  
+***** bootstrapped 95% CI;
+data brierax2_;
+ 	retain brier brier_lower95 brier_upper95 scaled_b scaledb_lower95 
+		scaledb_upper95;
+	merge scaledb confintr1_;
+	by ind;
+	drop ind sweight sbs;
+	title 'Brier score and Scaled Brier score with 95% CI';
+	proc print;
+run;
 
 
 
+******** Block to do Bootstrap to assess optimism in performance of the 
+******** Scaled Brier;
 
-
-**** Bootstrap Scaled Brier performance;
-
-
-PROC PHREG DATA=ROTTAPP NOPRINT;
-	BY REPLICATE;
-	MODEL SURVTIME*STATUS(0)= / TIES=EFRON RL;
-	BASELINE COVARIATES=ROTT_BA OUT=OUTKM_NULL TIMELIST=5 SURVIVAL=FIVEYRSURV_null;
-RUN;
+* Begin with apparent bootstrap performance;
+proc phreg data=rottapp noprint;
+	by replicate;
+	model survtime*status(0)= / ties=efron rl;
+	baseline covariates=rott_ba out=outkm_null timelist=5 
+		survival=fiveyrsurv_null;
+run;
 
 *set the 5 year survival probability in the apparent bootstrap dataset;
-DATA OUTKM_NULL1;
-	SET OUTKM_NULL;
-	KEEP REPLICATE PID FIVEYRSURV_null;
-	PROC SORT; BY REPLICATE PID;
-RUN;
-
-proc sort data= ROTT_BS3A;
-	BY REPLICATE PID;
-RUN;
-
-DATA ROTT_BS4A;
-	MERGE ROTT_BS3A OUTKM_NULL1;
-	BY REPLICATE PID;
-RUN;
-
-DATA ROTT_BS5A;
-	SET ROTT_BS4A;
-	/*RETAIN _SURVIVAL;
-	IF NOT MISSING(SURVIVAL) THEN _SURVIVAL=SURVIVAL;
-	ELSE SURVIVAL=_SURVIVAL;
-	IF TIME1=0 THEN DELETE;*/
-	IF CAT=1 THEN CONTRIB_NULL=(-FIVEYRSURV_null)**2;
-	IF CAT=2 THEN CONTRIB_NULL=(1-FIVEYRSURV_null)**2;
-	IF CAT=3 THEN CONTRIB_NULL=0;
-	BS_NULL=CONTRIB_NULL*WEIGHT;
-	DROP FIVEYRSURV_null;
-RUN;
-
-
-*ESTIMATE BRIER SCORE;
-PROC UNIVARIATE DATA=ROTT_BS5A NOPRINT;
-	BY REPLICATE;
-	VAR BS_NULL WEIGHT;
-	OUTPUT OUT=SUMNULLA SUM=AppSBS_NULL SWEIGHT;
-	*PROC PRINT; 
-RUN;
-
-DATA SUMNULLA;
-	RETAIN SWEIGHT AppSBS_NULL;
-	SET SUMNULLA;
-	SWEIGHT=LEFT(SWEIGHT);
-RUN;
-
-
-DATA SCALEDBA;
-	MERGE SUMSA SUMNULLA;
-	BY REPLICATE;
-	NULL_AppBRIER = (1/SWEIGHT)*AppSBS_NULL;
-	AppScaledB = 1-(AppBRIER/NULL_AppBRIER);
-	*TITLE 'Brier score and IPA';
-	*PROC PRINT;
-RUN;
-
-
-
-*external;
-PROC PHREG DATA=ROTTAPP;
-	BY REPLICATE;
-	MODEL SURVTIME*STATUS(0)= / TIES=EFRON RL;
-	BASELINE COVARIATES=ROTT_B_EX OUT=OUTKM_NULLEX TIMELIST=5 SURVIVAL=FIVEYRSURV_null;
-RUN;
-
-DATA OUTKM_NULLEX1;
-	SET OUTKM_NULLEX;
-	KEEP REPLICATE PID FIVEYRSURV_null;
-	PROC SORT; BY REPLICATE PID;
-RUN;
-
-PROC SORT DATA=ROTTVAL_BS3;
-	BY REPLICATE PID;
-RUN;
-
-DATA ROTTVAL_BS4;
-	MERGE ROTTVAL_BS3 OUTKM_NULLEX1;
-	BY REPLICATE PID;
-RUN;
-
-DATA ROTTVAL_BS5;
-	SET ROTTVAL_BS4;
-	/*RETAIN _SURVIVAL;
-	IF NOT MISSING(SURVIVAL) THEN _SURVIVAL=SURVIVAL;
-	ELSE SURVIVAL=_SURVIVAL;
-	IF TIME1=0 THEN DELETE;*/
-	IF CAT=1 THEN CONTRIB_NULL=(-FIVEYRSURV_null)**2;
-	IF CAT=2 THEN CONTRIB_NULL=(1-FIVEYRSURV_null)**2;
-	IF CAT=3 THEN CONTRIB_NULL=0;
-	BS_NULL=CONTRIB_NULL*WEIGHT;
-	DROP FIVEYRSURV_null;
-RUN;
-
-
-*ESTIMATE BRIER SCORE;
-PROC SORT DATA=ROTTVAL_BS5;
-	BY REPLICATE PID;
-RUN;
-
-PROC UNIVARIATE DATA=ROTTVAL_BS5 NOPRINT;
-	BY REPLICATE;
-	VAR BS_NULL WEIGHT;
-	OUTPUT OUT=SUMNULLEX SUM=BootSBS_NULL SWEIGHT;
-	PROC PRINT; 
-RUN;
-
-DATA ScaledB2;
-	MERGE SUMSEX SUMNULLEX;
-	BY REPLICATE;
-	NULL_BootBRIER = (1/SWEIGHT)*BootSBS_NULL;
-	BootScaledB = 1-(BootBRIER/NULL_BootBRIER);
-RUN;
-
-DATA FINALIPA;
-	MERGE ScaledBA ScaledB2;
-	BY REPLICATE;
-	OptBrier = AppBrier - BootBrier;
-	OptScaledB = AppScaledB - BootScaledB;
-TITLE 'Optimism Brier score and Scaled Brier score';
-	PROC PRINT;
-RUN;
-
-
-
-
-*Discrimination;
-/*time-dep c: Heagerty and others - https://support.sas.com/resources/papers/proceedings17/SAS0462-2017.pdf
-Methods of Estimating Time-Dependent ROC Curves in PROC PHREG
-Option Method Reference
-IPCW Inverse probability of censoring weighting Uno et al. (2007)
-KM Conditional Kaplan-Meier Heagerty, Lumley, and Pepe (2000)
-NNE Nearest neighbors Heagerty, Lumley, and Pepe (2000)
-RECURSIVE Recursive method Chambless and Diao (2006)*/;
-
-***** GLOBAL ASSESSMENT OF DISCRIMINATION - C-STATISTIC;
-
-*apparent discrimination;
-*ODS LISTING SGE=ON STYLE=PRINTER IMAGE_DPI=300 GPATH='C:\Users\sme544\Documents\STRATOS\Figures';
-*ODS GRAPHICS ON / RESET=ALL NOBORDER OUTPUTFMT=TIFF /*WIDTH=4IN*/ IMAGENAME="Concord_ROTT_App2" ANTIALIAS=OFF/*ANTIALIASMAX=*/;
-
-*THESE CALCULATE C WHICH WE DO NOT PRESENT IN PAPER;
-*CALCULATE HARRELL C BUT IF REPLACE WITH UNO YOU GET UNO'S C - NEED TAU TO EQUAL EVENT TIME IF FIXED OTHERWISE USES ALL;
-*Plots here provide ROC curves at 5 and 10 years survival;
-PROC PHREG DATA=ROTT CONCORDANCE=/*HARRELL(SE)*/ UNO(SE SEED=8754 ITER=50) TAU=5 /*PLOTS(OVERLAY=INDIVIDUAL)=ROC ROCOPTIONS(AT=5)*/;
-	CLASS SIZE (REF=FIRST) NODESCAT (REF=FIRST) GRADE (REF=FIRST);
-	MODEL SURVTIME*STATUS(0)=SIZE NODESCAT GRADE / TIES=EFRON RL;
-RUN;
-
-*ODS GRAPHICS OFF;
-
-*GET BOOTSTRAP PERFORMANCE FOR UNO C;
-
-*CALCULATE Harrell's C - NEED TAU TO EQUAL EVENT TIME IF FIXED OTERWISE USES ALL;
-PROC PHREG DATA=OUTBOOT CONCORDANCE=HARRELL(SE) /*UNO(SE SEED=8754 ITER=50)*/ TAU=5  /*PLOTS(OVERLAY=INDIVIDUAL)=ROC ROCOPTIONS(AT=5 10)*/ ;
-	*WHERE REPLICATE IN (1,2);
-	BY REPLICATE;
-	CLASS SIZE (REF=FIRST) NODESCAT (REF=FIRST) GRADE (REF=FIRST);
-	MODEL SURVTIME*STATUS(0)=SIZE NODESCAT GRADE  / TIES=EFRON RL ;
-	ODS OUTPUT CONCORDANCE=AppHar(RENAME=(Estimate=AppHar stderr=AppSEH) DROP=SOURCE);
-RUN;
-
-*calculate Uno C;
-PROC PHREG DATA=OUTBOOT /*CONCORDANCE=HARRELL(SE)*/ CONCORDANCE=UNO(SE SEED=8754 ITER=50) TAU=5 /*PLOTS(OVERLAY=INDIVIDUAL)=ROC ROCOPTIONS(AT=5 10)*/ ;
-	*WHERE REPLICATE IN (1,2);
-	BY REPLICATE;
-	CLASS SIZE (REF=FIRST) NODESCAT (REF=FIRST) GRADE (REF=FIRST);
-	MODEL SURVTIME*STATUS(0)=SIZE NODESCAT GRADE  / TIES=EFRON RL ;
-	ODS OUTPUT CONCORDANCE=AppUno(RENAME=(Estimate=AppUno stderr=AppSEU) DROP=SOURCE);
-RUN;
-
-*EXTERNAL BOOT;
-SASFILE ROTT LOAD; /* a way of loading the dataset into RAM - speeds it up */
-
-*THIS SHOULD REPLICATE THE DATASET 500 TIMES WITHOUT REPLACEMENT - TRICK TO GET 500 COPIES - NEEDED FOR CONCORDANCE TO WORK BELOW;
-PROC SURVEYSELECT DATA=ROTT OUT=OUTROTT /* Use PROC SURVEYSELECT and provide input and output dataset names */
-SEED=853794 /* can enter 0 for it to select a random seed but remember to type it in here from the output otherwise cannot replicate results */
-METHOD=SRS /* Unrestricted Random Sampling - simple random sampling */
-SAMPRATE=1 /* can accept proportions or percentages but we want n to be size of orginal database so =1 (or 100) */
-REP=500; /* number of bootstrap samples */
-RUN;
-
-SASFILE ROTT CLOSE; /* closes frees RAM buffers when done */
-
-ODS LISTING CLOSE; /* turns off ODS listing so no printing of all output. Better than using NOPRINT as it doesn't allow storage of data in output dataset at end */
-
-PROC PHREG DATA=OUTROTT CONCORDANCE=HARRELL(SE) /*CONCORDANCE=UNO(SE SEED=8754 ITER=50)*/ TAU=5 /*PLOTS(OVERLAY=INDIVIDUAL)=ROC ROCOPTIONS(AT=5 10)*/;
-	*WHERE REPLICATE IN (1,2);
-	BY REPLICATE;	
-	CLASS SIZE (REF=FIRST) NODESCAT (REF=FIRST) GRADE (REF=FIRST);
-	MODEL SURVTIME*STATUS(0)=SIZE NODESCAT GRADE  / TIES=EFRON RL NOFIT;
-	ROC SOURCE=SimpModelBoot;
-	*STORE Stratos.SimpModel;
-	*assess functional form (siz p=0.035) and PH ok;
-	*ASSESS VAR=(SIZECM) PH / RESAMPLE CRPANEL;
-	*ASSESS PH / RESAMPLE CRPANEL;
-	*OUTPUT OUT=ROTTX XBETA=XB;
-	ODS OUTPUT CONCORDANCE=BootHar(RENAME=(Estimate=BootHar stderr=BootSEH) drop=SOURCE);
-RUN;
-
-PROC PHREG DATA=OUTROTT /*CONCORDANCE=HARRELL(SE)*/ CONCORDANCE=UNO(SE SEED=8754 ITER=50) TAU=5 /*PLOTS(OVERLAY=INDIVIDUAL)=ROC ROCOPTIONS(AT=5 10)*/;
-	*WHERE REPLICATE IN (1,2);
-	BY REPLICATE;	
-	CLASS SIZE (REF=FIRST) NODESCAT (REF=FIRST) GRADE (REF=FIRST);
-	MODEL SURVTIME*STATUS(0)=SIZE NODESCAT GRADE  / TIES=EFRON RL NOFIT;
-	ROC SOURCE=SimpModelBoot;
-	*STORE Stratos.SimpModel;
-	*assess functional form (siz p=0.035) and PH ok;
-	*ASSESS VAR=(SIZECM) PH / RESAMPLE CRPANEL;
-	*ASSESS PH / RESAMPLE CRPANEL;
-	*OUTPUT OUT=ROTTX XBETA=XB;
-	ODS OUTPUT CONCORDANCE=BootUno(RENAME=(Estimate=BootUno stderr=BootSEU) drop=SOURCE);
-RUN;
-
-DATA HARCON;
-	MERGE AppHar BootHar;
-	BY REPLICATE;
-	OptHarC = AppHar - BootHar;
-RUN;
-
-DATA UNOCON;
-	MERGE AppUno BootUno;
-	BY REPLICATE;
-	OptUnoC = AppUno - BootUno;
-RUN;
-
-***************** FIXED TIME POINT ASSESSMENT OF DISCRIMINATION - TIME-DEPENDENT AUROC AT 5 YEARS;
-
-*time dependent AUC;
-*The PLOTS=AUC option in the PROC PHREG statement plots the AUC curve. The ROCOPTIONS option in the
-PROC PHREG statement enables you to specify the inverse probability of censoring weighting (IPCW) method (UNO) to
-compute the ROC curves, and the CL suboption requests pointwise confidence limits for the AUC curve. The IAUC
-option computes and displays the integrated AUC over time;
-*IPCW OR UNO ARE SAME - (CL SEED ITER OPTIONS ONLY APPLY FOR THIS AUC);
-
-*Apparent;
-PROC PHREG DATA=ROTT TAU=5 ROCOPTIONS(AUC AT=4.95 METHOD=/*RECURSIVE*/ /*NNE*/ /*KM*/ IPCW (CL SEED=134) IAUC /*OUTAUC=IPCWAUC *//*AUCDIFF*/);
-	CLASS SIZE (REF=FIRST) NODESCAT (REF=FIRST) GRADE (REF=FIRST);
-	MODEL SURVTIME*STATUS(0)=SIZE NODESCAT GRADE / TIES=EFRON RL NOFIT;
-	ROC 'NPI' SOURCE=SimpModel;
-RUN;
-
-*GET BOOTSTRAP PERFORMANCE FOR UNO AUC;
-
-PROC PHREG DATA=outboot /*PLOTS=AUC*/ TAU=5 ROCOPTIONS(AUC AT=4.95 METHOD=/*RECURSIVE*/ /*NNE*/ /*KM*/ IPCW (CL SEED=134) /*IAUC OUTAUC=IPCWAUC*/);
-	*WHERE REPLICATE IN (1,2);
-	BY REPLICATE;
-	CLASS SIZE (REF=FIRST) NODESCAT (REF=FIRST) GRADE (REF=FIRST);
-	MODEL SURVTIME*STATUS(0)=SIZE NODESCAT GRADE  / TIES=EFRON RL;
-	*STORE Stratos.SimpModel;
-	*assess functional form (siz p=0.035) and PH ok;
-	*ASSESS VAR=(SIZECM) PH / RESAMPLE CRPANEL;
-	*ASSESS PH / RESAMPLE CRPANEL;
-	*OUTPUT OUT=ROTTX XBETA=XB;
-	ODS OUTPUT AUC=AppTDUno(RENAME=(Estimate=AppTDUno stderr=AppTDSE) DROP=SOURCEID UPPER LOWER source) IAUC=AppIAUC;
-RUN;
-
-*External boot;
-PROC PHREG DATA=outrott /*PLOTS=AUC*/ TAU=5 ROCOPTIONS(AUC AT=4.95 METHOD=/*RECURSIVE*/ /*NNE*/ /*KM*/ IPCW (CL SEED=134) /*IAUC OUTAUC=IPCWAUC*/);
-	*WHERE REPLICATE IN (1,2);
-	BY REPLICATE;
-	CLASS SIZE (REF=FIRST) NODESCAT (REF=FIRST) GRADE (REF=FIRST);
-	MODEL SURVTIME*STATUS(0)=SIZE NODESCAT GRADE  / TIES=EFRON RL NOFIT;
-	ROC SOURCE=SimpModelBoot;
-	*assess functional form (siz p=0.035) and PH ok;
-	*ASSESS VAR=(SIZECM) PH / RESAMPLE CRPANEL;
-	*ASSESS PH / RESAMPLE CRPANEL;
-	*OUTPUT OUT=ROTTX XBETA=XB;
-	ODS OUTPUT AUC=BootTDUno(RENAME=(Estimate=BootTDUno stderr=BootTDSE) DROP=SOURCE sourceid UPPER LOWER);
-RUN;
-
-DATA TDUNOCON;
-	MERGE AppTDUno BootTDUno;
-	BY REPLICATE;
-	OptUnoAUC = AppTDUno - BootTDUno;
-RUN;
-
-
-
-
-************** Conduct DCA analysis;
-
-*- see %stdca macro - get from https://www.mskcc.org/departments/epidemiology-biostatistics/biostatistics/decision-curve-analysis;
-
-*let's add PGR as a new marker;
-DATA BER;
-	SET FFPGR;
-	SURVTIME1=SURVTIME;
-RUN;
-
-PROC PHREG DATA=ROTT;
-	CLASS SIZE (REF=FIRST) NODESCAT (REF=FIRST) GRADE (REF=FIRST);
-	MODEL SURVTIME*STATUS(0)=SIZE NODESCAT GRADE/ TIES=EFRON RL;	
-	BASELINE OUT=ORIGEXT COVARIATES=BER SURVIVAL=FIVEYR timelist=5;
-RUN;
-
-PROC PHREG DATA=FFPGR;
-	CLASS SIZE (REF=FIRST) NODESCAT (REF=FIRST) GRADE (REF=FIRST);
-	MODEL SURVTIME*STATUS(0)=SIZE NODESCAT GRADE pgr pgr1/ TIES=EFRON RL;	
-	BASELINE OUT=NEWEXT COVARIATES=ORIGEXT SURVIVAL=FIVEYR_PGR timelist=5;
-RUN;
-
-DATA NEWEXT1;
-	SET NEWEXT;
-	RISK_ORIG=1-FIVEYR;
-	RISK_NEW=1-FIVEYR_PGR;
-RUN;
-
-%PUT _user_;
-GOPTIONS RESET = ALL;
-
-symbol1 i=join c=green;
-symbol2 i=join c=red;
-symbol3 i=join c=blue;
-symbol4 i=join c=darkred;
-symbol5 i=join c=gray;
-
-%STDCA(data=NEWEXT1, out=survivalmult, outcome=STATUS, ttoutcome=SURVTIME1, timepoint=5, predictors=RISK_ORIG);
-%STDCA(data=NEWEXT1, out=survivalmult_new, outcome=STATUS, ttoutcome=SURVTIME1, timepoint=5, predictors=RISK_NEW);
-
-*Sort by threshold variable;
-PROC SORT DATA=survivalmult OUT=kmsort;
-	BY threshold;
-RUN;
-
-*Rename the variables so that we know they are the Kaplan Meier estimates;
-DATA kmsort; SET kmsort(RENAME=(RISK_ORIG=kmmodel all=kmall));
-	LABEL kmmodel="Original model: Pr(Recurrence) at 5 years";
-	LABEL kmall="Treat All";
-RUN;
-
-*Sort by threshold variable;
-PROC SORT DATA=survivalmult_new OUT=crsort;
-	BY threshold;
-RUN;
-
-*Rename the variables so that we know they are the Competing Risk estimates;
-DATA crsort; SET crsort(RENAME=(RISK_NEW=crmodel all=crall));
-	LABEL crmodel="Original + PGR: Pr(Recurrence) at 5 years";
-RUN;
-
-*Merge Kaplan-Meier and Competing Risk data using threshold probabilities;
-DATA crsort;
-	MERGE kmsort crsort;
-	BY threshold;
-RUN;
-
-data stratos.AppNB;
-	set crsort;
+data outkm_null1;
+	set outkm_null;
+	keep replicate pid fiveyrsurv_null;
+	proc sort; by replicate pid;
 run;
 
-title;
-FOOTNOTE;
-*- this allows editing of the .sge file!;
-ODS LISTING SGE=ON STYLE=PRINTER IMAGE_DPI=300 GPATH='T:\People\d.mclernon\STRATOS\STRATOS\Figures';
-ODS GRAPHICS ON / RESET=ALL NOBORDER OUTPUTFMT=TIFF /*WIDTH=4IN*/ IMAGENAME="dca with spline PGR" ANTIALIAS=OFF/*ANTIALIASMAX=*/;
+proc sort data= rott_bs3a;
+	by replicate pid;
+run;
 
-*create graph (decision curve) with treat none, treat all, Kaplan-Meier method, and Competing Risks method;
-PROC SGPLOT DATA=crsort;
-	YAXIS VALUES=(-0.05 to 0.45 by 0.05) LABEL="Net Benefit";
-	XAXIS VALUES=(0.0 to 1 by 0.1) LABEL="Threshold Probability";
-	KEYLEGEND "all" "orig" "new" "none" / DOWN=4 POSITION=BOTTOM;
-	SERIES Y=kmall X=threshold / LINEATTRS=(COLOR=BLACK THICKNESS=2 PATTERN=SOLID) NAME="all" LEGENDLABEL="Treat All";
-		 /*crall*threshold*/
-	SERIES Y=kmmodel X=threshold / LINEATTRS=(COLOR=GREEN THICKNESS=2 PATTERN=SOLID) NAME="orig" LEGENDLABEL="Original model: Pr(Rec) at 5 years";
-	SERIES Y=crmodel X=threshold / LINEATTRS=(COLOR=BLUE THICKNESS=2 PATTERN=SOLID) NAME="new" LEGENDLABEL="Original model + PGR: Pr(Rec) at 5 years";
-	SERIES Y=none X=threshold / LINEATTRS=(COLOR=RED THICKNESS=2 PATTERN=SOLID)  NAME="none" LEGENDLABEL="None";
-RUN;
+data rott_bs4a;
+	merge rott_bs3a outkm_null1;
+	by replicate pid;
+run;
 
-ODS GRAPHICS OFF;
+data rott_bs5a;
+	set rott_bs4a;
+	if cat=1 then contrib_null=(-fiveyrsurv_null)**2;
+	if cat=2 then contrib_null=(1-fiveyrsurv_null)**2;
+	if cat=3 then contrib_null=0;
+	bs_null=contrib_null*weight;
+	drop fiveyrsurv_null;
+run;
+
+*Estimate brier score;
+proc univariate data=rott_bs5a noprint;
+	by replicate;
+	var bs_null weight;
+	output out=sumnulla sum=appsbs_null sweight;
+run;
+
+data sumnulla;
+	retain sweight appsbs_null;
+	set sumnulla;
+	sweight=left(sweight);
+run;
+
+data scaledba;
+	merge sumsa sumnulla;
+	by replicate;
+	null_appbrier = (1/sweight)*appsbs_null;
+	appscaledb = 1-(appbrier/null_appbrier);
+run;
+
+
+*External bootstrap performance;
+proc phreg data=rottapp noprint;
+	by replicate;
+	model survtime*status(0)= / ties=efron rl;
+	baseline covariates=rott_b_ex out=outkm_nullex timelist=5 
+		survival=fiveyrsurv_null;
+run;
+
+data outkm_nullex1;
+	set outkm_nullex;
+	keep replicate pid fiveyrsurv_null;
+	proc sort; by replicate pid;
+run;
+
+proc sort data=rottval_bs3;
+	by replicate pid;
+run;
+
+data rottval_bs4;
+	merge rottval_bs3 outkm_nullex1;
+	by replicate pid;
+run;
+
+data rottval_bs5;
+	set rottval_bs4;
+	if cat=1 then contrib_null=(-fiveyrsurv_null)**2;
+	if cat=2 then contrib_null=(1-fiveyrsurv_null)**2;
+	if cat=3 then contrib_null=0;
+	bs_null=contrib_null*weight;
+	drop fiveyrsurv_null;
+run;
+
+
+*Estimate brier score;
+proc sort data=rottval_bs5;
+	by replicate pid;
+run;
+
+proc univariate data=rottval_bs5 noprint;
+	by replicate;
+	var bs_null weight;
+	output out=sumnullex sum=bootsbs_null sweight;
+	proc print; 
+run;
+
+data scaledb2;
+	merge sumsex sumnullex;
+	by replicate;
+	null_bootbrier = (1/sweight)*bootsbs_null;
+	bootscaledb = 1-(bootbrier/null_bootbrier);
+run;
+
+******** End block;
+
+* Contains optimism corrected Brier and Scaled Brier scores per replicate;
+data finalipa;
+	merge scaledba scaledb2;
+	by replicate;
+	optbrier = appbrier - bootbrier;
+	optscaledb = appscaledb - bootscaledb;
+title 'Optimism Brier score and Scaled Brier score';
+	proc print;
+run;
 
 
 
+** NOW PUT ALL TOGETHER TO GET THE OPTIMISM IN PERFORMANCE & 95% CI FOR 
+** APPARENT PERFORMANCE;
+data all1;
+	*If you did not calculate all of the performance measures you will need to 
+		delete the related dataset from the merge statement;
+	merge finalipa harcon unocon tdunocon;
+	by replicate;
+run;
 
-********* NOW PUT ALL TOGETHER TO GET THE OPTIMISM IN PERFORMANCE & 95% CI FOR APPARENT PERFORMANCE **************;
-DATA ALL1;
-	MERGE ROYSTONBOOT FINALIPA HARCON UNOCON TDUNOCON;
-	BY REPLICATE;
-RUN;
-
-DATA STRATOS.ALL1;
-	SET ALL1;
-RUN;
-
+data stratos.all1;
+	set all1;
+run;
 
 *calculate the average optimism in fit;
-proc univariate data= ALL1;
-	var OptD OptR2D OptBrier OptScaledB OptHarC OptUnoC OptUnoAUC;
-	output out=avgopt mean=Mean_OptD Mean_OptR2D Mean_OptBrier Mean_OptScaleB Mean_OptHarC Mean_OptUnoC Mean_OptUnoAUC;
+proc univariate data= all1 noprint;
+	var OptBrier OptScaledB OptHarC OptUnoC OptUnoAUC;
+	output out=avgopt mean=Mean_OptBrier Mean_OptScaleB Mean_OptHarC 
+		Mean_OptUnoC Mean_OptUnoAUC;
 run;
 
-*-get c-stat from final model;
-*enter the aucs for each model;
-DATA RESULTSDATA;
-	INFILE DATALINES DELIMITER=',';
-	INPUT OrigD OrigR2D OrigBrier OrigScBr OrigHarC OrigUnoC OrigUnoAUC;
-	DATALINES;
-	 1.058, 0.211, 0.205, 0.148, 0.678, 0.677, 0.718
+**** Manually enter the performance measures for each model;
+data resultsdata;
+	infile datalines delimiter=',';
+	input OrigBrier OrigScBr OrigHarC OrigUnoC OrigUnoAUC;
+	datalines;
+	0.210, 0.143, 0.674, 0.673, 0.712
 ;
 data resultsdata_new;
 	set resultsdata;
@@ -1407,14 +1144,14 @@ data avgopt1;
 	ind=1;
 run;
 
-*- calculate the difference between the c from final model and the average optimism in fit to get a nearly unbiased;
-*- estimate of the expected value of the external predictive discrimination of the process which generated Capp; 
-*- in other words InternVal is an honest estimate of internal validity penalising for overfitting;
+
+*Calculate the difference between the measure from final model and the average 
+*optimism in fit to get a nearly unbiased estimate of the expected value of the 
+*external performance measure, in other words, internal validation is an honest 
+*estimate of internal validity penalising for overfitting;
 data correctedperf;
 	merge resultsdata_new avgopt1;
 	by ind;
-	InternValD=OrigD - Mean_OptD;
-	InternValR2D=OrigR2D - Mean_OptR2D;
 	InternValBrier=OrigBrier - Mean_OptBrier;
 	InternValSBrier=OrigScBr - Mean_OptScaleB;
 	InternValHarC=OrigHarC - Mean_OptHarC;
@@ -1428,7 +1165,132 @@ title 'Estimate of internal validity penalising for overfitting';
 proc print data=correctedperf;
 run;
 
-PROC EXPORT DATA=correctedperf
-  	OUTFILE= "C:\Users\sme544\Documents\STRATOS\Bootstrap_Val" 
-   	DBMS=XLSX REPLACE;
+proc export data=correctedperf
+  	outfile= "C:\Bootstrap_Val" 
+   	dbms=xlsx replace;
+run;
+
+
+title ' ';
+
+************** Conduct DCA analysis;
+
+*- see %stdca macro - get from https://www.mskcc.org/departments/epidemiology-
+*biostatistics/biostatistics/decision-curve-analysis;
+
+*let's add PGR as a new marker and calculate for basic and extended models;
+data ber;
+	set ffpgr;
+	survtime1=survtime;
+run;
+
+proc phreg data=rott;
+	class sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
+	model survtime*status(0)=sizecat nodescat gradecat / ties=efron rl;
+	baseline out=origext covariates=ber survival=fiveyr timelist=5;
+run;
+
+proc phreg data=ffpgr;
+	class sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
+	model survtime*status(0)=sizecat nodescat gradecat pgr pgr1/ ties=efron rl;
+	baseline out=newext covariates=origext survival=fiveyr_pgr timelist=5;
+run;
+
+data newext1;
+	set newext;
+	risk_orig=1-fiveyr;
+	risk_new=1-fiveyr_pgr;
+run;
+
+*count number tp and fp for cut pt of 0.23;
+data tp;
+	set newext1;
+	if risk_orig gt 0.23 then testpos=1;
+	else testpos=0;
+	if risk_new gt 0.23 then testpos_pgr=1;
+	else testpos_pgr=0;
+run;
+
+proc freq data=tp;
+	table testpos*status testpos_pgr*status;
+run;
+
+
+
+%put _user_;
+goptions reset = all;
+
+symbol1 i=join c=green;
+symbol2 i=join c=red;
+symbol3 i=join c=blue;
+symbol4 i=join c=darkred;
+symbol5 i=join c=gray;
+
+%STDCA(data=NEWEXT1, out=survivalmult, outcome=STATUS, ttoutcome=SURVTIME1, 
+	timepoint=5, predictors=RISK_ORIG);
+%STDCA(data=NEWEXT1, out=survivalmult_new, outcome=STATUS, ttoutcome=SURVTIME1, 
+	timepoint=5, predictors=RISK_NEW);
+
+*sort by threshold variable;
+proc sort data=survivalmult out=kmsort;
+	by threshold;
+run;
+
+*rename the variables so that we know they are the kaplan meier estimates;
+data kmsort; set kmsort(rename=(risk_orig=kmmodel all=kmall));
+	LABEL kmmodel="Original model: Pr(Recurrence or death) at 5 years";
+	LABEL kmall="Treat All";
 RUN;
+
+*sort by threshold variable;
+proc sort data=survivalmult_new out=crsort;
+	by threshold;
+run;
+
+*Rename the variables so that we know they are the competing model estimates;
+data crsort; set crsort(rename=(risk_new=crmodel all=crall));
+	label crmodel="Original + PGR: Pr(Recurrence or death) at 5 years";
+run;
+
+*merge nb data for original model plus model with pgr using threshold 
+*probabilities;
+data crsort;
+	merge kmsort crsort;
+	by threshold;
+run;
+
+data stratos.appnb;
+	set crsort;
+run;
+
+******  Optional Block to create nicer DCA curves ************;
+
+title;
+footnote;
+*- this allows editing of the .sge file!;
+ods listing sge=on style=printer image_dpi=300 gpath='c:';
+ods graphics on / reset=all noborder outputfmt=tiff /*width=4in*/ 
+	imagename="dca with spline pgr" antialias=off/*antialiasmax=*/;
+
+*create decision curve with treat none, treat all, basic model, extended model;
+proc sgplot data=crsort;
+	yaxis values=(-0.05 to 0.45 by 0.05) label="Net Benefit";
+	xaxis values=(0.0 to 1 by 0.1) label="Threshold Probability";
+	keylegend "all" "orig" "new" "none" / down=4 position=bottom;
+	series y=kmall x=threshold / lineattrs=(color=black thickness=2 
+			pattern=solid) name="all" legendlabel="Treat All";
+	series Y=kmmodel X=threshold / lineattrs=(color=green thickness=2 
+			pattern=solid) name="orig" 
+			legendlabel="Original model: Pr(Recurrence/death) at 5 years";
+	series Y=crmodel X=threshold / lineattrs=(color=blue thickness=2 
+			pattern=solid) name="new" 
+			legendlabel="Original model + PGR: Pr(Recurrence/death) at 5 years";
+	series Y=none X=threshold / lineattrs=(color=red thickness=2 
+			pattern=solid)  name="none" legendlabel="Treat None";
+RUN;
+
+ods graphics off;
+
+******  End Optional Block ************;
+
+
