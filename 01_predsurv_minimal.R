@@ -35,7 +35,7 @@ rotterdam$dtime[rotterdam$rfs == 1 &
                 (rotterdam$rtime < rotterdam$dtime)]/365.25  
 
 # variables used in the analysis
-pgr99 <- quantile(rotterdam$pgr, .99) # there is a large outlier of 5000
+pgr99 <- quantile(rotterdam$pgr, .99, type = 1) # there is a large outlier of 5000, used type=1 to get same result as in SAS
 rotterdam$pgr2 <- pmin(rotterdam$pgr, pgr99) # Winsorized value
 rotterdam$csize <- rotterdam$size           # categorized size
 rotterdam$cnode <- cut(rotterdam$nodes, 
@@ -73,12 +73,12 @@ gbsg$pgr3 <- rcs3_pgr
 
 # Much of the analysis will focus on the first 5 years: create
 #  data sets that are censored at 5
-temp <- survSplit(Surv(ryear, rfs) ~ ., data = rotterdam, cut=5,
+temp <- survSplit(Surv(ryear, rfs) ~ ., data = rotterdam, cut = 5,
                   episode="epoch")
-rott5 <- subset(temp, epoch==1)  # only the first 5 years
-temp <- survSplit(Surv(ryear, rfs) ~ ., data = gbsg, cut=5,
+rott5 <- subset(temp, epoch == 1)  # only the first 5 years
+temp <- survSplit(Surv(ryear, rfs) ~ ., data = gbsg, cut = 5,
                   episode ="epoch")
-gbsg5 <- subset(temp, epoch==1)
+gbsg5 <- subset(temp, epoch == 1)
 
 # Relevel
 rott5$cnode <- relevel(rotterdam$cnode, "0")
@@ -257,6 +257,18 @@ numsum_cph <- c(
 )
 numsum_cph
 
+# calibratoin slope (fixed time point)-------------------------------------
+gval <- coxph(Surv(ryear, rfs) ~ lp, data=gbsg5)
+
+calslope_summary <- c(
+  "calibration slope" = gval$coef,
+  "2.5 %"  = gval$coef - qnorm(1 - alpha / 2) * sqrt(gval$var),
+  "97.5 %" = gval$coef + qnorm(1 - alpha / 2) * sqrt(gval$var)
+)
+
+calslope_summary
+
+
 
 # Overall performance ---------------------------------------
 score_gbsg5 <-
@@ -277,7 +289,8 @@ score_gbsg5$Brier$score
 
 # 1. Set grid of thresholds
 thresholds <- seq(0, 1.0, by = 0.01)
-# 2. Calculate Aelen johansen for all patients exceeding threshold (i.e. treat-all)
+
+# 2. Calculate observed risk for all patients exceeding threshold (i.e. treat-all)
 horizon <- 5
 survfit_all <- summary(
   survfit(Surv(ryear, rfs) ~ 1, data = gbsg5), 
@@ -316,9 +329,11 @@ list_nb <- lapply(thresholds, function(ps) {
   return(df_res)
 })
 
-
 # Combine into data frame
 df_nb <- do.call(rbind.data.frame, list_nb)
+
+#read off at 23% threshold
+df_nb[df_nb$threshold==0.23,]
 
 # Make basic decision curve plot
 par(
@@ -353,10 +368,10 @@ mtext("Threshold probability", 1, line = 2)
 title("Validation data")
 
 # NOTES ---------------------------
-# 1. To run the apparent validation find "gbsg5" with "rott5"
+# 1. To run the apparent validation find "gbsg5" and replace with "rott5"
 # from paragraph "Discrimination" on. 
 # 2. To run the model with the PGR as additional biomarker
-# find "efit1" with "efit1_pgr"
+# find "efit1" and replace with with "efit1_pgr"
 # from paragraph "Discrimination" on. 
 
 # When use apparent validation, be careful to use the correct labels in the plot!
