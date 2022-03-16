@@ -1,108 +1,129 @@
-*******************************************************************************************************;
-* Programme: 	STRATOS External validation when model estimates and baseline survival available.sas   ;
-* Author: 		David McLernon																		   ;
-* Date: 		26th Feb 2021																	   	   ;
-* Purpose: 		STRATOS case study for survival prediction model paper				 				   ;
-*				External validation when you only have access to model estimates and baseline survival ;
-*				function																			   ;	
-* Note:			This programme is not currently automated. It is coded based on the case study in the  ;
-* 				article. Therefore, adapting this code for your own study will require careful 	       ;
-*				editing according to your data							  							   ;
-*******************************************************************************************************;	
+*******************************************************************************;	
+* Program: 			STRATOS External validation when model estimates and       ;
+*					baseline survival available.sas							   ;
+*					available.sas  											   ;
+* Author: 			David McLernon											   ;
+* Date: 			24th Jan 2022											   ;
+* Purpose: 			This is SAS code for the STRATOS paper on validation of	   ;
+*					survival risk prediction models. This programme covers:    ;
+*					1. external validation when the original dataset used to   ;
+*					develop the model is not available but the PI and baseline ;
+*					survival are available									   ;
+* Note:				This programme is not currently automated. It is coded	   ;
+*					based on the case study in the article. Therefore, 		   ;
+*					adapting this code for your own study will require careful ;
+*					editing according to your data							   ;
+*					Readers can skip the sections that create "nice" graphs,   ;
+*					these all have surrounding comments of  "Optional Block"   ;
+*					and "End Optional Block". Though an essential skill for    ;
+*					published papers, such maniuplation is outside the primary ;
+*					scope of this work.										   ;
+* Data:				The Rotterdam and GBSG data sets can be found on the web   ;
+*					in various locations and various formats.  For this 	   ;
+*					exercise we have used the versions found in the R package. ;
+*					(Older web sites have a habit of disappearing and we 	   ;
+*					expect R to be more stable). In R we used 				   ;
+*				    library(survival)									       ;
+*			        write.csv(rotterdam, row.names=FALSE, file="rotterdam.csv");
+*			        write.csv(gbsg,      row.names=FALSE, file="gbsg.csv")	   ;
+*				       to create the csv files.								   ;
+*******************************************************************************;	
+options ls=80 mprint mlogic nonumber nodate source2 spool;
 
 * NB Edit folder locations to your own;
+* i call libname stratos but you can change to whatever name and location you 
+* wish - you may not even wish to use a libname;
+libname stratos 'c:\users\sme544\documents\stratos';
 
-OPTIONS MPRINT MLOGIC NONUMBER NODATE SOURCE2 MAXMEMQUERY=MAX /*(fmtsearch = (formats)*/ spool; 
-LIBNAME STRATOS 'C:\Users\sme544\Documents\STRATOS';
+* macros required - download and save and specify the correct location after 
+* %include;
+* - Frank Harrells RCSPLINE macro for calculating the spline terms - found here: 
+* http://biostat.mc.vanderbilt.edu/wiki/Main/SasMacros;
+%include 'c:\users\sme544\documents\stratos\rcspline macro.sas';
+* - Andrew Vickers DCA SAS macro see: 
+* https://www.mskcc.org/departments/epidemiology-biostatistics/biostatistics/
+* decision-curve-analysis;
+%include 'c:\users\sme544\documents\stratos\stdca.sas';
 
-*macros required;
-%INCLUDE 'C:\Users\sme544\Documents\STRATOS\RCSPLINE macro.SAS';
-%INCLUDE 'C:\Users\sme544\Documents\STRATOS\STDCA.SAS';
-
-
-*The model we use is the Nottingham Prognostic Index;
-* I = 0.2 X size + stage + grade;
-* size = max tumour diameter in cms where 0 is <=20, 1=21-50, 2 is >50;
-* stage = number of pos lymph nodes where 0=zero, 1=1 to 3, 2=4+ pos nodes;
-* grade = tumour grade 0=Grade 1 or 2, 1=Grade 3;
+****** Read in the German datset (external);
+proc import out= gbsg 
+            datafile= "c:\users\sme544\documents\stratos\gbsg.csv" 
+            dbms=csv replace;
+run;
 
 *** Estimating Baseline Survival Function under PH;
-** Here S0 at 5 years =  0.82267;
-** For model with PGR added, S0 = 0.77815;
+** Here S0 at 5 years =  0.80153;
+** For model with PGR added, S0 = 0.75852;
 ** S(t)=S0(t)**exp(ß1X1+ß2X2+ß3X3+...+ßpXp)=S0(t)**exp(PI);
 
-********************** Import external validation dataset ***************************************;
-
 *code up predictors and apply the original model;
-DATA L2GBSG_VA(RENAME=( _D=STATUS NODES1=NODESCAT MENO=MENO_IMP SIZECAT=SIZE));
-	SET STRATOS.gbsg_br_ca;
-	IF SIZE LE 20 THEN SIZECAT=1;
-	IF 21 <= SIZE <= 50 THEN SIZECAT=2;
-	IF SIZE >50 THEN SIZECAT=3;
-	nodes_imp=nodes;
-	nodes1=0;
-	if 1<=nodes<=3 then nodes1=1;
-	if nodes>3 then nodes1=2;
-	grade = grade-1;
-	IF GRADE IN (0,1) THEN GRADE=0;
-	IF GRADE = 2 THEN GRADE=1;
-	SURVTIME=_T;
-	*Winzorise PGR to the 99th percentile to deal with very large influential values;
-	IF PGR>1360 THEN PGR=1360;
+data l2gbsg_va;
+	set gbsg;
+	if size le 20 then sizecat=0;
+	if 21 <= size <= 50 then sizecat=1;
+	if size >50 then sizecat=2;
+    nodescat = 1* (1 <= nodes <=3) + 2*(nodes > 3);
+	gradecat = grade-1;
+	if grade in (1,2) then gradecat=0;
+	if grade = 3 then gradecat=1;
+    survtime = rfstime/365.25;  * days to years;
+	*Winzorise PGR to the 99th percentile to deal with very large influential 
+	values;
+	if pgr>1360 then pgr=1360;
 	*use formula to code up spline term for PGR;
-	PGR1=max(PGR/61.81,0)**3+(41*max((PGR-486)/61.81,0)**3 -486*max((PGR-41)/61.81,0)**3)/445;
+	PGR1=max(PGR/61.81,0)**3
+		+(41*max((PGR-486)/61.81,0)**3 -486*max((PGR-41)/61.81,0)**3)/445;
 	*now calculate the prob of survival to 5 years;
-	SIZEpi = 0;
-	IF SIZECAT=2 THEN SIZEpi=0.394;
-	IF SIZECAT=3 THEN SIZEpi=0.623;
-	NODEpi = 0;
-	IF NODES1=1 THEN NODEpi=0.361;
-	IF NODES1=2 THEN NODEpi=1.090;
-	GRADEpi = 0;
-	IF GRADE=1 THEN GRADEpi=0.415;
-	PI = SIZEpi + NODEpi + GRADEpi;
-	PSURV = 0.82267**EXP(PI);
-	PROB = 1- PSURV;
-		*now calculate the prob of survival to 5 years for model with PGR included;
-	SIZEpi2 = 0;
-	IF SIZECAT=2 THEN SIZEpi2=0.369;
-	IF SIZECAT=3 THEN SIZEpi2=0.598;
-	NODEpi2 = 0;
-	IF NODES1=1 THEN NODEpi2=0.386;
-	IF NODES1=2 THEN NODEpi2=1.086;
-	GRADEpi2 = 0;
-	IF GRADE=1 THEN GRADEpi2=0.349;
-
-	PI2 = SIZEpi2 + NODEpi2 + GRADEpi2 - 0.003*PGR + 0.014*PGR1;
-	PSURV2 = 0.77815**EXP(PI2);
-	PROB2 = 1-PSURV2;
-	keep ID SIZECAT NODES1 nodes_imp GRADE _T _D meno age PGR PGR1 ER SURVTIME SIZEpi NODEpi GRADEpi PI PSURV PROB SIZEpi2 NODEpi2 GRADEpi2 PI2 PSURV2 PROB2;
-RUN;
-
+	sizepi = 0;
+	if sizecat=1 then sizepi=0.383;
+	if sizecat=2 then sizepi=0.664;
+	nodepi = 0;
+	if nodescat=1 then nodepi=0.360;
+	if nodescat=2 then nodepi=1.063;
+	gradepi = 0;
+	if gradecat=1 then gradepi=0.375;
+	pi = sizepi + nodepi + gradepi;
+	psurv = 0.80153**exp(pi);
+	prob = 1- psurv;
+	*now calculate the prob of survival to 5 years for model with pgr included;
+	sizepi2 = 0;
+	if sizecat=1 then sizepi2=0.362;
+	if sizecat=2 then sizepi2=0.641;
+	nodepi2 = 0;
+	if nodescat=1 then nodepi2=0.381;
+	if nodescat=2 then nodepi2=1.059;
+	gradepi2 = 0;
+	if gradecat=1 then gradepi2=0.317;
+	pi2 = sizepi2 + nodepi2 + gradepi2 - 0.003*pgr + 0.013*pgr1;
+	psurv2 = 0.75852**exp(pi2);
+	prob2 = 1-psurv2;
+	keep pid sizecat nodescat gradecat age pgr pgr1 survtime status
+	sizepi nodepi gradepi pi psurv prob sizepi2 nodepi2 gradepi2 pi2 psurv2 
+		prob2;
+run;
 
 *** Descriptive statistics;
-PROC FREQ DATA=L2GBSG_VA;
-	TABLES SIZE NODESCAT GRADE STATUS;
-RUN;
+proc freq data=l2gbsg_va;
+	tables sizecat nodescat gradecat status;
+run;
 
-PROC UNIVARIATE DATA=L2GBSG_VA;
-	VAR AGE PGR;
-RUN;
+proc univariate data=l2gbsg_va;
+	var age pgr;
+run;
 
 *use reverse Kaplan-Meier to obtain median follow-up time;
-PROC LIFETEST DATA=L2GBSG_VA METHOD=pl ATRISK;
-        TIME SURVTIME*STATUS(1);
-RUN;
-
+proc lifetest data=l2gbsg_va method=pl atrisk;
+        time survtime*status(1);
+run;
 
 *Administrative censor at 5 years as development cohort; 
-DATA L2GBSG_VAL;
-	SET L2GBSG_VA;
+data l2gbsg_val;
+	set l2gbsg_va;
 	*administrative censoring at 5 years;
-	IF _T > 5 THEN STATUS=0;
-	IF SURVTIME > 5 THEN SURVTIME=5;
+	if survtime > 5 then status=0;
+	if survtime > 5 then survtime=5;
 	*- keep a copy of survtime for calibration step;
-	SURVTIME1=SURVTIME;
+	survtime1=survtime;
 
 	*CLL is the Outcome-Martingale residual, or expected number of events;
 	CLL = LOG(-LOG(PSURV));
@@ -110,1488 +131,673 @@ DATA L2GBSG_VAL;
 RUN;
 
 
+**First, resample 500 versions of the external dataset with replacement to 
+allow calculation of 95% CI;
 
-****************************************SIMPLE MODEL FIRST (without PGR)******************************************************;
+sasfile l2gbsg_val load;/*a way of loading the dataset into ram - speeds it up*/
 
-******************APPENDIX 7 - WHAT TO DO IF DEVELOPMENT DATASET OR BASELINE HAZARD ARE NOT AVAILABLE ;
-
-****** ASSUME ORIGINAL MODEL DEVELOPMENT PAPER HAS KAPLAN-MEIER PLOTS FOR RISK GROUPS;
-****** Define Risk Groups for K-M - CREATES PLOT IN APPENDIX 7, FIG S7;
-
-*** Define Risk Groups for K-M;
-
-* generate risk groups;
-%macro generate_percentiles(ptile1,ptile2,ptile3,mean); 
-/* Output desired percentile values */                         
-proc univariate data=L2GBSG_VA;                                               
-   var PI;                                                       
-   output out=test1 mean=&mean pctlpts= &ptile1 &ptile2 &ptile3 pctlpre=xb_;                               
-run;                                                                 
- 
-data test1;
-	set test1;
-	z=1;
+proc surveyselect data=l2gbsg_val out=outboot
+seed=4817 /* can enter 0 for it to select a random seed but remember to type 
+			it in here from the output otherwise cannot replicate results */
+method=urs /* unrestricted random sampling - simple random sampling */
+samprate=1 /* can accept proportions or percentages but we want n to be size of 
+			original database so =1 (or 100) */
+outhits /* with replacement */
+rep=500; /* number of bootstrap samples */
 run;
 
-data L2GBSG_VA_;
-	set L2GBSG_VAL;
-	z=1;
+sasfile l2gbsg_val close; /* closes frees ram buffers when done */
+
+ods listing close; /* turns off ods listing so no printing of all output. 
+					Better than using NOPRINT as it doesn't allow storage of 
+					data in output dataset at end */
+
+
+*****Assessment of discrimination in external dataset;
+
+*Calculate weights first with inverse Kaplan-Meier;
+proc lifetest data=l2gbsg_val method=km atrisk outsurv=l2outkm_ext noprint;
+        time survtime*status(1);
 run;
 
-data L2GBSG_VA_1;                                                             
-   merge L2GBSG_VA_ test1;        
-	by z; 
-	riskgp=0;
-    if (xb_&ptile1 < PI <= xb_&ptile2) then riskgp=1;
-    if (xb_&ptile2 < PI <= xb_&ptile3) then riskgp=2;
-	if (PI > xb_&ptile3) then riskgp=3;
-	drop z;
-run; 
-  
-%mend;
- 
-options mprint mlogic symbolgen;
-%generate_percentiles(25,50,75,xbmean);
-
-
-*- plot kaplan-meier in validation dataset;
-*mean (SD) of xb is Mean 0.734688 Std Deviation 0.49379 ;
-PROC UNIVARIATE DATA=L2GBSG_VA_1;
-	VAR PI;
-RUN;
-
-*what is the percentage in each risk group - highest in intermediate high risk, lowest in high risk;
-/*
-riskgp Frequency Percent Cumulative
-Frequency Cumulative
-Percent 
-0 291 42.42 291 42.42 
-1 75 10.93 366 53.35 
-2 207 30.17 573 83.53 
-3 113 16.47 686 100.00 
-
-*/
-PROC FREQ DATA=L2GBSG_VA_1;
-	TABLE RISKGP;
-RUN;
-
-PROC LIFETEST DATA=L2GBSG_VA_1 METHOD=pl PLOTS=(S, LS, LLS) OUTSURV=L2OUTKMv;
-        TIME SURVTIME*STATUS(0);
-        STRATA RISKGP/TEST=(LOGRANK);	
-		*ods output Quartiles=q;
-RUN;
-
-DATA L2OUTKMv1(RENAME=(RISKGP=RISKGPV SURVIVAL=SURVIVALV SURVTIME=SURVTIMEV)); 
-	SET L2OUTKMv; 
-	*LTIME=LOG(TIMELB); 
-	*LLS=LOG((-1)*(LOG(SURVIVAL)));
-	IF _CENSOR_=1 THEN DELETE; 
-	NUM+1;
-	KEEP RISKGP SURVIVAL SURVTIME NUM;
-RUN;
-
-/*BLOCK FOR NOW
-** save 95% CI and merge back for yearly CI;
-DATA CI(RENAME=(RISKGP=RISKGPV SURVIVAL=SURVIVALV));
-	SET OUTKMv;
-	IF SDF_LCL=. THEN DELETE;
-	KEEP RISKGP SURVIVAL SDF_LCL SDF_UCL;
-RUN;
-
-DATA OUTKMv1_95;
-	MERGE OUTKMv1 CI;
-	BY RISKGPV DESCENDING SURVIVALV;
-RUN;
-*/
-
-PROC FORMAT;
-	*VALUE DEV 1='Development dataset';
-	VALUE VAL 1='Validation dataset';
-RUN;
-
-DATA L2OVERLAYKM;
-	SET L2OUTKMV1;
-	FORMAT GPV1 VAL.;
-	IF RISKGPV=0 THEN GPV1=1;
-	IF RISKGPV=1 THEN GPV2=1;
-	IF RISKGPV=2 THEN GPV3=1;
-	IF RISKGPV=3 THEN GPV4=1;
-RUN;
-
-*CREATE KAPLAN MEIER PLOT OF RISK GROUPS FOR DEVELOPMENT AND VALIDATION DATASETS;
-title;
-FOOTNOTE;
-*- this allows editing of the .sge file!;
-ODS LISTING SGE=ON STYLE=PRINTER IMAGE_DPI=300 GPATH='T:\People\d.mclernon\STRATOS\STRATOS\Figures';
-ODS GRAPHICS ON / RESET=ALL NOBORDER OUTPUTFMT=TIFF /*WIDTH=4IN*/ IMAGENAME="L2_Overlay KM" ANTIALIAS=OFF/*ANTIALIASMAX=*/;
-
-*create graph (decision curve) with treat none, treat all, Kaplan-Meier method, and Competing Risks method;
-PROC SGPLOT DATA=L2OVERLAYKM;
-	YAXIS VALUES=(0 to 1 by 0.2) LABEL="Event-free survival probability";
-	XAXIS VALUES=(0 to 5 by 1) LABEL="Years";
-	KEYLEGEND "orig" / ACROSS=1 LOCATION=INSIDE POSITION=TOPRIGHT;
-	STEP Y=SURVIVALv X=SURVTIMEv / LINEATTRS=(COLOR=BLACK THICKNESS=2 PATTERN=SOLID) NAME="orig" GROUP=GPV1 NOMISSINGGROUP;
-	STEP Y=SURVIVALv X=SURVTIMEv / LINEATTRS=(COLOR=BLACK THICKNESS=2 PATTERN=SOLID) GROUP=GPV2 NOMISSINGGROUP;
-	STEP Y=SURVIVALv X=SURVTIMEv / LINEATTRS=(COLOR=BLACK THICKNESS=2 PATTERN=SOLID) GROUP=GPV3 NOMISSINGGROUP;
-	STEP Y=SURVIVALv X=SURVTIMEv / LINEATTRS=(COLOR=BLACK THICKNESS=2 PATTERN=SOLID) GROUP=GPV4 NOMISSINGGROUP;
-RUN;
-
-ODS GRAPHICS OFF;
-
-
-
-
-*********************** FIRST, RESAMPLE 500 VERSIONS OF THE EXTERNAL DATASET WITH REPLACEMENT TO ALLOW CALCULATION OF 95% CI ****************************;
-
-
-*some bootstrap code to edit;
-
-SASFILE L2GBSG_VAL LOAD; /* a way of loading the dataset into RAM - speeds it up */
-
-PROC SURVEYSELECT DATA=L2GBSG_VAL OUT=OUTBOOT /* Use PROC SURVEYSELECT and provide input and output dataset names */
-SEED=4817 /* can enter 0 for it to select a random seed but remember to type it in here from the output otherwise cannot replicate results */
-METHOD=URS /* Unrestricted Random Sampling - simple random sampling */
-SAMPRATE=1 /* can accept proportions or percentages but we want n to be size of original database so =1 (or 100) */
-OUTHITS /* with replacement */
-REP=500; /* number of bootstrap samples */
-RUN;
-
-SASFILE L2GBSG_VAL CLOSE; /* closes frees RAM buffers when done */
-
-ODS LISTING CLOSE; /* turns off ODS listing so no printing of all output. Better than using NOPRINT as it doesn't allow storage of data in output dataset at end */
-
-
-
-
-**EXTERNAL validation - calculate D and RsqD - use external dataset with linear predictor from original model applied to it;
-
- *2. Then the prognostic index of the model, XB, is transformed to give standard normal order rank statistics (rankits - formed using Blom’s approximation); 
-PROC UNIVARIATE DATA=L2GBSG_VAL;
-	HISTOGRAM;
-	VAR PI;
-RUN;
-
-PROC RANK DATA=L2GBSG_VAL NORMAL=BLOM OUT= L2GBSG_VALRDD;
-	VAR PI;
-RUN;
-
-PROC UNIVARIATE DATA=L2GBSG_VALRDD;
-	HISTOGRAM;
-	VAR PI;
-RUN;
-
-*  3. The rankits are multiplied by a factor of SQRT(8/pi) to give Zi (i = 1, n subjects);
-DATA L2XD;
-	SET L2GBSG_VALRDD;
-	PIE = CONSTANT("pi");
-	Z=PI/(SQRT(8/PIE));
-RUN;
-
-PROC UNIVARIATE DATA=L2XD;
-	HISTOGRAM;
-	VAR z;
-RUN;
-
-*  4. Finally a Cox PH model is fitted to these values, D is the coefficient of Z, say a*, from this second model;
-*Royston's D is parameter estimate of Z, D = 0.832 (VERY CLOSE TO L1);
-ODS SELECT NONE;
-PROC PHREG DATA=L2XD;
-	MODEL SURVTIME*STATUS(0)=Z / TIES=EFRON;
-	ODS OUTPUT ParameterEstimates=L2PAREST;
-RUN;
-ODS SELECT ALL;
-
-DATA L2ROYSTONEXT(RENAME=(ESTIMATE=D));
-	SET L2PAREST;
-	PIE = CONSTANT("pi");
-	R2D=((ESTIMATE**2)/(8/PIE))/(((ESTIMATE**2)/(8/PIE))+((PIE**2)/6));
-	VALIDATE='External';
-	IND=1;
-	KEEP VALIDATE ESTIMATE R2D IND;
-	PROC PRINT; TITLE "Royston's D and RsqD";
-RUN;
-
-Obs D R2D VALIDATE 
-1 0.83182 0.14177 External ;
-
-
-*** - NOW WE CALCULATE 95% CI FOR R SQUARED D WITH BOOTSTRAP;
-
-PROC RANK DATA=OUTBOOT NORMAL=BLOM OUT= L2GBSG_VALRDDZ;
-	BY REPLICATE;
-	VAR PI;
-RUN;
-
-*  3. The rankits are multiplied by a factor of SQRT(8/pi) to give Zi (i = 1, n subjects);
-DATA L2XDZ;
-	SET L2GBSG_VALRDDZ;
-	PIE = CONSTANT("pi");
-	Z=PI/(SQRT(8/PIE));
-RUN;
-
-ODS SELECT NONE;
-PROC PHREG DATA=L2XDZ;
-	BY REPLICATE;
-	MODEL SURVTIME*STATUS(0)=Z / TIES=EFRON;
-	ODS OUTPUT ParameterEstimates=L2PARESTZ;
-RUN;
-ODS SELECT ALL;
-
-DATA L2ROYSTONEXTZ(RENAME=(ESTIMATE=D));
-	SET L2PARESTZ;
-	PIE = CONSTANT("pi");
-	R2D=((ESTIMATE**2)/(8/PIE))/(((ESTIMATE**2)/(8/PIE))+((PIE**2)/6));
-	KEEP REPLICATE ESTIMATE R2D;
-	PROC PRINT; TITLE "Royston's D and RsqD";
-RUN;
-
-PROC UNIVARIATE DATA=L2ROYSTONEXTZ NOPRINT;
-	VAR D R2D;
-	OUTPUT OUT = CONFINT PCTLPTS=2.5 97.5 PCTLPRE= AppD_ AppR2D_ PCTLNAME=LOWER95 UPPER95;
-RUN;
-
-DATA CONFINT1;
-	SET CONFINT;
-	IND=1;
-RUN;
-
-DATA ROYSTONAX2;
- 	RETAIN VALIDATE D AppD_LOWER95 AppD_UPPER95 R2D AppR2D_LOWER95 AppR2D_UPPER95;
-	MERGE L2ROYSTONEXT CONFINT1;
-	BY IND;
-	DROP IND;
-RUN;
-
-PROC PRINT DATA=ROYSTONAX2; TITLE "Royston's D and RsqD with 95% CI";
-RUN;
-
-
-
-
-
-***************External validation - Calculate Brier score;
-
-*calculate weights for external validation;
-PROC LIFETEST DATA=L2GBSG_VAL METHOD=KM ATRISK OUTSURV=L2OUTKM_EXT NOPRINT;
-        TIME SURVTIME*STATUS(1);
-RUN;
-
-*CODE THE 3 GROUPINGS AND DUPLICATE SURVIVAL TIME AS SAS WILL REMOVE THE OFFICIAL SURVIVAL TIME VARIABLE IN BASELINE STATEMENT;
-*in external;
-DATA L2ROTT_B_EX;
-	SET L2GBSG_VAL;
-	IF SURVTIME<=4.95 AND STATUS=1 THEN CAT=1;
-	IF SURVTIME>4.95 THEN CAT=2;
-	IF SURVTIME<=4.95 AND STATUS=0 THEN CAT=3;
-	*TIME=SURVTIME;
-	PROC SORT; BY SURVTIME;
-RUN;
-
-DATA L2OUTKM_EXT1;
-	SET L2OUTKM_EXT;
-	*IF _CENSOR_=1 THEN DELETE;
-	*IF SURVTIME>5 THEN DELETE;
-	WEIGHT=1/SURVIVAL;
-	KEEP SURVTIME SURVIVAL WEIGHT;
-RUN;
-
-DATA L2OUTKM_EXT2;
-	SET L2OUTKM_EXT1;
-	S=LAG(SURVTIME);
-	IF SURVTIME=S THEN DELETE;
-	DROP S;
-RUN;
-
-DATA L2ROTTVAL_BS2;
-	MERGE L2ROTT_B_EX L2OUTKM_EXT1;
-	BY SURVTIME;
-	IF ID=. THEN DELETE;
-RUN;
-
-DATA L2ROTTVAL_BS3;
-	SET L2ROTTVAL_BS2;
-	RETAIN _WEIGHT;
-	IF NOT MISSING(WEIGHT) THEN _WEIGHT=WEIGHT;
-	ELSE WEIGHT=_WEIGHT;
-	IF CAT=3 THEN WEIGHT=0;
-	IF SURVTIME=0 THEN DELETE;
-	IF CAT=1 THEN CONTRIB=(-PSURV)**2;
-	IF CAT=2 THEN CONTRIB=(1-PSURV)**2;
-	IF CAT=3 THEN CONTRIB=0;
-	BS=CONTRIB*WEIGHT;
-	DROP _WEIGHT;
-RUN;
-
-*ESTIMATE BRIER SCORE;
-PROC UNIVARIATE DATA=L2ROTTVAL_BS3 NOPRINT;
-	VAR BS WEIGHT;
-	OUTPUT OUT=L2SUMSEX SUM=SBS SWEIGHT;
-	PROC PRINT; 
-RUN;
-
-DATA L2SUMSEX;
-	RETAIN SWEIGHT SBS BRIER;
-	SET L2SUMSEX;
-	BRIER = (1/SWEIGHT)*SBS;
-	SWEIGHT=LEFT(SWEIGHT);
-	TITLE 'External Brier score';
-	PROC PRINT;
-RUN;
-
-
-**** - CALCULATE BOOTSTRAPPED 95% CI FOR BRIER SCORE;
-
-
-*calculate weights for external validation;
-PROC LIFETEST DATA=OUTBOOT METHOD=KM ATRISK OUTSURV=L2OUTKM_EXTX NOPRINT;
-		BY REPLICATE;
-        TIME SURVTIME*STATUS(1);
-RUN;
-
-*CODE THE 3 GROUPINGS AND DUPLICATE SURVIVAL TIME AS SAS WILL REMOVE THE OFFICIAL SURVIVAL TIME VARIABLE IN BASELINE STATEMENT;
-*in external;
-DATA L2ROTT_B_EXX;
-	SET OUTBOOT;
-	IF SURVTIME<=4.95 AND STATUS=1 THEN CAT=1;
-	IF SURVTIME>4.95 THEN CAT=2;
-	IF SURVTIME<=4.95 AND STATUS=0 THEN CAT=3;
-	*TIME=SURVTIME;
-	PROC SORT; BY REPLICATE SURVTIME;
-RUN;
-
-DATA L2OUTKM_EXT1X;
-	SET L2OUTKM_EXTX;
-	*IF _CENSOR_=1 THEN DELETE;
-	*IF SURVTIME>5 THEN DELETE;
-	WEIGHT=1/SURVIVAL;
-	KEEP REPLICATE SURVTIME SURVIVAL WEIGHT;
-RUN;
-
-DATA L2ROTTVAL_BS2X;
-	MERGE L2ROTT_B_EXX L2OUTKM_EXT1X;
-	BY REPLICATE SURVTIME;
-	IF ID=. THEN DELETE;
-RUN;
-
-DATA L2ROTTVAL_BS3X;
-	SET L2ROTTVAL_BS2X;
-	RETAIN _WEIGHT;
-	IF NOT MISSING(WEIGHT) THEN _WEIGHT=WEIGHT;
-	ELSE WEIGHT=_WEIGHT;
-	IF CAT=3 THEN WEIGHT=0;
-	IF SURVTIME=0 THEN DELETE;
-	IF CAT=1 THEN CONTRIB=(-PSURV)**2;
-	IF CAT=2 THEN CONTRIB=(1-PSURV)**2;
-	IF CAT=3 THEN CONTRIB=0;
-	BS=CONTRIB*WEIGHT;
-	DROP _WEIGHT;
-RUN;
-
-*ESTIMATE BRIER SCORE;
-PROC UNIVARIATE DATA=L2ROTTVAL_BS3X NOPRINT;
-	BY REPLICATE;
-	VAR BS WEIGHT;
-	OUTPUT OUT=L2SUMSEXX SUM=SBS SWEIGHT;
-	PROC PRINT; 
-RUN;
-
-DATA L2SUMSEXX;
-	RETAIN SWEIGHT SBS BRIER;
-	SET L2SUMSEXX;
-	BRIER = (1/SWEIGHT)*SBS;
-	SWEIGHT=LEFT(SWEIGHT);
-RUN;
-
-
-
-
-
-*SCALED BRIER FOR External validation;
-PROC PHREG DATA=L2GBSG_VAL;
-	MODEL SURVTIME*STATUS(0)= / TIES=EFRON RL;
-	*APPARENT;
-	BASELINE COVARIATES=L2ROTT_B_EX OUT=L2ROTTVAL_BSnull TIMELIST=5 SURVIVAL=FIVEYRSURV_null;
-RUN;
-
-*Brier for null model;
-DATA L2ROTTVAL_BS1null;
-	SET L2ROTTVAL_BSnull;
-	KEEP ID FIVEYRSURV_null;
-	PROC SORT; BY ID;
-RUN;
-
-PROC SORT DATA=L2ROTTVAL_BS3;
-	BY ID;
-RUN;
-
-*MERGE THE BULL SURVIVAL PROBS TO THE BRIER SCORE DATASET FROM EARLIER;
-DATA L2ROTTVAL_BS4;
-	MERGE L2ROTTVAL_BS3 L2ROTTVAL_BS1null;
-	BY ID;
-RUN;
-
-DATA L2ROTTVAL_BS5;
-	SET L2ROTTVAL_BS4;
-	IF CAT=1 THEN CONTRIB_NULL=(-FIVEYRSURV_null)**2;
-	IF CAT=2 THEN CONTRIB_NULL=(1-FIVEYRSURV_null)**2;
-	IF CAT=3 THEN CONTRIB_NULL=0;
-	BS_NULL=CONTRIB_NULL*WEIGHT;
-	DROP FIVEYRSURV_null;
-RUN;
-
-*ESTIMATE BRIER SCORE FOR NULL MODEL;
-PROC UNIVARIATE DATA=L2ROTTVAL_BS5 NOPRINT;
-	VAR BS_NULL WEIGHT;
-	OUTPUT OUT=L2SUMNULLEX SUM=SBS_NULL SWEIGHT;
-	PROC PRINT; 
-RUN;
-
-DATA L2SUMNULLEX;
-	RETAIN SWEIGHT SBS_NULL;
-	SET L2SUMNULLEX;
-	SWEIGHT=LEFT(SWEIGHT);
-RUN;
-
-*CALCULATE SCALED BRIER FOR EXTERNAL VALIDATION;
-DATA L2IPA;
-	MERGE L2SUMSEX L2SUMNULLEX;
-	BY SWEIGHT;
-	NULL_BRIER = (1/SWEIGHT)*SBS_NULL;
-	SCALEDB = 1-(BRIER/NULL_BRIER);
-	IND=1;
-		TITLE 'External Brier score and Scaled Brier score';
-	PROC PRINT;
-RUN;
-
-/*External Brier score and IPA 
-
-if use 4.9999
-Obs SWEIGHT SBS 	BRIER 	SBS_NULL 	NULL_BRIER 	IPA 
-1 	686 	155.678 0.22694 171.450 	0.24993 	0.091993 
-
-if use 4.95
-Obs SWEIGHT SBS BRIER SBS_NULL NULL_BRIER IPA 
-1 702.425 156.712 0.22310 175.766 0.25023 0.10841 
-*/
-
-
-**** - CALCULATE BOOTSTRAPPED 95% CI FOR SCALED BRIER;
-
-
-PROC PHREG DATA=OUTBOOT NOPRINT;
-	BY REPLICATE;
-	MODEL SURVTIME*STATUS(0)= / TIES=EFRON RL;
-	BASELINE COVARIATES=L2ROTT_B_EXX OUT=L2ROTTVAL_BSnullX TIMELIST=5 SURVIVAL=FIVEYRSURV_null;
-RUN;
-
-*Brier for null model;
-DATA L2ROTTVAL_BS1nullX;
-	SET L2ROTTVAL_BSnullX;
-	KEEP REPLICATE ID FIVEYRSURV_null;
-	PROC SORT; BY REPLICATE ID;
-RUN;
-
-PROC SORT DATA=L2ROTTVAL_BS3X;
-	BY REPLICATE ID;
-RUN;
-
-*MERGE THE BULL SURVIVAL PROBS TO THE BRIER SCORE DATASET FROM EARLIER;
-DATA L2ROTTVAL_BS4X;
-	MERGE L2ROTTVAL_BS3X L2ROTTVAL_BS1nullX;
-	BY REPLICATE ID;
-RUN;
-
-DATA L2ROTTVAL_BS5X;
-	SET L2ROTTVAL_BS4X;
-	IF CAT=1 THEN CONTRIB_NULL=(-FIVEYRSURV_null)**2;
-	IF CAT=2 THEN CONTRIB_NULL=(1-FIVEYRSURV_null)**2;
-	IF CAT=3 THEN CONTRIB_NULL=0;
-	BS_NULL=CONTRIB_NULL*WEIGHT;
-	DROP FIVEYRSURV_null;
-RUN;
-
-*ESTIMATE BRIER SCORE FOR NULL MODEL;
-PROC UNIVARIATE DATA=L2ROTTVAL_BS5X NOPRINT;
-	BY REPLICATE;
-	VAR BS_NULL WEIGHT;
-	OUTPUT OUT=L2SUMNULLEXX SUM=SBS_NULL SWEIGHT;
-	PROC PRINT; 
-RUN;
-
-DATA L2SUMNULLEXX;
-	RETAIN SWEIGHT SBS_NULL;
-	SET L2SUMNULLEXX;
-	SWEIGHT=LEFT(SWEIGHT);
-RUN;
-
-*CALCULATE SCALED BRIER FOR EXTERNAL VALIDATION;
-DATA L2IPAX;
-	MERGE L2SUMSEXX L2SUMNULLEXX;
-	BY REPLICATE SWEIGHT;
-	NULL_BRIER = (1/SWEIGHT)*SBS_NULL;
-	SCALEDB = 1-(BRIER/NULL_BRIER);
-	PROC PRINT;
-RUN;
-
-PROC UNIVARIATE DATA=L2IPAX NOPRINT;
-	VAR BRIER SCALEDB;
-	OUTPUT OUT = CONFINTR PCTLPTS=2.5 97.5 PCTLPRE= BRIER_ SCALEDB_ PCTLNAME=LOWER95 UPPER95;
-RUN;
-
-DATA CONFINTR1;
-	SET CONFINTR;
-	IND=1;
-RUN;
-
-DATA BRIERAX2;
- 	RETAIN BRIER BRIER_LOWER95 BRIER_UPPER95 SCALEDB SCALEDB_LOWER95 SCALEDB_UPPER95;
-	MERGE L2IPA CONFINTR1;
-	BY IND;
-	DROP IND SWEIGHT SBS SBS_NULL NULL_BRIER;
-	TITLE 'External Brier score and Scaled Brier score with 95% CI';
-	PROC PRINT;
-RUN;
-
-********************************************************************* ABOVE REPEATED FOR ADDED MARKER ***************************************************;
-
-
-**EXTERNAL;
-PROC UNIVARIATE DATA=L2GBSG_VAL;
-	HISTOGRAM;
-	VAR PI2;
-RUN;
-
-PROC RANK DATA=L2GBSG_VAL NORMAL=BLOM OUT= L2GBSG_VALRDDa;
-	VAR PI2;
-RUN;
-
-PROC UNIVARIATE DATA=L2GBSG_VALRDDa;
-	HISTOGRAM;
-	VAR PI2;
-RUN;
-
-DATA L2XDa;
-	SET L2GBSG_VALRDDa;
-	PIE = CONSTANT("pi");
-	Z=PI2/(SQRT(8/PIE));
-RUN;
-
-PROC UNIVARIATE DATA=L2XDa;
-	HISTOGRAM;
-	VAR z;
-RUN;
-
-*Royston's D is parameter estimate of Z, D = 0.94088;
-ODS SELECT NONE;
-PROC PHREG DATA=L2XDa;
-	MODEL SURVTIME*STATUS(0)=Z / TIES=EFRON;
-	ODS OUTPUT ParameterEstimates=L2PARESTa;
-RUN;
-ODS SELECT ALL;
-
-DATA L2ROYSTONEXTaa(RENAME=(ESTIMATE=D));
-	SET L2PARESTa;
-	PIE = CONSTANT("pi");
-	R2D=((ESTIMATE**2)/(8/PIE))/(((ESTIMATE**2)/(8/PIE))+((PIE**2)/6));
-	VALIDATE='External';
-	IND=1;
-	KEEP VALIDATE ESTIMATE R2D IND;
-	PROC PRINT; TITLE "Royston's D and RsqD with PGR";
-RUN;
-
-
-*** - NOW WE CALCULATE 95% CI FOR R SQUARED D WITH BOOTSTRAP;
-
-PROC RANK DATA=OUTBOOT NORMAL=BLOM OUT= L2GBSG_VALRDDaZ;
-	BY REPLICATE;
-	VAR PI2;
-RUN;
-
-*  3. The rankits are multiplied by a factor of SQRT(8/pi) to give Zi (i = 1, n subjects);
-DATA L2XDaZ;
-	SET L2GBSG_VALRDDaZ;
-	PIE = CONSTANT("pi");
-	Z=PI2/(SQRT(8/PIE));
-RUN;
-
-ODS SELECT NONE;
-PROC PHREG DATA=L2XDaZ;
-	BY REPLICATE;
-	MODEL SURVTIME*STATUS(0)=Z / TIES=EFRON;
-	ODS OUTPUT ParameterEstimates=L2PARESTaZ;
-RUN;
-ODS SELECT ALL;
-
-DATA L2ROYSTONEXTaZ(RENAME=(ESTIMATE=D));
-	SET L2PARESTaZ;
-	PIE = CONSTANT("pi");
-	R2D=((ESTIMATE**2)/(8/PIE))/(((ESTIMATE**2)/(8/PIE))+((PIE**2)/6));
-	KEEP REPLICATE ESTIMATE R2D;
-RUN;
-
-PROC UNIVARIATE DATA=L2ROYSTONEXTaZ NOPRINT;
-	VAR D R2D;
-	OUTPUT OUT = CONFINTa PCTLPTS=2.5 97.5 PCTLPRE= AppD_ AppR2D_ PCTLNAME=LOWER95 UPPER95;
-RUN;
-
-DATA CONFINT1a;
-	SET CONFINTa;
-	IND=1;
-RUN;
-
-DATA ROYSTONAX2a;
- 	RETAIN VALIDATE D AppD_LOWER95 AppD_UPPER95 R2D AppR2D_LOWER95 AppR2D_UPPER95;
-	MERGE L2ROYSTONEXTaa CONFINT1a;
-	BY IND;
-	DROP IND;
-	PROC PRINT; TITLE "Royston's D and RsqD with 95% CI";
-RUN;
-
-
-
-
-*external validation brier;
-
-*for external validation;
-PROC LIFETEST DATA=L2GBSG_VAL METHOD=pl ATRISK /*PLOTS=(S, LS, LLS)*/ OUTSURV=L2OUTKM_EXTa NOPRINT;
-        TIME SURVTIME*STATUS(1);
-RUN;
-
-DATA L2ROTT_B_EXa;
-	SET L2GBSG_VAL;
-	IF SURVTIME<=4.95 AND STATUS=1 THEN CAT=1;
-	IF SURVTIME>4.95 THEN CAT=2;
-	IF SURVTIME<=4.95 AND STATUS=0 THEN CAT=3;
-	*TIME=SURVTIME;
-	PROC SORT; BY SURVTIME;
-RUN;
-
-DATA L2OUTKM_EXT1a;
-	SET L2OUTKM_EXTa;
-	*IF _CENSOR_=1 THEN DELETE;
-	*IF SURVTIME>5 THEN DELETE;
-	WEIGHT=1/SURVIVAL;
-	KEEP SURVTIME WEIGHT;
-RUN;
-
-DATA L2ROTTVAL_BS2a;
-	MERGE L2ROTT_B_EXa L2OUTKM_EXT1a;
-	BY SURVTIME;
-	IF ID=. THEN DELETE;
-RUN;
-
-DATA L2ROTTVAL_BS3a;
-	SET L2ROTTVAL_BS2a;
-	RETAIN _WEIGHT;
-	IF NOT MISSING(WEIGHT) THEN _WEIGHT=WEIGHT;
-	ELSE WEIGHT=_WEIGHT;
-	IF CAT=3 THEN WEIGHT=0;
-	IF SURVTIME=0 THEN DELETE;
-	IF CAT=1 THEN CONTRIB=(-PSURV2)**2;
-	IF CAT=2 THEN CONTRIB=(1-PSURV2)**2;
-	IF CAT=3 THEN CONTRIB=0;
-	BS=CONTRIB*WEIGHT;
-	DROP _WEIGHT;
-RUN;
-
-*ESTIMATE BRIER SCORE;
-PROC UNIVARIATE DATA=L2ROTTVAL_BS3a NOPRINT;
-	VAR BS WEIGHT;
-	OUTPUT OUT=L2SUMSEXa SUM=SBS SWEIGHT;
-	PROC PRINT; 
-RUN;
-
-DATA L2SUMSEXa;
-	SET L2SUMSEXa;
-	BRIER = (1/SWEIGHT)*SBS;
-	SWEIGHT=LEFT(SWEIGHT);
-	TITLE 'External Brier score for PGR';
-	PROC PRINT;
-RUN;
-
-
-**** - CALCULATE BOOTSTRAPPED 95% CI FOR BRIER SCORE;
-
-
-*calculate weights for external validation;
-PROC LIFETEST DATA=OUTBOOT METHOD=KM ATRISK OUTSURV=L2OUTKM_EXTX_ NOPRINT;
-		BY REPLICATE;
-        TIME SURVTIME*STATUS(1);
-RUN;
-
-*CODE THE 3 GROUPINGS AND DUPLICATE SURVIVAL TIME AS SAS WILL REMOVE THE OFFICIAL SURVIVAL TIME VARIABLE IN BASELINE STATEMENT;
-*in external;
-DATA L2ROTT_B_EXX_;
-	SET OUTBOOT;
-	IF SURVTIME<=4.95 AND STATUS=1 THEN CAT=1;
-	IF SURVTIME>4.95 THEN CAT=2;
-	IF SURVTIME<=4.95 AND STATUS=0 THEN CAT=3;
-	*TIME=SURVTIME;
-	PROC SORT; BY REPLICATE SURVTIME;
-RUN;
-
-DATA L2OUTKM_EXT1X_;
-	SET L2OUTKM_EXTX_;
-	*IF _CENSOR_=1 THEN DELETE;
-	*IF SURVTIME>5 THEN DELETE;
-	WEIGHT=1/SURVIVAL;
-	KEEP REPLICATE SURVTIME SURVIVAL WEIGHT;
-RUN;
-
-DATA L2ROTTVAL_BS2X_;
-	MERGE L2ROTT_B_EXX_ L2OUTKM_EXT1X_;
-	BY REPLICATE SURVTIME;
-	IF ID=. THEN DELETE;
-RUN;
-
-DATA L2ROTTVAL_BS3X_;
-	SET L2ROTTVAL_BS2X_;
-	RETAIN _WEIGHT;
-	IF NOT MISSING(WEIGHT) THEN _WEIGHT=WEIGHT;
-	ELSE WEIGHT=_WEIGHT;
-	IF CAT=3 THEN WEIGHT=0;
-	IF SURVTIME=0 THEN DELETE;
-	IF CAT=1 THEN CONTRIB=(-PSURV2)**2;
-	IF CAT=2 THEN CONTRIB=(1-PSURV2)**2;
-	IF CAT=3 THEN CONTRIB=0;
-	BS=CONTRIB*WEIGHT;
-	DROP _WEIGHT;
-RUN;
-
-*ESTIMATE BRIER SCORE;
-PROC UNIVARIATE DATA=L2ROTTVAL_BS3X_ NOPRINT;
-	BY REPLICATE;
-	VAR BS WEIGHT;
-	OUTPUT OUT=L2SUMSEXX_ SUM=SBS SWEIGHT;
-	PROC PRINT; 
-RUN;
-
-DATA L2SUMSEXX_;
-	RETAIN SWEIGHT SBS BRIER;
-	SET L2SUMSEXX_;
-	BRIER = (1/SWEIGHT)*SBS;
-	SWEIGHT=LEFT(SWEIGHT);
-	PROC PRINT;
-RUN;
-
-
-
-*** Scaled Brier for model with PGR included;
-
-PROC SORT DATA=L2ROTTVAL_BS3a;
-	BY ID;
-RUN;
-
-DATA L2ROTTVAL_BS4a;
-	MERGE L2ROTTVAL_BS3a L2ROTTVAL_BS1null;
-	BY ID;
-RUN;
-
-DATA L2ROTTVAL_BS5a;
-	SET L2ROTTVAL_BS4a;
-	*RETAIN _SURVIVAL;
-	*IF NOT MISSING(SURVIVAL) THEN _SURVIVAL=SURVIVAL;
-	*ELSE SURVIVAL=_SURVIVAL;
-	*IF TIME1=0 THEN DELETE;
-	IF CAT=1 THEN CONTRIB_NULL=(-FIVEYRSURV_null)**2;
-	IF CAT=2 THEN CONTRIB_NULL=(1-FIVEYRSURV_null)**2;
-	IF CAT=3 THEN CONTRIB_NULL=0;
-	BS_NULL=CONTRIB_NULL*WEIGHT;
-	DROP FIVEYRSURV_null;
-RUN;
-
-*ESTIMATE BRIER SCORE;
-PROC UNIVARIATE DATA=L2ROTTVAL_BS5a NOPRINT;
-	VAR BS_NULL WEIGHT;
-	OUTPUT OUT=L2SUMNULLEXa SUM=SBS_NULL SWEIGHT;
-	PROC PRINT; 
-RUN;
-
-DATA L2SUMNULLEXa;
-	SET L2SUMNULLEXa;
-	SWEIGHT=LEFT(SWEIGHT);
-RUN;
-
-DATA L2SCALEDBa;
-	MERGE L2SUMSEXa L2SUMNULLEXa;
-	BY SWEIGHT;
-	NULL_BRIER = (1/SWEIGHT)*SBS_NULL;
-	SCALEDB = 1-(BRIER/NULL_BRIER);
-	IND=1;
-	TITLE 'External Brier score and Scaled Brier with PGR';
-	PROC PRINT;
-RUN;
-
-
-
-**** - CALCULATE BOOTSTRAPPED 95% CI FOR SCALED BRIER;
-
-
-PROC PHREG DATA=OUTBOOT NOPRINT;
-	BY REPLICATE;
-	MODEL SURVTIME*STATUS(0)= / TIES=EFRON RL;
-	BASELINE COVARIATES=L2ROTT_B_EXX_ OUT=L2ROTTVAL_BSnullX_ TIMELIST=5 SURVIVAL=FIVEYRSURV_null;
-RUN;
-
-*Brier for null model;
-DATA L2ROTTVAL_BS1nullX_;
-	SET L2ROTTVAL_BSnullX_;
-	KEEP REPLICATE ID FIVEYRSURV_null;
-	PROC SORT; BY REPLICATE ID;
-RUN;
-
-PROC SORT DATA=L2ROTTVAL_BS3X_;
-	BY REPLICATE ID;
-RUN;
-
-*MERGE THE BULL SURVIVAL PROBS TO THE BRIER SCORE DATASET FROM EARLIER;
-DATA L2ROTTVAL_BS4X_;
-	MERGE L2ROTTVAL_BS3X_ L2ROTTVAL_BS1nullX_;
-	BY REPLICATE ID;
-RUN;
-
-DATA L2ROTTVAL_BS5X_;
-	SET L2ROTTVAL_BS4X_;
-	IF CAT=1 THEN CONTRIB_NULL=(-FIVEYRSURV_null)**2;
-	IF CAT=2 THEN CONTRIB_NULL=(1-FIVEYRSURV_null)**2;
-	IF CAT=3 THEN CONTRIB_NULL=0;
-	BS_NULL=CONTRIB_NULL*WEIGHT;
-	DROP FIVEYRSURV_null;
-RUN;
-
-*ESTIMATE BRIER SCORE FOR NULL MODEL;
-PROC UNIVARIATE DATA=L2ROTTVAL_BS5X_ NOPRINT;
-	BY REPLICATE;
-	VAR BS_NULL WEIGHT;
-	OUTPUT OUT=L2SUMNULLEXX_ SUM=SBS_NULL SWEIGHT;
-	PROC PRINT; 
-RUN;
-
-DATA L2SUMNULLEXX_;
-	RETAIN SWEIGHT SBS_NULL;
-	SET L2SUMNULLEXX_;
-	SWEIGHT=LEFT(SWEIGHT);
-RUN;
-
-*CALCULATE SCALED BRIER FOR EXTERNAL VALIDATION;
-DATA L2IPAX_;
-	MERGE L2SUMSEXX_ L2SUMNULLEXX_;
-	BY REPLICATE SWEIGHT;
-	NULL_BRIER = (1/SWEIGHT)*SBS_NULL;
-	SCALEDB = 1-(BRIER/NULL_BRIER);
-	PROC PRINT;
-RUN;
-
-PROC UNIVARIATE DATA=L2IPAX_ NOPRINT;
-	VAR BRIER SCALEDB;
-	OUTPUT OUT = CONFINTR_ PCTLPTS=2.5 97.5 PCTLPRE= BRIER_ SCALEDB_ PCTLNAME=LOWER95 UPPER95;
-RUN;
-
-DATA CONFINTR1_;
-	SET CONFINTR_;
-	IND=1;
-RUN;
-
-DATA BRIERAX2;
- 	RETAIN BRIER BRIER_LOWER95 BRIER_UPPER95 SCALEDB SCALEDB_LOWER95 SCALEDB_UPPER95;
-	MERGE L2SCALEDBa CONFINTR1_;
-	BY IND;
-	DROP IND SWEIGHT SBS SBS_NULL NULL_BRIER;
-	TITLE 'External Brier score and Scaled Brier score with 95% CI';
-	PROC PRINT;
-RUN;
-
-
-
-*- discrimination;
-
-
-/*  estimate time-dependent AUROC - Uno  */
-*CALCULATE WEIGHTS FIRST WITH INVERSE KM;
-DATA OUTKM_EXT_UNO;
-	SET L2ROTTVAL_BS2;
-	RETAIN _SURVIVAL;
-	IF NOT MISSING(SURVIVAL) THEN _SURVIVAL=SURVIVAL;
-	ELSE SURVIVAL=_SURVIVAL;
-	W=SURVIVAL;
-	WSQ=W*W;
-	DROP _SURVIVAL;
-RUN;
-
-* Get KM censor probability at time T 4.95 years (chose 4.95 instead of 5 because no one left after 5 years so won't work - took time of last event);
-DATA CTIME1;
-	SET L2OUTKM_EXT;
-	IF SURVTIME GT 4.95 THEN DELETE;
-RUN;
-
-*GET LAST PROB AT TIME T;
-DATA CTIME2(RENAME=(SURVIVAL=PROBC));
-	IF 0 THEN
-		SET CTIME1 NOBS=NOBS END=EOF;
-	SET CTIME1 POINT=NOBS;
-	KEEP SURVIVAL;
-	OUTPUT;
-	STOP;
-RUN;
-
-TITLE 'This is the KM censoring probability at time T';
-PROC PRINT DATA=CTIME2;
-RUN;
-
-
-* Get KM survival probability at time T 4.95 years (chose 4.95 instead of 5 because no one left after 5 years so won't work - took time of last event);
-PROC LIFETEST DATA=OUTKM_EXT_UNO METHOD=KM ATRISK OUTSURV=STIME NOPRINT;
-        TIME SURVTIME*STATUS(0);
-RUN;
-
-DATA STIME1;
-	SET STIME;
-	IF SURVTIME GT 4.95 THEN DELETE;
-RUN;
-
-*GET LAST SURVIVAL PROB AT TIME T;
-DATA STIME2(RENAME=(SURVIVAL=PROBT));
-	IF 0 THEN
-		SET STIME1 NOBS=NOBS END=EOF;
-	SET STIME1 POINT=NOBS;
-	KEEP SURVIVAL;
-	OUTPUT;
-	STOP;
-RUN;
-
-TITLE 'This is the KM survival probability at time T';
-PROC PRINT DATA=STIME2;
-RUN;
-
-
-
-*THE BELOW FORMULA COMES FROM BLANCHE ET AL 2013 BIOM J PAPER, I GET 0.688 - same as 0.688 FROM L1;
-
-PROC IML;
-USE OUTKM_EXT_UNO VAR {STATUS SURVTIME PI W};
-READ ALL;
-SHOW NAMES;
-CH = 0;
-/*ENTER TOTAL NUMBER IN DATASET*/
-N=686;
-/*ENTER TIME*/
-T=4.95;
-/*ENTER KM PROB OF CENSOR AT TIME T FROM ABOVE*/
-PROBC=0.37674;
-/*ENTER KM PROB OF SURVIVAL AT TIME T FROM ABOVE*/
-PROBT=0.49939;
-
-DO I = 1 TO N;
-   		DO J = 1 TO N;
-	  		IF ((SURVTIME[I,1] <= T) & (SURVTIME[J,1] > T) & (PI[I,1] > PI[J,1])) THEN CH=CH + (STATUS[I,1]/(N*N*PROBC*(W[I,1])));
-	  		IF ((SURVTIME[I,1] <= T) & (SURVTIME[J,1] > T) & (PI[I,1] = PI[J,1])) THEN CH=CH + 0.5*(STATUS[I,1]/(N*N*PROBC*(W[I,1])));
-   	 	END;
-END;
-
-C_HAT = CH /(PROBT*(1-PROBT));
-CREATE CSTAT VAR {CH C_HAT};
-APPEND;
-CLOSE CSTAT;
-QUIT;
-
-TITLE 'Uno time-dependent AUROC';
-PROC PRINT DATA = CSTAT; 
-RUN;
-
-*test concord;
-* SEE UNO 2011 PAPER FOR FORMULA
-* Get KM censor probability at EACH PATIENT'S OBS TIME years (chose 4.95 instead of 5 because no one left after 5 years so won't work - took time of last event);
-
-*i get 0.638, same as L3;
-
-PROC IML;
-USE OUTKM_EXT_UNO VAR {STATUS SURVTIME PI WSQ};
-READ ALL;
-SHOW NAMES;
-CH = 0;
-DH = 0;
-/*ENTER TOTAL NUMBER IN DATASET*/
-N=686;
-/*ENTER TIME*/
-T=4.95;
-
-DO I = 1 TO N;
-   		DO J = 1 TO N;
-	  		IF ((SURVTIME[I,1] < SURVTIME[J,1]) & (PI[I,1] > PI[J,1]) & (SURVTIME[I,1] < T)) THEN CH=CH + (STATUS[I,1]/(WSQ[I,1]));
-	  		IF ((SURVTIME[I,1] < SURVTIME[J,1]) & (PI[I,1] = PI[J,1]) & (SURVTIME[I,1] < T)) THEN CH=CH + 0.5*(STATUS[I,1]/(WSQ[I,1]));
-
-			IF ((SURVTIME[I,1] < SURVTIME[J,1]) & (SURVTIME[I,1] < T)) THEN DH=DH + (STATUS[I,1]/(WSQ[I,1]));
-   	 	END;
-END;
-
-C_HAT = CH /DH;
-CREATE CSTAT VAR {CH DH C_HAT};
-APPEND;
-CLOSE CSTAT;
-QUIT;
-
-TITLE 'Uno C';
-PROC PRINT DATA = CSTAT; 
-RUN;
-
-
-***** ADDED PGR;
-
-* I get 0.719 instead of 0.724 this way;
-
-PROC IML;
-USE OUTKM_EXT_UNO VAR {STATUS SURVTIME PI2 W};
-READ ALL;
-SHOW NAMES;
-CH = 0;
-/*ENTER TOTAL NUMBER IN DATASET*/
-N=686;
-/*ENTER TIME*/
-T=4.95;
-/*ENTER KM PROB OF CENSOR AT TIME T FROM ABOVE*/
-PROBC=0.37674;
-/*ENTER KM PROB OF SURVIVAL AT TIME T FROM ABOVE*/
-PROBT=0.49939;
-
-DO I = 1 TO N;
-   		DO J = 1 TO N;
-	  		IF ((SURVTIME[I,1] <= T) & (SURVTIME[J,1] > T) & (PI2[I,1] > PI2[J,1])) THEN CH=CH + (STATUS[I,1]/(N*N*PROBC*(W[I,1])));
-	  		IF ((SURVTIME[I,1] <= T) & (SURVTIME[J,1] > T) & (PI2[I,1] = PI2[J,1])) THEN CH=CH + 0.5*(STATUS[I,1]/(N*N*PROBC*(W[I,1])));
-   	 	END;
-END;
-
-C_HAT = CH /(PROBT*(1-PROBT));
-CREATE CSTAT1 VAR {CH C_HAT};
-APPEND;
-CLOSE CSTAT1;
-QUIT;
-
-TITLE 'Uno time-dependent AUROC';
-PROC PRINT DATA = CSTAT1; 
-RUN;
-
-
-* for added PGR;
-*i get 0.662, which is almost same as L3 i.e. 0.667;
-
-PROC IML;
-USE OUTKM_EXT_UNO VAR {STATUS SURVTIME PI2 WSQ};
-READ ALL;
-SHOW NAMES;
-CH = 0;
-DH = 0;
-/*ENTER TOTAL NUMBER IN DATASET*/
-N=686;
-/*ENTER TIME*/
-T=4.95;
-
-DO I = 1 TO N;
-   		DO J = 1 TO N;
-	  		IF ((SURVTIME[I,1] < SURVTIME[J,1]) & (PI2[I,1] > PI2[J,1]) & (SURVTIME[I,1] < T)) THEN CH=CH + (STATUS[I,1]/(WSQ[I,1]));
-	  		IF ((SURVTIME[I,1] < SURVTIME[J,1]) & (PI2[I,1] = PI2[J,1]) & (SURVTIME[I,1] < T)) THEN CH=CH + 0.5*(STATUS[I,1]/(WSQ[I,1]));
-
-			IF ((SURVTIME[I,1] < SURVTIME[J,1]) & (SURVTIME[I,1] < T)) THEN DH=DH + (STATUS[I,1]/(WSQ[I,1]));
-   	 	END;
-END;
-
-C_HAT = CH /DH;
-CREATE CSTAT VAR {CH DH C_HAT};
-APPEND;
-CLOSE CSTAT;
-QUIT;
-
-TITLE 'Uno C';
-PROC PRINT DATA = CSTAT; 
-RUN;
-
-
-
-
-
-*************CALIBRATION ******************;
-
-
+data l2rott_b_ex;
+	set l2gbsg_val;
+	proc sort; by survtime;
+run;
+
+data l2outkm_ext1;
+	set l2outkm_ext;
+	weight=1/survival;
+	keep survtime survival weight;
+run;
+
+data l2rottval_bs2;
+	merge l2rott_b_ex l2outkm_ext1;
+	by survtime;
+	if pid=. then delete;
+run;
+
+data outkm_ext_uno;
+	set l2rottval_bs2;
+	retain _survival;
+	if not missing(survival) then _survival=survival;
+	else survival=_survival;
+	w=survival;
+	wsq=w*w;
+	drop _survival;
+run;
+
+* Get KM censor probability at time T 4.96 years (chose 4.96 instead of 5 
+because no one left after 5 years so won't work - took time of last event);
+data ctime1;
+	set l2outkm_ext;
+	if survtime gt 4.96 then delete;
+run;
+
+*get last prob at time t;
+data ctime2(rename=(survival=probc));
+	if 0 then
+		set ctime1 nobs=nobs end=eof;
+	set ctime1 point=nobs;
+	keep survival;
+	output;
+	stop;
+run;
+
+title 'This is the KM censoring probability at time T';
+proc print data=ctime2;
+run;
+
+
+* Get KM survival probability at time T 4.96 years (chose 4.96 instead of 5 
+because no one left after 5 years so won't work - took time of last event);
+proc lifetest data=outkm_ext_uno method=km atrisk outsurv=stime noprint;
+        time survtime*status(0);
+run;
+
+data stime1;
+	set stime;
+	if survtime gt 4.96 then delete;
+run;
+
+*get last survival prob at time t;
+data stime2(rename=(survival=probt));
+	if 0 then
+		set stime1 nobs=nobs end=eof;
+	set stime1 point=nobs;
+	keep survival;
+	output;
+	stop;
+run;
+
+title 'This is the KM survival probability at time T';
+proc print data=stime2;
+run;
+
+
+* Matrix code to calculate Uno's C-statistic;
+* Should get C=0.639;
+* NOTE: You must enter manual information below;
+proc iml;
+use outkm_ext_uno var {status survtime pi wsq};
+read all;
+show names;
+ch = 0;
+dh = 0;
+/*MANUALLY ENTER TOTAL NUMBER IN DATASET*/
+n=686;
+/*MANUALLY ENTER TIME*/
+t=4.96;
+
+do i = 1 to n;
+   		do j = 1 to n;
+	  		if ((survtime[i,1] < survtime[j,1]) & (pi[i,1] > pi[j,1]) 
+				& (survtime[i,1] < t)) then ch=ch + (status[i,1]/(wsq[i,1]));
+	  		if ((survtime[i,1] < survtime[j,1]) & (pi[i,1] = pi[j,1]) 
+			  & (survtime[i,1] < t)) then ch=ch + 0.5*(status[i,1]/(wsq[i,1]));
+
+			if ((survtime[i,1] < survtime[j,1]) & (survtime[i,1] < t)) 
+				then dh=dh + (status[i,1]/(wsq[i,1]));
+   	 	end;
+end;
+
+c_hat = ch /dh;
+create cstat var {ch dh c_hat};
+append;
+close cstat;
+quit;
+
+title 'Simple model Uno C';
+proc print data = cstat; 
+run;
+
+
+* Matrix code to calculate Uno's Time-dependent AUROC at 5 years;
+* Should get C=0.693;
+* NOTE: You must enter manual information below;
+* The below formula comes from Blanche et al 2013 Biom J paper;
+
+proc iml;
+use outkm_ext_uno var {status survtime pi w};
+read all;
+show names;
+ch = 0;
+/*MANUALLY ENTER TOTAL NUMBER IN DATASET*/
+n=686;
+/*MANUALLY ENTER TIME*/
+t=4.96;
+/*MANUALLY ENTER KM PROB OF CENSOR AT TIME T FROM 'CTIME2' ABOVE*/
+probc=0.37674;
+/*MANUALLY ENTER KM PROB OF SURVIVAL AT TIME T FROM 'STIME2' ABOVE*/
+probt=0.49939;
+
+do i = 1 to n;
+   	do j = 1 to n;
+	  	if ((survtime[i,1] <= t) & (survtime[j,1] > t) & (pi[i,1] > pi[j,1])) 
+			then ch=ch + (status[i,1]/(n*n*probc*(w[i,1])));
+	  	if ((survtime[i,1] <= t) & (survtime[j,1] > t) & (pi[i,1] = pi[j,1])) 
+			then ch=ch + 0.5*(status[i,1]/(n*n*probc*(w[i,1])));
+   	 end;
+end;
+
+c_hat = ch /(probt*(1-probt));
+create cstat var {ch c_hat};
+append;
+close cstat;
+quit;
+
+title 'Simple model Uno time-dependent AUROC';
+proc print data = cstat; 
+run;
+
+***** Now for extended model with PGR;
+* Matrix code to calculate Uno's C-statistic;
+* Should get C=0.667, SAS gives 0.665 when data available;
+* NOTE: You must enter manual information below;
+proc iml;
+use outkm_ext_uno var {status survtime pi2 wsq};
+read all;
+show names;
+ch = 0;
+dh = 0;
+/*MANUALLY ENTER TOTAL NUMBER IN DATASET*/
+n=686;
+/*MANUALLY ENTER TIME*/
+t=4.96;
+
+do i = 1 to n;
+   		do j = 1 to n;
+	  		if ((survtime[i,1] < survtime[j,1]) & (pi2[i,1] > pi2[j,1]) 
+				& (survtime[i,1] < t)) then ch=ch + (status[i,1]/(wsq[i,1]));
+	  		if ((survtime[i,1] < survtime[j,1]) & (pi2[i,1] = pi2[j,1]) 
+			  & (survtime[i,1] < t)) then ch=ch + 0.5*(status[i,1]/(wsq[i,1]));
+
+			if ((survtime[i,1] < survtime[j,1]) & (survtime[i,1] < t)) 
+				then dh=dh + (status[i,1]/(wsq[i,1]));
+   	 	end;
+end;
+
+c_hat = ch /dh;
+create cstat var {ch dh c_hat};
+append;
+close cstat;
+quit;
+
+title 'Extended model Uno C';
+proc print data = cstat; 
+run;
+
+* Matrix code to calculate Uno's Time-dependent AUROC at 5 years;
+* Should get C=0.722;
+* NOTE: You must enter manual information below;
+* The below formula comes from Blanche et al 2013 Biom J paper;
+
+proc iml;
+use outkm_ext_uno var {status survtime pi2 w};
+read all;
+show names;
+ch = 0;
+/*MANUALLY ENTER TOTAL NUMBER IN DATASET*/
+n=686;
+/*MANUALLY ENTER TIME*/
+t=4.96;
+/*MANUALLY ENTER KM PROB OF CENSOR AT TIME T FROM 'CTIME2' ABOVE*/
+probc=0.37674;
+/*MANUALLY ENTER KM PROB OF SURVIVAL AT TIME T FROM 'STIME2' ABOVE*/
+probt=0.49939;
+
+do i = 1 to n;
+   	do j = 1 to n;
+	  	if ((survtime[i,1] <= t) & (survtime[j,1] > t) & (pi2[i,1] > pi2[j,1])) 
+			then ch=ch + (status[i,1]/(n*n*probc*(w[i,1])));
+	  	if ((survtime[i,1] <= t) & (survtime[j,1] > t) & (pi2[i,1] = pi2[j,1])) 
+			then ch=ch + 0.5*(status[i,1]/(n*n*probc*(w[i,1])));
+   	 end;
+end;
+
+c_hat = ch /(probt*(1-probt));
+create cstat var {ch c_hat};
+append;
+close cstat;
+quit;
+
+title 'Extended model Uno time-dependent AUROC';
+proc print data = cstat; 
+run;
+
+************* END OF DISCRIMINATION CODE ***************************;
+
+
+
+**************** FIXED TIME POINT ASSESSMENT OF CALIBRATION ******************;
+
+
+***Simple model first;
 
 * This is calibration-in-the-large using Kaplan-Meier and average prediction ;
+proc lifetest data=l2gbsg_val method=km atrisk outsurv=l2outkm_ext_c;
+        time survtime*status(0);
+run;
 
-PROC LIFETEST DATA=L2GBSG_VAL METHOD=KM ATRISK OUTSURV=L2OUTKM_EXT_C /*NOPRINT*/;
-        TIME SURVTIME*STATUS(0);
-RUN;
-
-DATA L2OUTKM_EXT_C1;
-	SET L2OUTKM_EXT_C;
-	WHERE _CENSOR_ = 0;
-RUN;
+data l2outkm_ext_c1;
+	set l2outkm_ext_c;
+	where _censor_ = 0;
+run;
 
 *output observed survival at 5 years;
-DATA L2OUTKM_EXT_C2;
-	SET L2OUTKM_EXT_C1;
-	BY _CENSOR_;
-	IF LAST._CENSOR_;
+data l2outkm_ext_c2;
+	set l2outkm_ext_c1;
+	by _censor_;
+	if last._censor_;
 	n=1;
-	KEEP n SURVIVAL;
-RUN;
+	keep n survival;
+run;
 
 *output predicted;
-proc univariate data=L2GBSG_VAL noprint;
+proc univariate data=l2gbsg_val noprint;
 	var prob;
 	output out=mean mean=meanpred;
-	TITLE ' ';
+	title ' ';
 	proc print;
 run;
 
-DATA MEAN1;
-	SET MEAN;
-	N=1;
-RUN;
+data mean1;
+	set mean;
+	n=1;
+run;
 
-DATA MEAN2;
-	MERGE L2OUTKM_EXT_C2 MEAN1;
-	BY N;
-	PROP = (1-SURVIVAL)/(meanpred);
-	proc print;
-RUN;
+data mean2;
+	merge l2outkm_ext_c2 mean1;
+	by n;
+	prop = (1-survival)/(meanpred);
+run;
 
+title 'Calibration-in-large using ratio of Kaplan-Meier & Avg predicted risk';
+proc print data=mean2;
+run;
 
-**********- Bootstrap 95% CIs ***********;
+**********- Bootstrap the 95% CIs for calibration-in-the-large ***********;
 
-PROC LIFETEST DATA=OUTBOOT METHOD=KM ATRISK OUTSURV=L2OUTKM_EXT_C_ NOPRINT;
-		BY REPLICATE;
-        TIME SURVTIME*STATUS(0);
-RUN;
+proc lifetest data=outboot method=km atrisk outsurv=l2outkm_ext_c_ noprint;
+		by replicate;
+        time survtime*status(0);
+run;
 
-DATA L2OUTKM_EXT_C1_;
-	SET L2OUTKM_EXT_C_;
-	WHERE _CENSOR_ = 0;
-RUN;
+data l2outkm_ext_c1_;
+	set l2outkm_ext_c_;
+	where _censor_ = 0;
+run;
 
 *output observed survival at 5 years;
-DATA L2OUTKM_EXT_C2_;
-	SET L2OUTKM_EXT_C1_;
-	BY REPLICATE _CENSOR_;
-	IF LAST._CENSOR_;
-	KEEP REPLICATE SURVIVAL;
-RUN;
+data l2outkm_ext_c2_;
+	set l2outkm_ext_c1_;
+	by replicate _censor_;
+	if last._censor_;
+	keep replicate survival;
+run;
 
 *output predicted;
-proc univariate data=OUTBOOT noprint;
-	BY REPLICATE;
+proc univariate data=outboot noprint;
+	by replicate;
 	var prob;
 	output out=mean_ mean=meanpred;
 run;
 
-DATA MEAN2_;
-	MERGE L2OUTKM_EXT_C2_ MEAN_;
-	BY REPLICATE;
-	PROP = (1-SURVIVAL)/(meanpred);
+data mean2_;
+	merge l2outkm_ext_c2_ mean_;
+	by replicate;
+	prop = (1-survival)/(meanpred);
 	proc print;
-RUN;
+run;
 
-PROC UNIVARIATE DATA=MEAN2_ NOPRINT;
-	VAR PROP;
-	OUTPUT OUT = CONFINCAL PCTLPTS=2.5 97.5 PCTLPRE= PROP_ PCTLNAME=LOWER95 UPPER95;
-RUN;
+proc univariate data=mean2_ noprint;
+	var prop;
+	output out=confincal pctlpts=2.5 97.5 pctlpre=prop_ 
+		pctlname=lower95 upper95;
+run;
 
-DATA CONFINCAL1;
-	SET CONFINCAL;
-	N=1;
-RUN;
+data confincal1;
+	set confincal;
+	n=1;
+run;
 
-DATA CALLARGE;
- 	RETAIN PROP PROP_LOWER95 PROP_UPPER95;
-	MERGE MEAN2 CONFINCAL1;
-	BY N;
-	DROP N SURVIVAL MEANPRED;
-	TITLE 'External Calibration-in-the-large with 95% CI';
-	PROC PRINT;
-RUN;
-
-
-
+data callarge;
+ 	retain prop prop_lower95 prop_upper95;
+	merge mean2 confincal1;
+	by n;
+	drop n survival meanpred;
+	title 'External Calibration-in-the-large with 95% CI';
+	proc print;
+run;
 
 
-*******************calibration plots using restricted cubic splines********************;
+
+** Calibration slope;
+data slope;
+	set l2gbsg_val;
+	pi_=pi;
+run;
+
+proc phreg data=slope;
+	model survtime1*status(0) = pi  /  ties=efron rl;
+run;
+
+*miscalibration;
+proc phreg data=slope;
+	model survtime1*status(0) = pi  / offset = pi_ ties=efron rl;
+run;
 
 
-*CHECK FUNCTIONAL FORM OF CLL;
+
+
+**Calibration plots using Austin et al 2020 Stat Med paper;
+
+*Check functional form of CLL;
 * Code CLL as a restricted cubic spline with 3 knots;
 *First calculate the 10th, 50th and 90th percentiles for knots;
-PROC UNIVARIATE DATA = L2GBSG_VAL;
-	VAR CLL;
-	OUTPUT OUT=KNOTS PCTLPRE=P_CLL PCTLPTS= 10 50 90;
-RUN;
+proc univariate data = l2gbsg_val;
+	var cll;
+	output out=knots pctlpre=p_cll pctlpts= 10 50 90;
+run;
 
-PROC PRINT DATA=KNOTS; RUN;
+proc print data=knots; run;
 
 /* here we find the following values:
 P_CLL10 P_CLL50 P_CLL90 
--1.27273 -0.54373 0.26527 
+-1.14854 -0.44554 0.31246 
 */
 
-DATA PREDHar1;
-	SET L2GBSG_VAL;
-	%RCSPLINE(CLL, -1.27273, -0.54373, 0.26527);
-RUN;
-
-PROC UNIVARIATE DATA = PREDHar1 NOPRINT;
-	VAR Prob;
-	OUTPUT OUT=gridcox PCTLPRE=P_ PCTLPTS= 1 to 99;
-RUN;
-
-PROC TRANSPOSE DATA=GRIDCOX OUT=GRIDCOX1;
-	VAR P_1 - P_99;
-RUN;
-
-DATA GRIDCOX2(RENAME=(COL1=Prob));
-	SET GRIDCOX1;
-	CLL=LOG(-LOG(1-COL1));
-	*WARNING - TAKE THE BELOW FORMULA FROM LOG WINDOW AFTER RUNNING ABOVE RCSPLINE - THIS WILL BE DIFFERENT ACCORDING TO YOUR DATA!;
-	 _kd_= (0.26527 - -1.27273)**.666666666666 ;
-	CLL1=max((CLL--1.27273)/_kd_,0)**3+((-0.54373--1.27273)*max((CLL-0.26527)/_kd_,0)**3 -(0.26527--1.27273)*max((CLL--0.54373)/_kd_,0)**3)/(0.26527--0.54373);
-RUN;
-
-*Calibration for predictions of 5-year survival probabilities;
-PROC PHREG DATA=PREDHar1 ZPH(GLOBAL TRANSFORM=LOG);
-	MODEL SURVTIME1*STATUS(0)=CLL CLL1/ TIES=EFRON RL;
-	BASELINE OUT=GRIDCOX3 COVARIATES=GRIDCOX2 SURVIVAL=PredProb LOWER=L UPPER=U TIMELIST=5;
-RUN;
-
-DATA GRIDCOX4;
-	SET GRIDCOX3;
-	BY Prob;
-	IF FIRST.Prob;
-	OBSProb=1-PredProb;
-	L1=1-U;
-	U1=1-L;
-	IF _NAME_='P_1' THEN DIAG1=0;
-	IF _NAME_='P_1' THEN DIAG2=0;
-	IF _NAME_='P_15' THEN DIAG1=1;
-	IF _NAME_='P_15' THEN DIAG2=1;
-RUN;
-
-proc sort data=gridcox4;
-by Prob;
+*Use Frank Harrell's RCSPLINE macro for calculating the spline terms;
+data predhar1;
+	set l2gbsg_val;
+	* NOTE: you will need to take the spline information from the log 
+	window and edit gridcox2 below;
+	%RCSPLINE(CLL, -1.14854, -0.44554, 0.31246);
 run;
 
-*CREATE DENSITY PLOT;
-proc univariate data=PREDHar1 NOPRINT;
-   var Prob;
-   histogram Prob / kernel midpoints=(0.005 to 0.995 by 0.01) outkernel=OutHist; /* 100 points in [0,1] */
-   *ods select histogram;
+proc univariate data = predhar1 noprint;
+	var prob;
+	output out=gridcox pctlpre=p_ pctlpts= 1 to 99;
+run;
+
+proc transpose data=gridcox out=gridcox1;
+	var p_1 - p_99;
+run;
+
+data gridcox2(rename=(col1=prob));
+	set gridcox1;
+	cll=log(-log(1-col1));
+	*Warning! - take the below formula from the log window after running above 
+	rcspline - this will be different according to your data!;
+	 _kd_= (0.31246 - -1.14854)**.666666666666 ;
+	cll1=max((cll--1.14854)/_kd_,0)**3
+		+((-0.44554--1.14854)*max((cll-0.31246)/_kd_,0)**3
+		-(0.31246--1.14854)*max((cll--0.44554)/_kd_,0)**3)/(0.31246--0.44554);
+run;
+
+*Calibration for predictions of 5-year survival probabilities;
+proc phreg data=predhar1 zph(global transform=log);
+	model survtime1*status(0)=cll cll1/ ties=efron rl;
+	baseline out=gridcox3 covariates=gridcox2 survival=predprob lower=l 
+		upper=u timelist=5;
+run;
+
+data gridcox4;
+	set gridcox3;
+	by prob;
+	if first.prob;
+	obsprob=1-predprob;
+	l1=1-u;
+	u1=1-l;
+	if _name_='p_1' then diag1=0;
+	if _name_='p_1' then diag2=0;
+	if _name_='p_15' then diag1=1;
+	if _name_='p_15' then diag2=1;
+run;
+
+proc sort data=gridcox4;
+	by Prob;
+run;
+
+*Create density plot;
+proc univariate data=predhar1 noprint;
+   var prob;
+   histogram prob / kernel midpoints=(0.005 to 0.995 by 0.01) outkernel=outhist; 
 run;
 
 data density;
    keep _value_ _density_;
-   set OutHist;
+   set outhist;
 run;
  
-/* Merge the counts with the predicted probabilities. */
+/* Merge the counts with the predicted probabilities */
 data LogiPlot2;
    set gridcox4(keep=Prob ObsProb DIAG1 DIAG2 L1 U1 /*<-ref line*/)
        density;
-	Prob1=1-Prob;
-	Obs1=1-ObsProb;
-   *label y0 = "Count"  y1 = "Count";
-  * y0=(_density_/2.3)*0.15 - 0.05/*divide by max value of y's from butterflyfringe and scale and offset below 0*/;
-   *R=-0.05;
 run;
 
 title;
-ODS LISTING SGE=ON STYLE=PRINTER IMAGE_DPI=300 GPATH='C:\Users\sme544\Documents\STRATOS';
-ODS GRAPHICS ON / RESET=ALL NOBORDER OUTPUTFMT=TIFF /*WIDTH=4IN*/ IMAGENAME="Calbration plot Ext Harrell with RCS L2" ANTIALIAS=OFF/*ANTIALIASMAX=*/;
+ods listing sge=on style=printer image_dpi=300 gpath='c:';
+ods graphics on / reset=all noborder outputfmt=tiff  
+	imagename="Calbration plot Ext Harrell with RCS" antialias=off;
 
-PROC SGPLOT DATA=LogiPlot2 NOAUTOLEGEND ;
-XAXIS       	LABEL="Predicted probability of recurrence" VALUES=(0 TO 1 BY 0.20);
-YAXIS        	LABEL="Observed recurrence" VALUES=(0 TO 1 BY 0.20);
-Y2AXIS										VALUES=(0 TO 50 BY 1) DISPLAY=NONE;
-  SERIES X=Prob Y=ObsProb / LINEATTRS=(COLOR=RED THICKNESS=2) ;
-  BAND X=Prob LOWER=L1 UPPER=U1 / NOFILL LINEATTRS=(COLOR=BLACK PATTERN=MEDIUMDASH THICKNESS=2) NOEXTEND OUTLINE;;
-  REG X=DIAG1 Y=DIAG2 / LINEATTRS=(PATTERN=SHORTDASH) MARKERATTRS=(SIZE=1PX SYMBOL=CIRCLEFILLED);
-  SERIES X=_value_ Y=_Density_ / LINEATTRS=(COLOR=BLACK THICKNESS=1 PATTERN=1) Y2AXIS;
+proc sgplot data=logiplot2 noautolegend ;
+	xaxis       	label="Predicted risk from developed model" 
+		values=(0 to 1 by 0.20);
+	yaxis        	label="Predicted risk from refitted model" 
+		values=(0 to 1 by 0.20);
+	y2axis			values=(0 to 20 by 1) display=none;
+  	series x=prob y=obsprob / lineattrs=(color=red thickness=2) ;
+  	band x=prob lower=l1 upper=u1 / nofill lineattrs=(color=black 
+		pattern=mediumdash thickness=2) noextend outline;
+  	reg x=diag1 y=diag2 / lineattrs=(pattern=shortdash) markerattrs=(size=1px 
+		symbol=circlefilled);
+  	series x=_value_ y=_density_/lineattrs=(color=black thickness=1 pattern=1)
+		y2axis;
 run;
 
 ods graphics off;
 
 
-*calculation of ICI for 5 year probabilities;
-*Calibration for predictions of 5-year survival probabilities;
-DATA PREDHarl_Rep;
-	SET PREDHar1;
-RUN;
+*Calculation of ICI for 5 year probabilities;
+data predharl_rep;
+	set predhar1;
+run;
 
-PROC PHREG DATA=PREDHar1 NOPRINT;
-	MODEL SURVTIME1*STATUS(0)=CLL CLL1/ TIES=EFRON RL;
-	BASELINE OUT=PREDHarl_Rep1 COVARIATES=PREDHarl_Rep SURVIVAL=PredProb2 TIMELIST=5;
-RUN;
+proc phreg data=predhar1 noprint;
+	model survtime1*status(0)=cll cll1/ ties=efron rl;
+	baseline out=predharl_rep1 covariates=predharl_rep survival=predprob2 
+		timelist=5;
+run;
 
-DATA ICI;
-	SET PREDHarl_Rep1;
-	*Observed Prob death;
-	Prob2=1-PredProb2;
-	Diff=ABS(Prob - Prob2);
-RUN;
+data ici;
+	set predharl_rep1;
+	*observed prob death;
+	prob2=1-predprob2;
+	diff=abs(prob - prob2);
+run;
 
-PROC UNIVARIATE DATA=ICI NOPRINT;
-	VAR Diff;
-	OUTPUT OUT=ICIS MEAN=ICI MEDIAN=E50 P90=E90;
-RUN;
+proc univariate data=ici noprint;
+	var diff;
+	output out=icis mean=ici median=e50 p90=e90;
+run;
 
-DATA ICIS;
-	SET ICIS;
-	N=1;
-RUN;
-
-
-PROC PRINT;RUN;
-
+data icis;
+	set icis;
+	n=1;
+run;
+proc print;run;
 
 
 
 ******** BOOTSTRAP 95% CI FOR THE CALIBRATION METRICS ********;
 
-*CHECK FUNCTIONAL FORM OF CLL;
-* Code CLL as a restricted cubic spline with 3 knots;
-*First calculate the 10th, 50th and 90th percentiles for knots;
-PROC UNIVARIATE DATA = OUTBOOT NOPRINT;
-	BY REPLICATE;
-	VAR CLL;
-	OUTPUT OUT=KNOTS PCTLPRE=P_CLL PCTLPTS= 10 50 90;
-RUN;
+proc univariate data = outboot noprint;
+	by replicate;
+	var cll;
+	output out=knots pctlpre=p_cll pctlpts= 10 50 90;
+run;
 
-DATA PREDHar1_;
-	MERGE OUTBOOT KNOTS;
-	BY REPLICATE;
-RUN;
+data predhar1_;
+	merge outboot knots;
+	by replicate;
+run;
 
 
-*This macro runs the RCS on each replicate and appends to PREDHarl_2;
+*This macro runs the RCS on each replicate and appends all 500 runs to one dataset;
 %MACRO SPL;
-%DO i=1 %TO 500;
-DATA PREDHar1_1;
-	SET PREDHar1_;
-	WHERE REPLICATE=&i;
-	%RCSPLINE(CLL, P_CLL10, P_CLL50, P_CLL90);
-RUN;
+%do i=1 %to 500;
+data predhar1_1;
+	set predhar1_;
+	where replicate=&i;
+	%rcspline(cll, p_cll10, p_cll50, p_cll90);
+run;
 
 *duplicate dataset so baseline statement works;
-DATA PREDHarl_Rep_;
-	SET PREDHar1_1;
-RUN;
+data predharl_rep_;
+	set predhar1_1;
+run;
 
-PROC PHREG DATA=PREDHar1_1 NOPRINT;
-	MODEL SURVTIME1*STATUS(0)=CLL CLL1/ TIES=EFRON RL;
-	BASELINE OUT=PREDHarl_Rep1_ COVARIATES=PREDHarl_Rep_ SURVIVAL=PredProb2 TIMELIST=5;
-RUN;
+proc phreg data=predhar1_1 noprint;
+	model survtime1*status(0)=cll cll1/ ties=efron rl;
+	baseline out=predharl_rep1_ covariates=predharl_rep_ survival=predprob2 
+		timelist=5;
+run;
 
-DATA ICI_;
-	SET PREDHarl_Rep1_;
-	*Observed Prob death;
-	Prob2=1-PredProb2;
-	Diff=ABS(Prob - Prob2);
-RUN;
+data ici_;
+	set predharl_rep1_;
+	*observed prob death;
+	prob2=1-predprob2;
+	diff=abs(prob - prob2);
+run;
 
-PROC UNIVARIATE DATA=ICI_ NOPRINT;
-	VAR Diff;
-	OUTPUT OUT=ICIS_ MEAN=ICI MEDIAN=E50 P90=E90;
-RUN;
+proc univariate data=ici_ noprint;
+	var diff;
+	output out=icis_ mean=ici median=e50 p90=e90;
+run;
 
-DATA ICIS_1;
-	SET ICIS_;
-	REPLICATE=&i;
-RUN;
+data icis_1;
+	set icis_;
+	replicate=&i;
+run;
 
-PROC APPEND BASE=ICIS_2 DATA=ICIS_1 FORCE;
-RUN;
-
-%END;
-%MEND;
-%SPL;
-
-PROC UNIVARIATE DATA=ICIS_2 NOPRINT;
-	VAR ICI E50 E90;
-	OUTPUT OUT = CONF_MET PCTLPTS=2.5 97.5 PCTLPRE= ICI_ E50_ E90_ PCTLNAME=LOWER95 UPPER95;
-RUN;
-
-DATA CONF_MET1;
-	SET CONF_MET;
-	N=1;
-RUN;
-
-DATA CALMETRICS;
- 	RETAIN ICI ICI_LOWER95 ICI_UPPER95 E50 E50_LOWER95 E50_UPPER95 E90 E90_LOWER95 E90_UPPER95;
-	MERGE ICIS CONF_MET1;
-	BY N;
-	DROP N;
-	TITLE 'External Calibration Metrics with 95% CI';
-	PROC PRINT;
-RUN;
+proc append base=icis_2 data=icis_1 force;
+run;
 
 
+%end;
+%mend;
+%spl;
+
+proc univariate data=icis_2 noprint;
+	var ici e50 e90;
+	output out = conf_met pctlpts=2.5 97.5 pctlpre= ici_ e50_ e90_ 
+		pctlname=lower95 upper95;
+run;
+
+data conf_met1;
+	set conf_met;
+	n=1;
+run;
+
+data calmetrics;
+ 	retain ici ici_lower95 ici_upper95 e50 e50_lower95 e50_upper95 e90 
+		e90_lower95 e90_upper95;
+	merge icis conf_met1;
+	by n;
+	drop n;
+	title 'External calibration metrics with 95% CI';
+	proc print;
+run;
 
 
 
-*********** Calibration for model with pgr - repeat of above but with PR added *********;
 
 
-PROC LIFETEST DATA=L2GBSG_VAL METHOD=KM ATRISK OUTSURV=L2OUTKM_EXT_C NOPRINT;
-        TIME SURVTIME*STATUS(0);
-RUN;
 
-DATA L2OUTKM_EXT_C1;
-	SET L2OUTKM_EXT_C;
-	WHERE _CENSOR_ = 0;
-RUN;
+********Extended model calibration;
+
+* This is calibration-in-the-large using Kaplan-Meier and average prediction ;
+proc lifetest data=l2gbsg_val method=km atrisk outsurv=l2outkm_ext_c;
+        time survtime*status(0);
+run;
+
+data l2outkm_ext_c1;
+	set l2outkm_ext_c;
+	where _censor_ = 0;
+run;
 
 *output observed survival at 5 years;
-DATA L2OUTKM_EXT_C2;
-	SET L2OUTKM_EXT_C1;
-	BY _CENSOR_;
-	IF LAST._CENSOR_;
+data l2outkm_ext_c2;
+	set l2outkm_ext_c1;
+	by _censor_;
+	if last._censor_;
 	n=1;
-	KEEP n SURVIVAL;
-RUN;
+	keep n survival;
+run;
 
 *output predicted;
-proc univariate data=L2GBSG_VAL noprint;
+proc univariate data=l2gbsg_val noprint;
 	var prob2;
 	output out=mean mean=meanpred;
 run;
 
-DATA MEAN1;
-	SET MEAN;
-	N=1;
-RUN;
+data mean1;
+	set mean;
+	n=1;
+run;
 
-* L2 we get O/E of 0.95;
-DATA MEAN2_pgr;
-	MERGE L2OUTKM_EXT_C2 MEAN1;
-	BY N;
-	PROP = (1-SURVIVAL)/(MEANPRED);
-RUN;
+data mean2_pgr;
+	merge l2outkm_ext_c2 mean1;
+	by n;
+	prop = (1-survival)/(meanpred);
+run;
 
+title 'Calibration-in-large using ratio of Kaplan-Meier & Avg predicted risk';
+proc print data=mean2_pgr;
+run;
 
-******- BOOTSTRAP 95% ci FOR CAL-IN-THE-LARGE WITH PGR;
+**********- Bootstrap the 95% CIs for calibration-in-the-large ***********;
 
 /*
-*No need to rerun below if you have already run for model without PGR;
-PROC LIFETEST DATA=OUTBOOT METHOD=KM ATRISK OUTSURV=L2OUTKM_EXT_C_ NOPRINT;
-		BY REPLICATE;
-        TIME SURVTIME*STATUS(0);
-RUN;
+*no need to rerun below if you have already run for model without pgr;
+proc lifetest data=outboot method=km atrisk outsurv=l2outkm_ext_c_ noprint;
+		by replicate;
+        time survtime*status(0);
+run;
 
-DATA L2OUTKM_EXT_C1_;
-	SET L2OUTKM_EXT_C_;
-	WHERE _CENSOR_ = 0;
-RUN;
+data l2outkm_ext_c1_;
+	set l2outkm_ext_c_;
+	where _censor_ = 0;
+run;
 
 *output observed survival at 5 years;
-DATA L2OUTKM_EXT_C2_;
-	SET L2OUTKM_EXT_C1_;
-	BY REPLICATE _CENSOR_;
-	IF LAST._CENSOR_;
-	KEEP REPLICATE SURVIVAL;
-RUN;
-
+data l2outkm_ext_c2_;
+	set l2outkm_ext_c1_;
+	by replicate _censor_;
+	if last._censor_;
+	keep replicate survival;
+run;
 */
 
 *output predicted;
@@ -1599,110 +805,127 @@ proc univariate data=OUTBOOT noprint;
 	by replicate;
 	var prob2;
 	output out=mean__ mean=meanpred;
-	TITLE ' ';
+run;
+
+data mean2_pgr_;
+	merge l2outkm_ext_c2_ mean__;
+	by replicate;
+	prop = (1-survival)/(meanpred);
+run;
+
+proc univariate data=mean2_pgr_ noprint;
+	var prop;
+	output out = confincal_ pctlpts=2.5 97.5 pctlpre= prop_ 
+		pctlname=lower95 upper95;
+run;
+
+data confincal1_;
+	set confincal_;
+	n=1;
+run;
+
+data callarge_;
+ 	retain prop prop_lower95 prop_upper95;
+	merge mean2_pgr confincal1_;
+	by n;
+	drop n ;
+	title 'External Calibration-in-the-large with 95% CI (PGR included)';
 	proc print;
 run;
 
-* L2 we get O/E of 0.95;
-DATA MEAN2_pgr_;
-	MERGE L2OUTKM_EXT_C2_ MEAN__;
-	BY REPLICATE;
-	PROP = (1-SURVIVAL)/(MEANPRED);
-RUN;
 
-PROC UNIVARIATE DATA=MEAN2_pgr_ NOPRINT;
-	VAR PROP;
-	OUTPUT OUT = CONFINCAL_ PCTLPTS=2.5 97.5 PCTLPRE= PROP_ PCTLNAME=LOWER95 UPPER95;
-RUN;
 
-DATA CONFINCAL1_;
-	SET CONFINCAL_;
-	N=1;
-RUN;
+** Calibration slope;
+data slope1;
+	set l2gbsg_val;
+	pi2_=pi2;
+run;
 
-DATA CALLARGE_;
- 	RETAIN PROP PROP_LOWER95 PROP_UPPER95;
-	MERGE MEAN2_pgr CONFINCAL1_;
-	BY N;
-	DROP N SURVIVAL MEANPRED;
-	TITLE 'External Calibration-in-the-large with 95% CI (PGR included)';
-	PROC PRINT;
-RUN;
+proc phreg data=slope1;
+	model survtime1*status(0) = pi2  /  ties=efron rl;
+run;
+
+*miscalibration;
+proc phreg data=slope1;
+	model survtime1*status(0) = pi2  / offset = pi2_ ties=efron rl;
+run;
 
 
 
 
+**Calibration plots using Austin et al 2020 Stat Med paper;
 
-
-*******calibration plots using restricted cubic splines;
-
-*CHECK FUNCTIONAL FORM OF CLL;
-* Code PGR as a restricted cubic spline with 3 knots;
+*Check functional form of CLL;
+* Code CLL as a restricted cubic spline with 3 knots;
 *First calculate the 10th, 50th and 90th percentiles for knots;
-PROC UNIVARIATE DATA = L2GBSG_VAL;
-	VAR CLL_;
-	OUTPUT OUT=KNOTS PCTLPRE=P_CLL PCTLPTS= 10 50 90;
-RUN;
+proc univariate data = l2gbsg_val;
+	var cll_;
+	output out=knots pctlpre=p_cll pctlpts= 10 50 90;
+run;
 
-PROC PRINT DATA=KNOTS; RUN;
+proc print data=knots; run;
 
 /* here we find the following values:
 
 P_CLL10 P_CLL50 P_CLL90 
--1.09941 -0.43046 0.28605 
+-1.01594 -0.38373 0.37213  
 */
-
-DATA PREDHarPGR1;
-	SET L2GBSG_VAL;
-	%RCSPLINE(CLL_, -1.09941, -0.43046, 0.28605);
-RUN;
-
-PROC UNIVARIATE DATA = PREDHarPGR1 NOPRINT;
-	VAR Prob2;
-	OUTPUT OUT=gridcox PCTLPRE=P_ PCTLPTS= 1 to 99;
-RUN;
-
-PROC TRANSPOSE DATA=GRIDCOX OUT=GRIDCOX1;
-	VAR P_1 - P_99;
-RUN;
-
-DATA GRIDCOX2(RENAME=(COL1=Prob));
-	SET GRIDCOX1;
-	CLL_=LOG(-LOG(1-COL1));
-	*WARNING - TAKE THE BELOW FORMULA FROM LOG WINDOW AFTER RUNNING ABOVE RCSPLINE - THIS WILL BE DIFFERENT ACCORDING TO YOUR DATA!;
- 	_kd_= (0.28605 - -1.09941)**.666666666666 ;
-	CLL_1=max((CLL_--1.09941)/_kd_,0)**3+((-0.43046--1.09941)*max((CLL_-0.28605)/_kd_,0)**3 -(0.28605--1.09941)*max((CLL_--0.43046)/_kd_,0)**3)/(0.28605--0.43046);
-RUN;
-
-*Calibration for predictions of 5-year survival probabilities;
-PROC PHREG DATA=PREDHarPGR1 ZPH(GLOBAL TRANSFORM=LOG);
-	MODEL SURVTIME1*STATUS(0)=CLL_ CLL_1/ TIES=EFRON RL;
-	BASELINE OUT=GRIDCOX3 COVARIATES=GRIDCOX2 SURVIVAL=PredProb LOWER=L UPPER=U TIMELIST=5;
-RUN;
-
-DATA GRIDCOX4;
-	SET GRIDCOX3;
-	BY Prob;
-	IF FIRST.Prob;
-	OBSProb=1-PredProb;
-	L1=1-U;
-	U1=1-L;
-	IF _NAME_='P_1' THEN DIAG1=0;
-	IF _NAME_='P_1' THEN DIAG2=0;
-	IF _NAME_='P_15' THEN DIAG1=1;
-	IF _NAME_='P_15' THEN DIAG2=1;
-RUN;
-
-
-proc sort data=gridcox4;
-by Prob;
+*Use Frank Harrell's RCSPLINE macro for calculating the spline terms;
+data predharpgr1;
+	set l2gbsg_val;
+	* NOTE: you will need to take the spline information from the log 
+	window and edit gridcox2 below;
+	%rcspline(cll_, -1.01594, -0.38373, 0.37213);
 run;
 
-*CREATE DENSITY PLOT;
-proc univariate data=PREDHarPGR1;
-   var Prob2;
-   histogram Prob2 / kernel midpoints=(0.005 to 0.995 by 0.01) outkernel=OutHist; /* 100 points in [0,1] */
-   *ods select histogram;
+proc univariate data = predharpgr1 noprint;
+	var prob2;
+	output out=gridcox pctlpre=p_ pctlpts= 1 to 99;
+run;
+
+proc transpose data=gridcox out=gridcox1;
+	var p_1 - p_99;
+run;
+
+data gridcox2(rename=(col1=prob));
+	set gridcox1;
+	cll_=log(-log(1-col1));
+	*Warning! - take the below formula from the log window after running above 
+	rcspline - this will be different according to your data!;
+ 	_kd_= (0.37213 - -1.01594)**.666666666666;
+	cll_1=max((cll_--1.01594)/_kd_,0)**3
+		+((-0.38373--1.01594)*max((cll_-0.37213)/_kd_,0)**3
+		-(0.37213--1.01594)*max((cll_--0.38373)/_kd_,0)**3)/(0.37213--0.38373);
+run;
+
+*calibration for predictions of 5-year survival probabilities;
+proc phreg data=predharpgr1 zph(global transform=log);
+	model survtime1*status(0)=cll_ cll_1/ ties=efron rl;
+	baseline out=gridcox3 covariates=gridcox2 survival=predprob lower=l 
+		upper=u timelist=5;
+run;
+
+data gridcox4;
+	set gridcox3;
+	by prob;
+	if first.prob;
+	obsprob=1-predprob;
+	l1=1-u;
+	u1=1-l;
+	if _name_='p_1' then diag1=0;
+	if _name_='p_1' then diag2=0;
+	if _name_='p_15' then diag1=1;
+	if _name_='p_15' then diag2=1;
+run;
+
+proc sort data=gridcox4;
+	by prob;
+run;
+
+*Create density plot;
+proc univariate data=predharpgr1;
+   var prob2;
+   histogram prob2 /kernel midpoints=(0.005 to 0.995 by 0.01) outkernel=OutHist;
 run;
 
 data density;
@@ -1714,147 +937,664 @@ run;
 data LogiPlot2;
    set gridcox4(keep=Prob ObsProb DIAG1 DIAG2 L1 U1 /*<-ref line*/)
        density;
-	Prob1=1-Prob;
-	Obs1=1-ObsProb;
 run;
 
 title;
-ODS LISTING SGE=ON STYLE=PRINTER IMAGE_DPI=300 GPATH='C:\Users\sme544\Documents\STRATOS';
-ODS GRAPHICS ON / RESET=ALL NOBORDER OUTPUTFMT=TIFF /*WIDTH=4IN*/ IMAGENAME="Calbration plot PGR Ext Harrell with RCS L2" ANTIALIAS=OFF/*ANTIALIASMAX=*/;
+ods listing sge=on style=printer image_dpi=300 gpath='C:';
+ods graphics on / reset=all noborder outputfmt=tiff 
+	imagename="Calbration plot PGR Ext Harrell with RCS" antialias=off;
 
-PROC SGPLOT DATA=LogiPlot2 NOAUTOLEGEND ;
-XAXIS       	LABEL="Predicted probability of recurrence" VALUES=(0 TO 1 BY 0.20);
-YAXIS        	LABEL="Observed recurrence" VALUES=(0 TO 1 BY 0.20);
-Y2AXIS										VALUES=(0 TO 50 BY 1) DISPLAY=NONE;
-  SERIES X=Prob Y=OBSPROB / LINEATTRS=(COLOR=RED THICKNESS=2) ;
-  BAND X=Prob LOWER=L1 UPPER=U1 / NOFILL LINEATTRS=(COLOR=BLACK PATTERN=MEDIUMDASH THICKNESS=2) NOEXTEND OUTLINE;
-  REG X=DIAG1 Y=DIAG2 / LINEATTRS=(PATTERN=SHORTDASH) MARKERATTRS=(SIZE=1PX SYMBOL=CIRCLEFILLED);
-  SERIES X=_value_ Y=_Density_ / LINEATTRS=(COLOR=BLACK THICKNESS=1 PATTERN=1) Y2AXIS;
+proc sgplot data=logiplot2 noautolegend ;
+xaxis       	label="Predicted risk from developed model" 
+		values=(0 to 1 by 0.20);
+yaxis        	label="Predicted risk from refitted model" 
+		values=(0 to 1 by 0.20);
+y2axis	values=(0 to 20 by 1) display=none;
+  series x=prob y=obsprob / lineattrs=(color=red thickness=2) ;
+  band x=prob lower=l1 upper=u1 / nofill lineattrs=(color=black 
+		pattern=mediumdash thickness=2) noextend outline;
+  reg x=diag1 y=diag2 / lineattrs=(pattern=shortdash) 
+		markerattrs=(size=1px symbol=circlefilled);
+  series x=_value_ y=_density_ / lineattrs=(color=black thickness=1 
+		pattern=1) y2axis;
 run;
 
 ods graphics off;
 
-*calculation of ICI for 5 year probabilities;
-*Calibration for predictions of 5-year survival probabilities;
-DATA PREDHarPGRl_Rep;
-	SET PREDHarPGR1;
-RUN;
+*Calculation of ICI for 5 year probabilities;
+data predharpgrl_rep;
+	set predharpgr1;
+run;
 
-PROC PHREG DATA=PREDHarPGR1;
-	MODEL SURVTIME1*STATUS(0)=CLL_ CLL_1/ TIES=EFRON RL;
-	BASELINE OUT=PREDHarPGRl_Rep1 COVARIATES=PREDHarPGRl_Rep SURVIVAL=PredProb2 TIMELIST=5;
-RUN;
+proc phreg data=predharpgr1;
+	model survtime1*status(0)=cll_ cll_1/ ties=efron rl;
+	baseline out=predharpgrl_rep1 covariates=predharpgrl_rep survival=predprob2 
+		timelist=5;
+run;
 
-DATA ICI_PGR;
-	SET PREDHarPGRl_Rep1;
-	*Observed Prob death;
-	Prob3=1-PredProb2;
-	Diff=ABS(Prob2 - Prob3);
-RUN;
+data ici_pgr;
+	set predharpgrl_rep1;
+	*observed prob death;
+	prob3=1-predprob2;
+	diff=abs(prob2 - prob3);
+run;
 
-PROC UNIVARIATE DATA=ICI_PGR NOPRINT;
-	VAR Diff;
-	OUTPUT OUT=ICI_PGRS MEAN=ICI MEDIAN=E50 P90=E90;
-RUN;
+proc univariate data=ici_pgr noprint;
+	var diff;
+	output out=ici_pgrs mean=ici median=e50 p90=e90;
+run;
 
-DATA ICI_PGRS;
-	SET ICI_PGRS;
-	N=1;
-RUN;
+data ici_pgrs;
+	set ici_pgrs;
+	n=1;
+run;
 
-PROC PRINT; RUN;
+proc print; run;
 
-/*
-ICI E90 E50 
-0.034929 0.086532 0.023027;
-*/
 
 ******** BOOTSTRAP 95% CI FOR THE CALIBRATION METRICS ********;
+proc univariate data = outboot noprint;
+	by replicate;
+	var cll_;
+	output out=knots pctlpre=p_cll pctlpts= 10 50 90;
+run;
 
-*CHECK FUNCTIONAL FORM OF CLL;
-* Code CLL as a restricted cubic spline with 3 knots;
-*First calculate the 10th, 50th and 90th percentiles for knots;
-*NB - CLL IS FOR MODEL WITHOUT PGR, AND CLL_ IS FOR MODEL WITH PGR;
-
-PROC UNIVARIATE DATA = OUTBOOT NOPRINT;
-	BY REPLICATE;
-	VAR CLL_;
-	OUTPUT OUT=KNOTS PCTLPRE=P_CLL PCTLPTS= 10 50 90;
-RUN;
-
-DATA PREDHarPGR1_;
-	MERGE OUTBOOT KNOTS;
-	BY REPLICATE;
-RUN;
+data predharpgr1_;
+	merge outboot knots;
+	by replicate;
+run;
 
 *This macro runs the RCS on each replicate and appends to PREDHarl_2;
 %MACRO SPL1;
-%DO i=1 %TO 500;
-DATA PREDHar1_1;
-	SET PREDHarPGR1_;
-	WHERE REPLICATE=&i;
-	%RCSPLINE(CLL_, P_CLL10, P_CLL50, P_CLL90);
-RUN;
+%do i=1 %to 500;
+data predhar1_1;
+	set predharpgr1_;
+	where replicate=&i;
+	%rcspline(cll_, p_cll10, p_cll50, p_cll90);
+run;
 
 *duplicate dataset so baseline statement works;
-DATA PREDHarl_Rep_;
-	SET PREDHar1_1;
-RUN;
+data predharl_rep_;
+	set predhar1_1;
+run;
 
-PROC PHREG DATA=PREDHar1_1 NOPRINT;
-	MODEL SURVTIME1*STATUS(0)=CLL_ CLL_1/ TIES=EFRON RL;
-	BASELINE OUT=PREDHarl_Rep1_ COVARIATES=PREDHarl_Rep_ SURVIVAL=PredProb2 TIMELIST=5;
-RUN;
+proc phreg data=predhar1_1 noprint;
+	model survtime1*status(0)=cll_ cll_1/ ties=efron rl;
+	baseline out=predharl_rep1_ covariates=predharl_rep_ survival=predprob2 
+		timelist=5;
+run;
 
-DATA ICI_;
-	SET PREDHarl_Rep1_;
-	*Observed Prob death;
-	Prob3=1-PredProb2;
-	Diff=ABS(Prob2 - Prob3);
-RUN;
+data ici_;
+	set predharl_rep1_;
+	*observed prob death;
+	prob3=1-predprob2;
+	diff=abs(prob2 - prob3);
+run;
 
-PROC UNIVARIATE DATA=ICI_ NOPRINT;
-	VAR Diff;
-	OUTPUT OUT=ICIS_ MEAN=ICI MEDIAN=E50 P90=E90;
-RUN;
+proc univariate data=ici_ noprint;
+	var diff;
+	output out=icis_ mean=ici median=e50 p90=e90;
+run;
 
-DATA ICIS_1;
-	SET ICIS_;
-	REPLICATE=&i;
-RUN;
+data icis_1;
+	set icis_;
+	replicate=&i;
+run;
 
-PROC APPEND BASE=ICIS_3 DATA=ICIS_1 FORCE;
-RUN;
+proc append base=icis_3 data=icis_1 force;
+run;
 
-%END;
-%MEND;
+%end;
+%mend;
 %SPL1;
 
-PROC UNIVARIATE DATA=ICIS_3 NOPRINT;
-	VAR ICI E50 E90;
-	OUTPUT OUT = CONF_MET_ PCTLPTS=2.5 97.5 PCTLPRE= ICI_ E50_ E90_ PCTLNAME=LOWER95 UPPER95;
-RUN;
+proc univariate data=icis_3 noprint;
+	var ici e50 e90;
+	output out = conf_met_ pctlpts=2.5 97.5 pctlpre= ici_ e50_ e90_ 
+		pctlname=lower95 upper95;
+run;
 
-DATA CONF_MET_1;
-	SET CONF_MET_;
-	N=1;
-RUN;
+data conf_met_1;
+	set conf_met_;
+	n=1;
+run;
 
-DATA CALMETRICS_;
- 	RETAIN ICI ICI_LOWER95 ICI_UPPER95 E50 E50_LOWER95 E50_UPPER95 E90 E90_LOWER95 E90_UPPER95;
-	MERGE ICI_PGRS CONF_MET_1;
-	BY N;
-	DROP N;
-	TITLE 'External Calibration Metrics with 95% CI for model with PGR added';
-	PROC PRINT;
-RUN;
+data calmetrics_;
+ 	retain ici ici_lower95 ici_upper95 e50 e50_lower95 e50_upper95 e90 
+		e90_lower95 e90_upper95;
+	merge ici_pgrs conf_met_1;
+	by n;
+	drop n;
+	title 'External Calibration Metrics with 95% CI for model with PGR added';
+	proc print;
+run;
 
+
+
+
+*********************** Overall performance;
+
+******* This block calculates the Brier score - see Graf et al 1999;
+title ' ';
+
+*Simple model first;
+*External validation - Calculate Brier score;
+
+*Calculate weights using Kaplan-Meier;
+proc lifetest data=l2gbsg_val method=km atrisk outsurv=l2outkm_ext noprint;
+        time survtime*status(1);
+run;
+
+*Create 3 groups - Group 1-Those who have the event up to fixed event time of 
+*interest, Group 2 - those who go beyond fixed time (could be event or event 
+*free), and Group 3- those censored up to fixed time 
+*Only first 2 groups contribute to score but all to weights;
+data l2rott_b_ex;
+	set l2gbsg_val;
+	*Must make the time just under 5 years since we need some time remaining
+	*after timepoint of interest (5 years) and before administrative censoring 
+	*(5 years) for it to work;
+	if survtime<=4.99 and status=1 then cat=1;
+	if survtime>4.99 then cat=2;
+	if survtime<=4.99 and status=0 then cat=3;
+	proc sort; by survtime;
+run;
+
+data l2outkm_ext1;
+	set l2outkm_ext;
+	weight=1/survival;
+	keep survtime survival weight;
+run;
+
+data l2outkm_ext2;
+	set l2outkm_ext1;
+	s=lag(survtime);
+	if survtime=s then delete;
+	drop s;
+run;
+
+data l2rottval_bs2;
+	merge l2rott_b_ex l2outkm_ext1;
+	by survtime;
+	if pid=. then delete;
+run;
+
+data l2rottval_bs3;
+	set l2rottval_bs2;
+	retain _weight;
+	if not missing(weight) then _weight=weight;
+	else weight=_weight;
+	if cat=3 then weight=0;
+	if survtime=0 then delete;
+	if cat=1 then contrib=(-psurv)**2;
+	if cat=2 then contrib=(1-psurv)**2;
+	if cat=3 then contrib=0;
+	bs=contrib*weight;
+	drop _weight;
+run;
+
+*Estimate brier score;
+proc univariate data=l2rottval_bs3 noprint;
+	var bs weight;
+	output out=l2sumsex sum=sbs sweight;
+	proc print; 
+run;
+
+data l2sumsex;
+	retain sweight sbs brier;
+	set l2sumsex;
+	brier = (1/sweight)*sbs;
+	sweight=left(sweight);
+	title 'External Brier score';
+	proc print;
+run;
+
+
+**** - Calculate bootstrapped 95% ci for brier score;
+
+*calculate weights for external validation;
+proc lifetest data=outboot method=km atrisk outsurv=l2outkm_extx noprint;
+		by replicate;
+        time survtime*status(1);
+run;
+
+data l2rott_b_exx;
+	set outboot;
+	if survtime<=4.99 and status=1 then cat=1;
+	if survtime>4.99 then cat=2;
+	if survtime<=4.99 and status=0 then cat=3;
+	proc sort; by replicate survtime;
+run;
+
+data l2outkm_ext1x;
+	set l2outkm_extx;
+	weight=1/survival;
+	keep replicate survtime survival weight;
+run;
+
+data l2rottval_bs2x;
+	merge l2rott_b_exx l2outkm_ext1x;
+	by replicate survtime;
+	if pid=. then delete;
+run;
+
+data l2rottval_bs3x;
+	set l2rottval_bs2x;
+	retain _weight;
+	if not missing(weight) then _weight=weight;
+	else weight=_weight;
+	if cat=3 then weight=0;
+	if survtime=0 then delete;
+	if cat=1 then contrib=(-psurv)**2;
+	if cat=2 then contrib=(1-psurv)**2;
+	if cat=3 then contrib=0;
+	bs=contrib*weight;
+	drop _weight;
+run;
+
+*Estimate brier score;
+proc univariate data=l2rottval_bs3x noprint;
+	by replicate;
+	var bs weight;
+	output out=l2sumsexx sum=sbs sweight;
+	proc print; 
+run;
+
+data l2sumsexx;
+	retain sweight sbs brier;
+	set l2sumsexx;
+	brier = (1/sweight)*sbs;
+	sweight=left(sweight);
+run;
+
+
+
+***Scaled brier for external validation;
+proc phreg data=l2gbsg_val;
+	model survtime*status(0)= / ties=efron rl;
+	baseline covariates=l2rott_b_ex out=l2rottval_bsnull timelist=5 
+		survival=fiveyrsurv_null;
+run;
+
+*Brier for null model;
+data l2rottval_bs1null;
+	set l2rottval_bsnull;
+	keep pid fiveyrsurv_null;
+	proc sort; by pid;
+run;
+
+proc sort data=l2rottval_bs3;
+	by pid;
+run;
+
+*Merge the null survival probs to the brier score dataset from earlier;
+data l2rottval_bs4;
+	merge l2rottval_bs3 l2rottval_bs1null;
+	by pid;
+run;
+
+data l2rottval_bs5;
+	set l2rottval_bs4;
+	if cat=1 then contrib_null=(-fiveyrsurv_null)**2;
+	if cat=2 then contrib_null=(1-fiveyrsurv_null)**2;
+	if cat=3 then contrib_null=0;
+	bs_null=contrib_null*weight;
+	drop fiveyrsurv_null;
+run;
+
+*Estimate brier score for null model;
+proc univariate data=l2rottval_bs5 noprint;
+	var bs_null weight;
+	output out=l2sumnullex sum=sbs_null sweight;
+	proc print; 
+run;
+
+data l2sumnullex;
+	retain sweight sbs_null;
+	set l2sumnullex;
+	sweight=left(sweight);
+run;
+
+*Calculate scaled brier for external validation;
+data l2ipa;
+	merge l2sumsex l2sumnullex;
+	by sweight;
+	null_brier = (1/sweight)*sbs_null;
+	scaledb = 1-(brier/null_brier);
+	ind=1;
+		title 'External Brier score and Scaled Brier score';
+	proc print;
+run;
+
+
+**** - Calculate bootstrapped 95% ci for scaled brier;
+
+proc phreg data=outboot noprint;
+	by replicate;
+	model survtime*status(0)= / ties=efron rl;
+	baseline covariates=l2rott_b_exx out=l2rottval_bsnullx timelist=5 
+		survival=fiveyrsurv_null;
+run;
+
+*Brier for null model;
+data l2rottval_bs1nullx;
+	set l2rottval_bsnullx;
+	keep replicate pid fiveyrsurv_null;
+	proc sort; by replicate pid;
+run;
+
+proc sort data=l2rottval_bs3x;
+	by replicate pid;
+run;
+
+*Merge the bull survival probs to the brier score dataset from earlier;
+data l2rottval_bs4x;
+	merge l2rottval_bs3x l2rottval_bs1nullx;
+	by replicate pid;
+run;
+
+data l2rottval_bs5x;
+	set l2rottval_bs4x;
+	if cat=1 then contrib_null=(-fiveyrsurv_null)**2;
+	if cat=2 then contrib_null=(1-fiveyrsurv_null)**2;
+	if cat=3 then contrib_null=0;
+	bs_null=contrib_null*weight;
+	drop fiveyrsurv_null;
+run;
+
+*estimate brier score for null model;
+proc univariate data=l2rottval_bs5x noprint;
+	by replicate;
+	var bs_null weight;
+	output out=l2sumnullexx sum=sbs_null sweight;
+	proc print; 
+run;
+
+data l2sumnullexx;
+	retain sweight sbs_null;
+	set l2sumnullexx;
+	sweight=left(sweight);
+run;
+
+*calculate scaled brier for external validation;
+data l2ipax;
+	merge l2sumsexx l2sumnullexx;
+	by replicate sweight;
+	null_brier = (1/sweight)*sbs_null;
+	scaledb = 1-(brier/null_brier);
+	*proc print;
+run;
+
+proc univariate data=l2ipax noprint;
+	var brier scaledb;
+	output out = confintr pctlpts=2.5 97.5 pctlpre= brier_ scaledb_ 
+		pctlname=lower95 upper95;
+run;
+
+data confintr1;
+	set confintr;
+	ind=1;
+run;
+
+data brierax2;
+ 	retain brier brier_lower95 brier_upper95 scaledb scaledb_lower95 
+		scaledb_upper95;
+	merge l2ipa confintr1;
+	by ind;
+	drop ind sweight sbs sbs_null null_brier;
+	title 'External Brier score and Scaled Brier score with 95% CI';
+	proc print;
+run;
+
+************* Above repeated for added marker ********************;
+
+*Simple model first;
+*External validation - Calculate Brier score;
+
+*Calculate weights using Kaplan-Meier;
+proc lifetest data=l2gbsg_val method=pl atrisk outsurv=l2outkm_exta noprint;
+        time survtime*status(1);
+run;
+
+*Create 3 groups - Group 1-Those who have the event up to fixed event time of 
+*interest, Group 2 - those who go beyond fixed time (could be event or event 
+*free), and Group 3- those censored up to fixed time 
+*Only first 2 groups contribute to score but all to weights;
+data l2rott_b_exa;
+	set l2gbsg_val;
+	if survtime<=4.99 and status=1 then cat=1;
+	if survtime>4.99 then cat=2;
+	if survtime<=4.99 and status=0 then cat=3;
+	proc sort; by survtime;
+run;
+
+data l2outkm_ext1a;
+	set l2outkm_exta;
+	weight=1/survival;
+	keep survtime weight;
+run;
+
+data l2rottval_bs2a;
+	merge l2rott_b_exa l2outkm_ext1a;
+	by survtime;
+	if pid=. then delete;
+run;
+
+data l2rottval_bs3a;
+	set l2rottval_bs2a;
+	retain _weight;
+	if not missing(weight) then _weight=weight;
+	else weight=_weight;
+	if cat=3 then weight=0;
+	if survtime=0 then delete;
+	if cat=1 then contrib=(-psurv2)**2;
+	if cat=2 then contrib=(1-psurv2)**2;
+	if cat=3 then contrib=0;
+	bs=contrib*weight;
+	drop _weight;
+run;
+
+*estimate brier score;
+proc univariate data=l2rottval_bs3a noprint;
+	var bs weight;
+	output out=l2sumsexa sum=sbs sweight;
+	proc print; 
+run;
+
+*brier exactly same as full dataset;
+data l2sumsexa;
+	set l2sumsexa;
+	brier = (1/sweight)*sbs;
+	sweight=left(sweight);
+	title 'External brier score for pgr';
+	proc print;
+run;
+
+
+**** - Calculate bootstrapped 95% ci for brier score;
+
+*calculate weights for external validation;
+proc lifetest data=outboot method=km atrisk outsurv=l2outkm_extx_ noprint;
+		by replicate;
+        time survtime*status(1);
+run;
+
+data l2rott_b_exx_;
+	set outboot;
+	if survtime<=4.99 and status=1 then cat=1;
+	if survtime>4.99 then cat=2;
+	if survtime<=4.99 and status=0 then cat=3;
+	proc sort; by replicate survtime;
+run;
+
+data l2outkm_ext1x_;
+	set l2outkm_extx_;
+	weight=1/survival;
+	keep replicate survtime survival weight;
+run;
+
+data l2rottval_bs2x_;
+	merge l2rott_b_exx_ l2outkm_ext1x_;
+	by replicate survtime;
+	if pid=. then delete;
+run;
+
+data l2rottval_bs3x_;
+	set l2rottval_bs2x_;
+	retain _weight;
+	if not missing(weight) then _weight=weight;
+	else weight=_weight;
+	if cat=3 then weight=0;
+	if survtime=0 then delete;
+	if cat=1 then contrib=(-psurv2)**2;
+	if cat=2 then contrib=(1-psurv2)**2;
+	if cat=3 then contrib=0;
+	bs=contrib*weight;
+	drop _weight;
+run;
+
+*estimate brier score;
+proc univariate data=l2rottval_bs3x_ noprint;
+	by replicate;
+	var bs weight;
+	output out=l2sumsexx_ sum=sbs sweight;
+	*proc print; 
+run;
+
+data l2sumsexx_;
+	retain sweight sbs brier;
+	set l2sumsexx_;
+	brier = (1/sweight)*sbs;
+	sweight=left(sweight);
+run;
+
+
+*** Scaled Brier for model with PGR included;
+proc sort data=l2rottval_bs3a;
+	by pid;
+run;
+
+data l2rottval_bs4a;
+	merge l2rottval_bs3a l2rottval_bs1null;
+	by pid;
+run;
+
+data l2rottval_bs5a;
+	set l2rottval_bs4a;
+	if cat=1 then contrib_null=(-fiveyrsurv_null)**2;
+	if cat=2 then contrib_null=(1-fiveyrsurv_null)**2;
+	if cat=3 then contrib_null=0;
+	bs_null=contrib_null*weight;
+	drop fiveyrsurv_null;
+run;
+
+*Estimate brier score for null model;
+proc univariate data=l2rottval_bs5a noprint;
+	var bs_null weight;
+	output out=l2sumnullexa sum=sbs_null sweight;
+	proc print; 
+run;
+
+data l2sumnullexa;
+	set l2sumnullexa;
+	sweight=left(sweight);
+run;
+
+data l2scaledba;
+	merge l2sumsexa l2sumnullexa;
+	by sweight;
+	null_brier = (1/sweight)*sbs_null;
+	scaledb = 1-(brier/null_brier);
+	ind=1;
+	title 'External Brier score and Scaled Brier with PGR';
+	proc print;
+run;
+
+
+
+**** - Calculate bootstrapped 95% ci for scaled brier;
+
+proc phreg data=outboot noprint;
+	by replicate;
+	model survtime*status(0)= / ties=efron rl;
+	baseline covariates=l2rott_b_exx_ out=l2rottval_bsnullx_ timelist=5 
+		survival=fiveyrsurv_null;
+run;
+
+*Brier for null model;
+data l2rottval_bs1nullx_;
+	set l2rottval_bsnullx_;
+	keep replicate pid fiveyrsurv_null;
+	proc sort; by replicate pid;
+run;
+
+proc sort data=l2rottval_bs3x_;
+	by replicate pid;
+run;
+
+*Merge the null survival probs to the brier score dataset from earlier;
+data l2rottval_bs4x_;
+	merge l2rottval_bs3x_ l2rottval_bs1nullx_;
+	by replicate pid;
+run;
+
+data l2rottval_bs5x_;
+	set l2rottval_bs4x_;
+	if cat=1 then contrib_null=(-fiveyrsurv_null)**2;
+	if cat=2 then contrib_null=(1-fiveyrsurv_null)**2;
+	if cat=3 then contrib_null=0;
+	bs_null=contrib_null*weight;
+	drop fiveyrsurv_null;
+run;
+
+*estimate brier score for null model;
+proc univariate data=l2rottval_bs5x_ noprint;
+	by replicate;
+	var bs_null weight;
+	output out=l2sumnullexx_ sum=sbs_null sweight;
+	*proc print; 
+run;
+
+data l2sumnullexx_;
+	retain sweight sbs_null;
+	set l2sumnullexx_;
+	sweight=left(sweight);
+run;
+
+*Calculate scaled brier for external validation;
+data l2ipax_;
+	merge l2sumsexx_ l2sumnullexx_;
+	by replicate sweight;
+	null_brier = (1/sweight)*sbs_null;
+	scaledb = 1-(brier/null_brier);
+	*proc print;
+run;
+
+proc univariate data=l2ipax_ noprint;
+	var brier scaledb;
+	output out = confintr_ pctlpts=2.5 97.5 pctlpre= brier_ scaledb_ 
+		pctlname=lower95 upper95;
+run;
+
+data confintr1_;
+	set confintr_;
+	ind=1;
+run;
+
+data brierax2;
+ 	retain brier brier_lower95 brier_upper95 scaledb scaledb_lower95 
+		scaledb_upper95;
+	merge l2scaledba confintr1_;
+	by ind;
+	drop ind sweight sbs sbs_null null_brier;
+	title 'External Brier score and scaled Brier score with 95% CI';
+	proc print;
+run;
 
 
 
 
 *** DCA;
-
 
 *external;
 
@@ -1871,55 +1611,56 @@ symbol5 i=join c=gray;
 %STDCA(data=L2GBSG_VAL, out=survivalmult_new, outcome=STATUS, ttoutcome=SURVTIME, timepoint=5, predictors=PROB2);
 
 *Sort by threshold variable;
-PROC SORT DATA=survivalmult OUT=kmsort;
-	BY threshold;
-RUN;
+proc sort data=survivalmult out=kmsort;
+	by threshold;
+run;
 
-*Rename the variables so that we know they are the Kaplan Meier estimates;
-DATA kmsort; SET kmsort(RENAME=(PROB=kmmodel all=kmall));
-	LABEL kmmodel="Original model: Pr(Recurrence) at 5 years";
-	LABEL kmall="Treat All";
+*rename the variables so that we know they are the kaplan meier estimates;
+data kmsort; set kmsort(rename=(prob=kmmodel all=kmall));
+	label kmmodel="Original model: Pr(Recurrence) at 5 years";
+	label kmall="Treat All";
 RUN;
 
 *Sort by threshold variable;
-PROC SORT DATA=survivalmult_new OUT=crsort;
-	BY threshold;
-RUN;
+proc sort data=survivalmult_new out=crsort;
+	by threshold;
+run;
 
-*Rename the variables so that we know they are the Competing Risk estimates;
-DATA crsort; SET crsort(RENAME=(PROB2=crmodel all=crall));
-	LABEL crmodel="Original + PGR: Pr(Recurrence) at 5 years";
+*rename the variables so that we know they are the competing risk estimates;
+data crsort; set crsort(rename=(prob2=crmodel all=crall));
+	label crmodel="Original + PGR: Pr(Recurrence) at 5 years";
 RUN;
 
 *Merge Kaplan-Meier and Competing Risk data using threshold probabilities;
-DATA crsort;
-	MERGE kmsort crsort;
-	BY threshold;
-RUN;
-
-data stratos.netbenext;
-	set crsort;
+data crsort;
+	merge kmsort crsort;
+	by threshold;
 run;
 
-
 title;
-FOOTNOTE;
+footnote;
 *- this allows editing of the .sge file!;
-ODS LISTING SGE=ON STYLE=PRINTER IMAGE_DPI=300 GPATH='C:\Users\sme544\Documents\STRATOS';
-ODS GRAPHICS ON / RESET=ALL NOBORDER OUTPUTFMT=TIFF /*WIDTH=4IN*/ IMAGENAME="dca with spline PGR ext L2" ANTIALIAS=OFF/*ANTIALIASMAX=*/;
+ods listing sge=on style=printer image_dpi=300 gpath='c:';
+ods graphics on / reset=all noborder outputfmt=tiff 
+		imagename="dca with spline pgr ext" antialias=off/*antialiasmax=*/;
 
-*create graph (decision curve) with treat none, treat all, Kaplan-Meier method, and Competing Risks method;
-PROC SGPLOT DATA=crsort;
-	YAXIS VALUES=(-0.05 to 0.55 by 0.05) LABEL="Net Benefit";
-	XAXIS VALUES=(0.0 to 1 by 0.1) LABEL="Threshold Probability";
-	KEYLEGEND "all" "orig" "new" "none" / DOWN=4 POSITION=BOTTOM;
-	SERIES Y=kmall X=threshold / LINEATTRS=(COLOR=BLACK THICKNESS=2 PATTERN=SOLID) NAME="all" LEGENDLABEL="Treat All";
-		 /*crall*threshold*/
-	SERIES Y=kmmodel X=threshold / LINEATTRS=(COLOR=GREEN THICKNESS=2 PATTERN=SOLID) NAME="orig" LEGENDLABEL="Original model: Pr(Rec) at 5 years";
-	SERIES Y=crmodel X=threshold / LINEATTRS=(COLOR=BLUE THICKNESS=2 PATTERN=SOLID) NAME="new" LEGENDLABEL="Original model + PGR: Pr(Rec) at 5 years";
-	SERIES Y=none X=threshold / LINEATTRS=(COLOR=RED THICKNESS=2 PATTERN=SOLID)  NAME="none" LEGENDLABEL="None";
+*create graph (decision curve) with treat none, treat all, simple model
+and extended model;
+proc sgplot data=crsort;
+	yaxis values=(-0.05 to 0.55 by 0.05) label="Net Benefit";
+	xaxis values=(0.0 to 1 by 0.1) label="Threshold Probability";
+	keylegend "all" "orig" "new" "none" / down=4 position=bottom;
+	series y=kmall x=threshold / lineattrs=(color=black thickness=2 
+		pattern=solid) name="all" legendlabel="Treat All";
+	series y=kmmodel x=threshold / lineattrs=(color=green thickness=2 
+		pattern=solid) name="orig" 
+		legendlabel="Original model: Pr(Rec) at 5 years";
+	series y=crmodel x=threshold / lineattrs=(color=blue thickness=2 
+		pattern=solid) name="new" 
+		legendlabel="Original model + PGR: Pr(Rec) at 5 years";
+	series y=none x=threshold / lineattrs=(color=red thickness=2 
+		pattern=solid)  name="none" 
+		legendlabel="None";
 RUN;
 
-ODS GRAPHICS OFF;
-
-
+ods graphics off;
