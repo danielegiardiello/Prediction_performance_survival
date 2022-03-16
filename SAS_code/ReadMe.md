@@ -10,7 +10,7 @@ The corresponding SAS code created by [David McLernon](https://twitter.com/davem
 
 + [04_external_validation_when_model_estimates_and_baseline_survival_available](https://github.com/danielegiardiello/Prediction_performance_survival/blob/main/SAS_code/04_external_validation_when_model_estimates_and_baseline_survival_available.sas) provides the SAS code to externally validate the prediction model in a new dataset when only the model equation of the prediction model is provided;
 
-SAS data are here: [development data](https://github.com/danielegiardiello/Prediction_performance_survival/blob/main/Data/rotterdam_br_ca.sas7bdat) and [validation data](https://github.com/danielegiardiello/Prediction_performance_survival/blob/main/Data/gbsg_br_ca.sas7bdat)
+SAS data are here: [development data](https://github.com/danielegiardiello/Prediction_performance_survival/blob/main/Data/rotterdam.csv) and [validation data](https://github.com/danielegiardiello/Prediction_performance_survival/blob/main/Data/gbsg.csv)
 
 NOTE -  SAS code requires some external macros:
 + [RCSPLINE macro](https://github.com/danielegiardiello/Prediction_performance_survival/blob/main/Functions/RCSPLINE%20macro.sas) to calculate restricted cubic splines;
