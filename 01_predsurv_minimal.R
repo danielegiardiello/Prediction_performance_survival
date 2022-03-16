@@ -333,7 +333,7 @@ list_nb <- lapply(thresholds, function(ps) {
 df_nb <- do.call(rbind.data.frame, list_nb)
 
 #read off at 23% threshold
-df_nb[df_nb$threshold==0.23,]
+df_nb[df_nb$threshold == 0.23,]
 
 # Make basic decision curve plot
 par(
