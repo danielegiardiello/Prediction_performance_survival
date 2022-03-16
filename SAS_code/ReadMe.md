@@ -4,7 +4,7 @@ The corresponding SAS code created by [David McLernon](https://twitter.com/davem
 
 + [01_model_development_internal_validation](https://github.com/danielegiardiello/Prediction_performance_survival/blob/main/SAS_code/01_model_development_internal_validation.sas) develops the prediction model and provides the corresponding internal bootstrap optimism-corrected validation;
 
-+ [02_model_development_internal_validation_withPGRmarker](https://github.com/danielegiardiello/Prediction_performance_survival/blob/main/SAS_code/02_model_development_internal_validation_withPGRmarker.sas) develops the prediction model including the PGR marker and provides the corresponding internal bootstrap optimism-corrected validation;
++ [02_model_development_internal_validation_withPGR](https://github.com/danielegiardiello/Prediction_performance_survival/blob/main/SAS_code/02_model_development_internal_validation_withPGR.sas) develops the prediction model including the PGR marker and provides the corresponding internal bootstrap optimism-corrected validation;
 
 + [03_external_validation_when_original_model_dataset_available](https://github.com/danielegiardiello/Prediction_performance_survival/blob/main/SAS_code/03_external_validation_when_original_model_dataset_available.sas) provides the SAS code to externally validate the prediction model in a new dataset when the individual patient data of the development set are available;
 
