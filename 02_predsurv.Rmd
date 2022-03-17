@@ -128,7 +128,7 @@ This part must be run for all following parts of the code. After running this, t
 <details>
   <summary>Click to expand code</summary>
 ```{r, predsurv, message=FALSE, warning=FALSE, echo=TRUE, eval=FALSE}
-# Absolute risk calculation -------------
+# Absolute risk calculation --------------
 # Baseline survival at 5 years - basic model
 S0.5yr <- 0.80153 
 # Design matrix of predictors
