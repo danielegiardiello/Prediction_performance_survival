@@ -1,8 +1,7 @@
-# Assessing prediction performance of survival models
-The following repository illustrates how to develop and validate a risk prediction models with survival outcome.
-Different guidelines are available according to the different level of statistical education, experience and interests of the user according to the [STRATOS](https://www.stratos-initiative.org/) initiative.
+# Assessing performance and clinical usefulness in prediction models with survival outcomes: practical guidance for Cox proportional hazards models
 
-The collaboration with STRATOS topic [groups](https://www.stratos-initiative.org/groups) 6 and 8 was essential to provide this work.
+R Code repository for the manuscript 'Assessing performance and clinical usefulness in prediction models with survival outcomes: practical guidance for Cox proportional hazards models' (in preparation).
+
 
 The repository contains the following code:  
 
@@ -29,6 +28,8 @@ git clone https://github.com/danielegiardiello/Prediction_performance_survival.g
 In either case, you can then use the `Prediction_performance_survival.Rproj` file to open
 and Rstudio session in the directory you have just downloaded. You may then knit
 both rmarkdown files, or run them line-by-line.
+
+The collaboration with STRATOS topic [groups](https://www.stratos-initiative.org/groups) 6 and 8 was essential to provide this work.
 
 ## Contributions
 
