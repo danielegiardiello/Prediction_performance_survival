@@ -1,6 +1,6 @@
 # Assessing performance and clinical usefulness in prediction models with survival outcomes: practical guidance for Cox proportional hazards models
 
-R Code repository for the manuscript 'Assessing performance and clinical usefulness in prediction models with survival outcomes: practical guidance for Cox proportional hazards models' (in preparation).
+R and SAS Code repository for the manuscript 'Assessing performance and clinical usefulness in prediction models with survival outcomes: practical guidance for Cox proportional hazards models' (in preparation).
 
 
 The repository contains the following code:  
