@@ -1013,6 +1013,35 @@ boots_ls <- lapply(seq_len(B), function(b) {
 })
 
 df_boots <- do.call(rbind.data.frame, boots_ls)
+
+# As an alternative you can use riskRegression::Score() 
+# to calculate the Brier score and IPA (scaled Brier Score). 
+# However, the following code did not provide confidence intervals
+# for the scaled Brier score (i.e. IPA)
+
+# For basic model
+score_gbsg5 <-
+  Score(list(gbsg5$pred5),
+        formula = Surv(ryear, rfs) ~ 1, 
+        data = gbsg5, 
+        conf.int = TRUE, 
+        times = 4.99,
+        cens.model = "km", 
+        metrics = "brier",
+        summary = "ipa"
+  )
+
+# For extended code including PGR
+score_gbsg5_pgr <-
+  Score(list(gbsg5$pred5_pgr),
+        formula = Surv(ryear, rfs) ~ 1, 
+        data = gbsg5, 
+        conf.int = TRUE, 
+        times = 4.99,
+        cens.model = "km", 
+        metrics = "brier",
+        summary = "ipa"
+  )
 ```
 
 </details>
@@ -1418,7 +1447,7 @@ sessioninfo::session_info()
     ##  recipes          0.1.17     2021-09-27 [1] CRAN (R 4.1.2)
     ##  reprex           2.0.1      2021-08-05 [1] CRAN (R 4.1.2)
     ##  reshape2         1.4.4      2020-04-09 [1] CRAN (R 4.1.2)
-    ##  riskRegression   2021.10.10 2021-10-11 [1] CRAN (R 4.1.2)
+    ##  riskRegression * 2021.10.10 2021-10-11 [1] CRAN (R 4.1.2)
     ##  rlang            0.4.12     2021-10-18 [1] CRAN (R 4.1.2)
     ##  rmarkdown        2.11       2021-09-14 [1] CRAN (R 4.1.2)
     ##  rms            * 6.2-0      2021-03-18 [1] CRAN (R 4.1.2)
