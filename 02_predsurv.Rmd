@@ -18,22 +18,20 @@ knitr::opts_chunk$set(
 ```
 
 ## Goals
-When a risk prediction model has been developed and published in the literature, individual data are probably not available.
-In this document, we assume the common scenario that a risk prediction model was already developed and it is available in the literature. We assume that the author(s) developed a risk prediction model using a Cox proportional hazard regression providing the model equation in terms of coefficients and the baseline survival at a fixed time horizon _t_ (e.g. five years).
+When a risk prediction model has been developed and published in the literature, individual data that was used during model development are not always available.
+In this document, we assume the scenario that a risk prediction model was already developed and is available in the literature. We assume that the author(s) developed a risk prediction model using a Cox proportional hazard regression and provided the model equation in terms of coefficients and the baseline survival at a fixed time horizon _t_ (e.g. five years).
 
-In summary the goals here are:   
-+ Goal 1: to assess the prediction performance of a published risk model with a time-to-event outcome in a new independent (external) data;   
-+ Goal 2: to assess the potential clinical utility of a risk prediction model with time-to-event outcome in the new data; 
+The goals are:   
+1. to assess the prediction performance of a published prediction model with a time-to-event outcome in a new independent (external) data;   
+2. to assess the potential clinical utility of a prediction model with time-to-event outcome in the new data; 
 
 
 ## Install/load packages and import data
 First of all, install the R packages essential for the analyses.
-We following libraries are needed to achieve the following goals, if you have not them installed, please use
-install.packages('') (e.g. install.packages('survival')) or use the user-friendly approach if you are using RStudio.
+We following libraries are needed to achieve the following goals. If you don't have them installed, please use install.packages('') (e.g. install.packages('survival')) or use the user-friendly approach if you are using RStudio.
 
 ```{r, wdlib, message=FALSE,warning=FALSE}
-
-# Use pacman to check whether packages are installed, if not load
+# Use pacman to check whether packages are installed, if not load them
 if (!require("pacman")) install.packages("pacman")
 library(pacman)
 pacman::p_load(survival,
@@ -44,15 +42,16 @@ pacman::p_load(survival,
                knitr,
                kableExtra,
                tidyverse,
-               gtsummary)
+               gtsummary,
+               geepack)
 ```
 
 
 ### Data preparation
 Outcome and predictors in the new data must be coded as provided in the model equation of the developed model.
-The time-to-death outcome should be in years and the variables should be categorized exactly as in the developed model.
+In our case study, the time-to-event outcome should be in years and the predictors should be categorized exactly as in the developed model.
 
-In the prediction model developed using the Rotterdam data, violation of proportional hazards was detected for some predictors and the development data was administratively censored at 5 years. For this reason, we also administratively censor patients in the new (validation) data at 5 years.
+In the prediction model developed using the Rotterdam data, the data was administratively censored at 5 years. For this reason, we also administratively censor the data from patients in the new (validation) data at 5 years.
 
 ```{r, create, message=FALSE, warning=FALSE}
 # Validation data
@@ -62,7 +61,7 @@ gbsg$cnode <- cut(gbsg$nodes, c(-1,0, 3, 51),
                        c("0", "1-3", ">3"))   # categorized node
 gbsg$csize <- cut(gbsg$size,  c(-1, 20, 50, 500), #categorized size
                   c("<=20", "20-50", ">50"))
-pgr99 <- 1347.85 
+pgr99 <- 1360 #p99 from development data 
 gbsg$pgr2 <- pmin(gbsg$pgr, pgr99) # Winsorized value
 gbsg$grade3 <- as.factor(gbsg$grade)
 levels(gbsg$grade3) <- c("1-2", "1-2", "3")
@@ -74,30 +73,31 @@ attr(rcs3_pgr, "knots") <- NULL
 gbsg$pgr3 <- rcs3_pgr
 
 
-# Much of the analysis will focus on the first 5 years: create
-#  data sets that are censored at 5
+# The analysis focuses on the first 5 years: create
+# data sets that are censored at 5
 temp <- survSplit(Surv(ryear, rfs) ~ ., data = gbsg, cut=5,
                   episode ="epoch")
 gbsg5 <- subset(temp, epoch==1)
 
 # Relevel
-gbsg5$cnode <- relevel(gbsg$cnode, "1-3")
+gbsg5$cnode <- relevel(gbsg$cnode, "0")
 ```
 
 
 ## Goal 1: Assessing performance of a developed survival model in a new data
 The performance of a risk prediction models may be evaluated through:  
 
-+ discrimination:  the ability of the model to identify patients with and without the outcome and it requires the coefficients (or the log of the hazard ratios) of the developed risk prediction model to be evaluated;     
++ discrimination: the ability of the model to correctly rank patients with and without the outcome by a certain time point. This requires the coefficients (or the log of the hazard ratios) of the developed Cox prediction model to be evaluated;     
 
-+ calibration: the agreement between observed and predicted probabilities. It requires the baseline (cumulative) hazard or survival;     
++ calibration: the agreement between observed and predicted probabilities. It additionally requires the baseline (cumulative) hazard or survival;     
   
-+ overall performance measures: as a combination of discrimination and calibration.  
++ overall performance measures: a combination of discrimination and calibration.  
   
-Unfortunately, a few publications report the complete baseline (cumulative) hazard or survival or even the baseline (cumulative) hazard or survival at fixed time horizon *t*.  
+Unfortunately, few publications report the complete baseline (cumulative) hazard or survival or even the baseline (cumulative) hazard or survival at fixed time horizon *t*.  
 It is common that physicians focus on one or more clinically relevant time horizons to inform subjects about their risk. 
-We aim to assess the prediction performance of a risk prediction model with time-to-event outcome in a new data when information at a fixed time horizon(s) (here at 5 years) of a developed prediction model were provided. The coefficients of the model(s) are essential to assess the overall performances and to calculate the discrimination ability of the developed model in a new data. Information of the baseline hazard/survival over the follow-up time or at a fixed time horizon *t* are needed for calibration assessment.  
-When the baseline is not available (and it is not uncommon in the literature), only a graphical representation of the calibration is possible. We assume here to know the coefficients *\beta* and the baseline survival at 5 years *S*<sub>0</sub>*(t = 5)* of the developed prediction model.
+We aim to assess the prediction performance of a risk prediction model with time-to-event outcome in a new data when information at a fixed time horizon(s) (here at 5 years) of a developed prediction model were provided. 
+
+When the baseline is not available (unfortunately not uncommon in the literature), only a graphical representation of calibration is possible. We assume here to know the coefficients *\beta* and the baseline survival at 5 years *S*<sub>0</sub>*(t = 5)* of the developed prediction model.
 We also provide the graphical visualization of the calibration when the baseline is not reported in the literature.
 
 If the model equation is provided including the coefficients and the baseline at fixed time point _t_ (e.g. 5 years), we could validate the risk prediction model in our external data.
@@ -106,47 +106,43 @@ Typically, the model equation is provided in terms of predicted survival at a fi
 <img src="https://render.githubusercontent.com/render/math?math=%5Clarge%7B%5Csf%7BS(t)%20%3D%20S_0(t)%5E%7Bexp(%5Cbeta_1X_1%2B%5Cbeta_2X_2%2B%5Cbeta_3X_3%2B%5Ccdots%2B%5Cbeta_pX_p)%7D%7D%3DS_0(t)%5E%7Bexp(PI)%7D%7D">
 
 where: \
-*S(t)* is the survival at time *t*. \
-*S*<sub>0</sub>*(t)* is the baseline survival at time *t*. \
-<img src="https://render.githubusercontent.com/render/math?math=%5Csf%7BPI%20%3D%20%5Cbeta_1X_1%2B%5Ccdots%2B%5Cbeta_pX_p%7D"> is the predictor index: the combination of the coefficients estimated by the statistical model (i.e Cox model) and the predictors. \
+*S(t)* is the probability of surviving by time *t*. \
+*S*<sub>0</sub>*(t)* is the baseline survival probability by time *t*. \
+<img src="https://render.githubusercontent.com/render/math?math=%5Csf%7BPI%20%3D%20%5Cbeta_1X_1%2B%5Ccdots%2B%5Cbeta_pX_p%7D"> is the prognostic index: the combination of the model coefficients and the value of the predictors. \
 
-In some software, the baseline survival might be already internally rescaled including the centercept. For example, the function ```rms::cph()``` in the ```rms``` R package provides the centercept to be included  in the model equation (see formula below and  ```rms::cph()$center```). More information can be found in 
-```help(cph)``` . 
-In ```survival``` package the baseline survival can be obtained using
-```survival::basehaz()``` then ```exp(-survival::basehaz()$hazard)``` to calculate *S*<sub>0</sub>*(t)* . For details see ```help(basehaz)```, especially the argument ```centered```. 
-If the centercept is mentioned in the model equation, this can be used to rescaled the baseline using some easy algebraic steps.
+In some software, the baseline survival that is reported might relate to the baseline survival when covariate values are all at the mean value. Beware of that. See for example, the function ```rms::cph()``` and ```rms::cph()$center``` in the ```rms``` package and in ```survival``` package ```help(basehaz)```, especially the argument ```centered```. 
+If the centercept is mentioned in the model equation, this can be used to rescaled the baseline using some algebraic steps.
 
 <img src="https://render.githubusercontent.com/render/math?math=%5Clarge%7BS(t)%20%3D%20%7BS_%7B0%7D(t)%7D%5E%7Bexp(PI-c)%7D%20%3D%20%5B%7BS_%7B0%7D(t)%7D%5E%7Bexp(-c)%7D%5D%5E%7Bexp(PI)%7D%20%3D%7BS_%7B0%7D(t)_%7Bresc%7D%7D%5E%7Bexp(PI)%7D%7D">
 
 ### 1.1 Calculate the absolute risk prediction at 5 years in the validation data
 
-This part must be run. Then, the user can also focus on one prediction performance is interested in (e.g. discrimination).  
+This part must be run for all following parts of the code. After running this, the user can also focus on one particular performance measure only (e.g. discrimination).  
 
 ```{r, predsurv, message=FALSE, warning=FALSE}
-### Absolute risk  at 5 yrs - Basic model ---------------
+# Absolute risk calculation -------------
 # Baseline survival at 5 years - basic model
-S0.5yr <- .8604385 
+S0.5yr <- 0.80153 
 # Design matrix of predictors
-des_matr <- as.data.frame(model.matrix(~ csize + cnode + grade, data = gbsg5))
+des_matr <- as.data.frame(model.matrix(~ csize + cnode + grade3, data = gbsg5))
 des_matr$`(Intercept)` <- NULL
 # Coefficients
-coef <- c(0.3922098, 0.6656456, -0.3538533, 0.6936283,  0.3766110)
+coef <- c(0.383, 0.664, 0.360, 1.063,  0.375)
 # Prognostic index (PI)
 gbsg5$PI <- as.vector(as.matrix(des_matr) %*% cbind(coef))
-# Absolute risk at 5 years (1 - S(t), 1 - survival at time t)
+# Estimated absolute risk at 5 years (1 - S(t), 1 - survival at time t)
 gbsg5$pred5 <-  as.vector(1 - S0.5yr**exp(gbsg5$PI))
 
-
-### Absolute risk  at 5 yrs - Extended model with PGR ---------------
-# Baseline survival at 5 years - basic model
-S0.5yr_pgr <- .8084657  
+#Absolute risk  at 5 yrs - Extended model with PGR ---------------
+# Baseline survival at 5 years - extended model
+S0.5yr_pgr <- 0.75852  
 # Design matrix of predictors
-des_matr <- as.data.frame(model.matrix(~ csize + cnode + grade + 
-                                        I(pgr2) + I(pgr3), data = gbsg5))
+des_matr <- as.data.frame(model.matrix(~ csize + cnode + grade3 + 
+                                         I(pgr2) + I(pgr3), data = gbsg5))
 des_matr$`(Intercept)` <- NULL
 # Coefficients
-coef <- c(0.37096136, 0.64380754, -0.37445717, 
-          0.66988919, 0.32169223, -0.00293231, 0.01281538)
+coef <- c(0.362, 0.641, 0.381, 
+          1.059, 0.317, -0.003, 0.013)
 # Prognostic index (PI)
 gbsg5$PI_pgr <- as.vector(as.matrix(des_matr) %*% cbind(coef))
 # Absolute risk at 5 years (1 - S(t), 1 - survival at time t)
@@ -155,35 +151,27 @@ gbsg5$pred5_pgr <-  as.vector(1 - S0.5yr_pgr**exp(gbsg5$PI_pgr))
 
 
 ### 1.2 Discrimination measures
-Discrimination is the ability to differentiate between subjects who have the outcome and subjects who do not.
+Discrimination is the ability to differentiate between subjects who have the outcome by a certain time point and subjects who do not.
 Concordance can be assessed over several different time intervals:
 
 + the entire range of the data. Two concordance measures are suggested:    
 
-  + Harrell's C quantifies the degree of concordance as the proportion of such     pairs where the patient with a longer survival time has better predicted      survival;  
+  + Harrell's C quantifies the degree of concordance as the proportion of evaluable pairs where the patient with a longer survival time has better predicted survival;  
   
-  + Uno’s C uses a time dependent weighting that more fully adjusts for           censoring;  
+  + Uno's C uses a time dependent weighting that more fully adjusts for censoring;  
   
-+ a 5 year window corresponding to our target assessment point. Uno's           time-dependent Area Under the Curve (AUC) is suggested. Uno's time-dependent AUC summarizes discrimination at specific fixed time points. At any time point of interest, _t_, a patient is classified as having an event if the patient experienced the event between baseline and _t_ (5 years in our case study), and as a non-event if the patient remained event-free at _t_. The time-dependent AUC evaluates whether predicted probabilities were higher for cases than for non-case.
++ a 5 year window corresponding to our target assessment point. Uno's cumulative/dynamic time-dependent Area Under the Curve (AUC) is suggested. Uno's time-dependent AUC summarizes discrimination at specific fixed time points. At any time point of interest, _t_, a patient is classified as having an event if the patient experienced the event between baseline and _t_ (5 years in our case study), and as a non-event if the patient remained event-free at _t_. The time-dependent AUC evaluates whether predicted probabilities were higher for cases than for non-cases.
 
-Clearly the last of these is most relevant.
-
-This is easy to compute using the concordance function in the survival
-package
 There is some uncertainty in the literature about the original Harrell
 formulation versus Uno's suggestion to re-weight the time scale by the
 factor $1/G^2(t)$ where $G$ is the censoring distribution.
 There is more detailed information in the concordance vignette found in the
 survival package.
 
-We also propose to calculate Uno's time-dependent AUC at a specific time horizon _t_.  
-More explanations and details are in the paper.  
-
-The time horizon to calculate the time-dependent measures was set to 5 years.
-Values close to 1 indicate good discrimination ability, while values close to 0.5 indicated poor discrimination ability.  
+For all three measures, values close to 1 indicate good discrimination ability, while values close to 0.5 indicated poor discrimination ability.  
 
 <details>
-  <summary>Click to expand code</summary>
+  <summary>Click to expand code</summary>																		
 ```{r, concordance ,message=FALSE, warning=FALSE, echo=TRUE, eval=FALSE}
 if (!require("pacman")) install.packages("pacman")
 library(pacman)
@@ -211,7 +199,7 @@ Uno_C_gbsg5_pgr <- concordance(Surv(ryear, rfs) ~ PI_pgr,
                            reverse = TRUE,
                            timewt = "n/G2")
 ```
-</details>
+</details>														
 
 ```{r, concordance ,message=FALSE, warning=FALSE, eval=TRUE}
 ```
@@ -228,7 +216,7 @@ temp <- c(
   harrell_C_gbsg5_pgr$concordance,
   harrell_C_gbsg5_pgr$concordance - 
     qnorm(1 - alpha/2) * sqrt(harrell_C_gbsg5_pgr$var),
-  harrell_C_gbsg5$concordance + 
+  harrell_C_gbsg5_pgr$concordance + 
     qnorm(1 - alpha/2) * sqrt(harrell_C_gbsg5_pgr$var),
 
   Uno_C_gbsg5$concordance,
@@ -264,7 +252,7 @@ discrimination ability compared to the basic model.
 
 <details>
   <summary>Click to expand code</summary>
-```{r, AUC ,message=FALSE, warning=FALSE, echo=TRUE, eval=FALSE}
+```{r, AUC, message=FALSE, warning=FALSE, echo=TRUE, eval=FALSE}
 if (!require("pacman")) install.packages("pacman")
 library(pacman)
 pacman::p_load(survival,
@@ -277,7 +265,7 @@ Uno_gbsg5 <-
   timeROC(
     T = gbsg5$ryear, delta = gbsg5$rfs,
     marker = gbsg5$PI,
-    cause = 1, weighting = "marginal", times = 4.95,
+    cause = 1, weighting = "marginal", times = 4.99,
     iid = TRUE
   )
 
@@ -286,7 +274,7 @@ Uno_gbsg5_pgr <-
   timeROC(
     T = gbsg5$ryear, delta = gbsg5$rfs,
     marker = gbsg5$PI_pgr,
-    cause = 1, weighting = "marginal", times = 4.95,
+    cause = 1, weighting = "marginal", times = 4.99,
     iid = TRUE
   )
 # NOTE: if you have a lot of data n > 2000, standard error computation may be really long.
@@ -294,23 +282,24 @@ Uno_gbsg5_pgr <-
 ```
 </details>
 
-```{r, AUC ,message=FALSE, warning=FALSE, eval=TRUE}
+```{r, AUC, fig.align='center', warning=FALSE, eval=TRUE}
 ```
+
 
 ```{r, AUC_table,echo=FALSE}
 alpha <- .05
 k <- 2
 res_discr <- matrix(c(
-  Uno_gbsg5$AUC["t=4.95"],
-  Uno_gbsg5$AUC["t=4.95"] - qnorm(1 - alpha / 2) *
-    Uno_gbsg5$inference$vect_sd_1["t=4.95"],
-  Uno_gbsg5$AUC["t=4.95"] + qnorm(1 - alpha / 2) *
-    Uno_gbsg5$inference$vect_sd_1["t=4.95"],
-  Uno_gbsg5_pgr$AUC["t=4.95"],
-  Uno_gbsg5_pgr$AUC["t=4.95"] - qnorm(1 - alpha / 2) *
-    Uno_gbsg5_pgr$inference$vect_sd_1["t=4.95"],
-  Uno_gbsg5_pgr$AUC["t=4.95"] + qnorm(1 - alpha / 2) *
-    Uno_gbsg5_pgr$inference$vect_sd_1["t=4.95"]
+  Uno_gbsg5$AUC["t=4.99"],
+  Uno_gbsg5$AUC["t=4.99"] - qnorm(1 - alpha / 2) *
+    Uno_gbsg5$inference$vect_sd_1["t=4.99"],
+  Uno_gbsg5$AUC["t=4.99"] + qnorm(1 - alpha / 2) *
+    Uno_gbsg5$inference$vect_sd_1["t=4.99"],
+  Uno_gbsg5_pgr$AUC["t=4.99"],
+  Uno_gbsg5_pgr$AUC["t=4.99"] - qnorm(1 - alpha / 2) *
+    Uno_gbsg5_pgr$inference$vect_sd_1["t=4.99"],
+  Uno_gbsg5_pgr$AUC["t=4.99"] + qnorm(1 - alpha / 2) *
+    Uno_gbsg5_pgr$inference$vect_sd_1["t=4.99"]
 ),
 nrow = 1, ncol = 6, byrow = T,
 dimnames =
@@ -326,43 +315,28 @@ kable(res_discr) %>%
   add_header_above(c(" " = 1, "External" = 3, "External + PGR" = 3))
 ```
 
-The time-dependent AUCs at 5 years were in the external validation were 0.70 and 0.73 for the basic and extended model, respectively.
+The time-dependent AUCs at 5 years in the external validation were 0.69 and 0.71 for the basic and extended model, respectively.
 
 
 ### 1.3 Calibration
 Calibration is the agreement between observed outcomes and predicted probabilities.
-For example, in survival models, a predicted survival probability at a fixed time horizon _t_ of 80% is considered reliable if it can be expected that 80 out of 100 will survive among patients received a predicted survival probability of 80%.
+For example, in survival models, a predicted survival probability at a fixed time horizon _t_ of 80% is considered reliable if it can be expected that 80 out of 100 will survive among patients who received a predicted survival probability of 80%.
 Calibration can be assessed at a fixed time point (e.g. at 5 years), and globally (considering the entire range of the data).
 In addition, different level of calibration assessment can be estimated according to the level of information available in the data. 
-When individual data of development and validation set are available, full assessment of calibration is possible. Calibration at fixed time point is possible when baseline hazard at fixed time point and coefficient are available. When only coefficients are available, limited assessment of calibration is possible.
+When individual data of development and validation set are available, full assessment of calibration is possible. Calibration at fixed time point is possible when baseline hazard at fixed time point and coefficient are available. When only coefficients are available, assessment of calibration is limited.
 
-In this scenario, we can evaluate calibration only at fixed time point _t_ (i.e. 5 years) since we may have baseline survival at time _t_ (5 years) and coefficients of the model.  
+In the scenario we consider here, we can evaluate calibration only at fixed time point _t_ (i.e. 5 years) since we may have baseline survival at time _t_ (5 years) and coefficients of the model.  
 
-Since different level of information may be available, different level of calibration can be estimated:  mean, weak, and moderate calibration.
++ Mean calibration at a fixed time point can be estimated using the Observed versus Expected ratio at time t;  
 
-+ Mean calibration can be estimated:  
++ Weak calibration can be estimated by additionally calculating calibration slope.  
 
-  + at a fixed time point:
-    + using the Observed and Expected ratio at time t;  
-
-+ Weak calibration can be estimated:
-  + at a fixed time point  
-    + using intercept and slope as the coefficient of cloglog                      transformation of predicted probabilities in Cox model. Possible to          determine intercept after adjusting for slope.  
-
-+ Moderate calibration can estimated:
-  + at a fixed time point:  
-    + using flexible calibration curve, complemented with ICI, E50, E90.  
++ Moderate calibration can estimated at a fixed time point using a flexible calibration curve, complemented with ICI, E50, E90.  
 
 More detailed explanations are available in the paper.
 
-When a risk prediction model has been developed and published in the literature, individual data are probably not available. 
-If the model equation is provided including the coefficients and the baseline at fixed time point _t_ (e.g. 5 years), we could validate the risk prediction model in our external data.
-Typically, the model equation is provided in terms of predicted survival at a fixed time point _t_.
-
 #### 1.3.1  Mean calibration - fixed time point
-The mean calibration at fixed time point (e.g. at 5 years) can be estimated using the Observed and Expected ratio.
-The observed is estimated using the complementary of the Kaplan-Meier curve at the fixed time point.
-The expected is estimated using the average predicted risk of the event at the fixed time point.
+The mean calibration at fixed time point (e.g. at 5 years) can be estimated using the Observed versus Expected ratio. The observed is estimated using the complementary of the Kaplan-Meier curve at the fixed time point. The expected is estimated using the average predicted risk of the event at the fixed time point.
 
 <details>
   <summary>Click to expand code</summary>
@@ -385,10 +359,9 @@ OE <- (1 - obj$surv) / mean(gbsg5$pred5)
 OE_pgr <- (1 - obj$surv) / mean(gbsg5$pred5_pgr)
 ```
 </details>
-
-```{r, mean_cal_t, message=FALSE, warning=FALSE, eval=TRUE}
+  
+```{r, mean_cal_t, fig.align='center', warning=FALSE, eval=TRUE}
 ```
-
 
 ```{r, res_OE, message=FALSE, warning=FALSE, echo=FALSE}
 alpha <- 0.05
@@ -419,10 +392,9 @@ kable(res_OE) %>%
                      "External + PGR" = 3))
 
 ```
-Observed and Expected ratio is 1.07 (95% CI: 0.95 - 1.20) for the basic model and 1.03 (95% CI: 0.92 - 1.16) for the extended model.
+Observed and Expected ratio is 1.07 (95% CI: 0.93 - 1.17) for the basic model and 1.02 (95% CI: 0.91 - 1.14) for the extended model.
 
-#### 1.3.2 Weak calibration - fixed time point
-Weak calibration using intercept and slope as the coefficient of cloglog transformation of predicted probabilities in Cox model. 
+#### 1.3.2 Weak calibration - calibration slope for fixed time point
 
 <details>
   <summary>Click to expand code</summary>
@@ -451,41 +423,15 @@ slope.se <- sqrt(vcov(f.val)[[1, 1]])
 f.val_pgr <- coxph(Surv(gbsg5$ryear, gbsg5$rfs) ~ lp.val_pgr)  
 slope_pgr <- f.val_pgr$coefficients[1]
 slope.se_pgr <- sqrt(vcov(f.val_pgr)[[1, 1]])
- 
-### same procedure to find the intercept, now with slope-adjusted lp
-f.val.offset <- coxph(Surv(gbsg5$ryear, gbsg5$rfs) ~ offset(slope*lp.val))
-sf <- survfit(f.val.offset, conf.type = "log-log")
-log.H <- log(-log(tail(sf$surv[sf$time <= horizon], 1)))   
-int <- log.H - mean(slope*lp.val)
-log.H.upper <- log(-log(tail(sf$upper,1)))
-int.se <- (log.H-log.H.upper)/qnorm(.975)
-
-# With marker
-f.val.offset_pgr <- coxph(Surv(gbsg5$ryear, gbsg5$rfs) ~
-                        offset(slope_pgr*lp.val_pgr))
-sf_pgr <- survfit(f.val.offset_pgr, conf.type = "log-log")
-log.H_pgr <- log(-log(tail(sf_pgr$surv[sf_pgr$time <= horizon], 1)))   
-int_pgr <- log.H_pgr - mean(slope_pgr*lp.val_pgr)
-log.H.upper_pgr <- log(-log(tail(sf_pgr$upper,1)))
-int.se_pgr <- (log.H_pgr-log.H.upper_pgr)/qnorm(.975)
 ```
 </details>
-
-```{r, weak_cal_t, message=FALSE, warning=FALSE, eval=TRUE}
+  
+```{r, weak_cal_t, fig.align='center', warning=FALSE, eval=TRUE}
 ```
-
 
 ```{r, res_cal, message=FALSE, warning=FALSE, echo=FALSE}
 alpha <- 0.05
 res_cal <- matrix(c(
-                int,
-                int - qnorm( 1- alpha / 2) * int.se,
-                int + qnorm( 1- alpha / 2) * int.se,
-                
-                int_pgr,
-                int_pgr - qnorm( 1- alpha / 2) * int.se_pgr,
-                int_pgr + qnorm( 1- alpha / 2) * int.se_pgr,
-                
                 slope,
                 slope - qnorm( 1- alpha / 2) * slope.se,
                 slope + qnorm( 1- alpha / 2) * slope.se,
@@ -495,11 +441,11 @@ res_cal <- matrix(c(
                 slope_pgr + qnorm( 1- alpha / 2) * slope.se_pgr
                    ),
                  
-                 nrow = 2,
+                 nrow = 1,
                  ncol = 6,
                  byrow = T,
                  dimnames = list(
-                   c("Calibration intercept","Calibration slope"),
+                   c("Calibration slope"),
                    rep(c("Estimate", "Lower .95", "Upper .95"),2))
 )
 
@@ -510,29 +456,25 @@ kable(res_cal) %>%
                      "External" = 3, 
                      "External + PGR" = 3))
 ```
-
-
-Calibration intercept (adjusted for the slope) was 0.15 and 0.14 for the basic and extended model , respectively.  
-Calibration slope was 1.08 and 1.17 for the basic and extended model, respectively.
+Calibration slope was 1.07 and 1.20 for the basic and extended model, respectively.
 
 #### 1.3.3 Moderate calibration - fixed time point
 Moderate calibration at fixed time point can be assessed using flexible calibration curve, complemented with ICI, E50, E90 as suggested by Austin et al.
 
-Calibration curve: it is a graphical representation of calibration in-the-large and calibration. It shows:  
++ Calibration curve is a graphical representation of moderate calibration. It shows:  
       
   + on the *x-axis* the predicted survival (or risk) probabilities at a fixed time horizon (e.g. at 5 years);  
       
   + on the *y-axis* the observed survival (or risk) probabilities at a fixed time horizon (e.g. at 5 years);  
       
-  + The 45-degree line indicates the good overall calibration. 
-      Points below the 45-degree line indicates that the model overestimate the observed risk. 
+  + The 45-degree line indicates perfect calibration. 
+      Points below the 45-degree line indicate that the model overestimates the observed risk. 
       If points are above the 45-degree line, the model underestimate the observed risk;
-      The observed probabilities estimated by the Kaplan-Meier curves (in case of survival) or by the complementary of the Kaplan-Meier curves (in case of risk in absence of competing risks) are represented in terms of percentiles of the predicted survival (risk) probabilities.
+      The observed probabilities estimated by the Kaplan-Meier curves (in case of survival) or by the complementary of the Kaplan-Meier curves (in case of risk) are represented in terms of percentiles of the predicted survival (risk) probabilities.
       
-+ Integrated Calibration Index (ICI): it is the weighted difference between smoothed observed proportions and predicted probabilities
-in which observations are weighted by the empirical density function of the predicted probabilities;  
++ Integrated Calibration Index (ICI) is the weighted mean of absolute difference between smoothed observed proportions and predicted probabilities in which observations are weighted by the empirical density function of the predicted probabilities;  
 
-+ E50 and E90 denote the median, the 90th percentile of the absolute difference between observed and predicted probabilities of the outcome at time *t*;  
++ E50 and E90 denote the median and the 90th percentile of the absolute differences between observed and predicted probabilities of the outcome at time *t*;  
 
 <details>
   <summary>Click to expand code</summary>
@@ -616,8 +558,8 @@ plot(
   xlim = c(0, 1),
   ylim = c(0, 1), 
   lwd = 2,
-  xlab = "Predicted probability",
-  ylab = "Observed probability", bty = "n"
+  xlab = "Predicted risk from developed model",
+  ylab = "Predicted risk from refitted model", bty = "n"
 )
 lines(dat_cal$pred, 
       dat_cal$lower, 
@@ -644,8 +586,8 @@ plot(
   xlim = c(0, 1),
   ylim = c(0, 1), 
   lwd = 2,
-  xlab = "Predicted probability",
-  ylab = "Observed probability", 
+  xlab = "Predicted risk from developed model",
+  ylab = "Predicted risk from refitted model", 
   bty = "n"
 )
 lines(dat_cal$pred_pgr, 
@@ -679,9 +621,10 @@ numsum_cph_pgr <- c(
 )
 
 ```
+
 </details>
- 
-```{r, cal_rcs_metrics, fig.align='center', eval=TRUE}
+
+```{r, cal_rcs_metrics, fig.align='center', warning=FALSE, eval=TRUE}
 ```
 
 ```{r, res_numcal, message=FALSE,warning=FALSE, fig.align='center',include=TRUE, echo=FALSE}
@@ -701,41 +644,25 @@ kable(res_numcal) %>%
   kable_styling("striped", position = "center")
 ```
 
-In the validation, ICI at 5 years was 0.04 and 0.03 for the basic and extended model, respectively.
+In the validation, ICI at 5 years was 0.03 and 0.02 for the basic and extended model, respectively.
 
 #### 1.3.4 Calibration when only coefficients of the model are available
-When only coefficients of the development model is available and the baseline survival is not provided, only visual assessment of calibration is possible based on Kaplan-Meier curves between risk groups.
+When only coefficients of the development model are available and the baseline survival is not provided, limited visual assessment of calibration is sometimes possible based on Kaplan-Meier curves between risk groups. Namely, if the development paper reported stratified Kaplan-Meier curves for risk groups (eg according to quantiles of the PI and these quantiles are provided) then it is possible to compare these with the corresponding Kaplan-Meier curves from the validation cohort. Further, plots where the curves are widely separated between risk groups provide informal evidence of discrimination.
 
 <details>
   <summary>Click to expand code</summary>
-```{r, km,message=FALSE, warning=FALSE, echo=TRUE, eval=FALSE}
+```{r, km, message=FALSE, warning=FALSE, echo=TRUE, eval=FALSE}
 
-# PI by groups
-gbsg5$group1 <- cut(gbsg5$PI, 
-                    breaks = quantile(gbsg5$PI, 
-                                      probs = seq(0, 1, 0.25)),
-                    include.lowest = TRUE)
+# we assume the groups (cutpoints for linear predictor) are known from the publication of development model:
+rotterdam_breaks <- c(-0.4577215, 0.2211214,  0.5990059,  1.0598272,  2.0176602)
+# note that we obtained these from development data 
+# rotterdam$lp_pgr <- predict(efit1_pgr, newdata = rotterdam, reference="zero") #note this requires object 'efit1_pgr' from the 01 code; we use reference is zero to avoid centering
+# rotterdam_breaks = as.vector(quantile(rotterdam$lp_pgr, probs = seq(0, 1, 0.25)))
 
-
-par(las = 1, xaxs = "i", yaxs = "i")
-plot(survfit(Surv(ryear, rfs) ~ group1, data = gbsg5),
-  bty = "n", 
-  xlim = c(0, 5), 
-  ylim = c(0, 1), 
-  lwd = 2, 
-  col = "black",
-  lty = 2, 
-  xlab = "Time (years)", 
-  ylab = "Survival probability"
-)
-title("A - basic model", adj = 0)
-
-# Extended model
 gbsg5$group1_pgr <- cut(gbsg5$PI_pgr, 
-                    breaks = quantile(gbsg5$PI_pgr, 
-                                      probs = seq(0, 1, 0.25)),
-                    include.lowest = TRUE)
-
+                    breaks =  c(-1000, rotterdam_breaks[2:4], +1000),
+                    lowest = TRUE)
+# table(gbsg5$group1_pgr)
 
 par(las = 1, xaxs = "i", yaxs = "i")
 plot(survfit(Surv(ryear, rfs) ~ group1_pgr, 
@@ -749,19 +676,19 @@ plot(survfit(Surv(ryear, rfs) ~ group1_pgr,
      xlab = "Time (years)", 
      ylab = "Survival probability"
 )
-title("B - extended model", adj = 0)
+title("Extended model validation set", adj = 0)
 ```
 </details>
-
-```{r, km,message=FALSE, warning=FALSE, eval=TRUE}
+  
+```{r, km, fig.align='center', warning=FALSE, eval=TRUE}
 ```
 
 ### 1.4 Overall performance measures
-Some overall performance measures are proposed using survival data:
+Two overall performance measures are proposed for prediction models with a survival outcome:
 
-+ Brier score: it is the squared differences between observed and predicted values at fixed time point (e.g. at 5 years);
++ Brier score: it is the mean squared difference between observed event indicators and predicted risks at a fixed time point (e.g. at 5 years), lower is better;
   
-+ Scaled Brier score (known as Index of prediction accuracy): it improves interpretability by scaling the Brier Score.
++ Scaled Brier score, also known as Index of Prediction Accuracy (IPA): it improves interpretability by scaling the Brier Score. It is the decrease in Brier compared to a null model, expressed as a percentage, higher is better. 
 
 ```{r, function_brier, message=FALSE,warning=FALSE, fig.align='center',include=FALSE}
 # Run the function to calculate the net benefit and the elements needed to develop decision curve analysis
@@ -770,22 +697,23 @@ source(here::here("Functions/brier_score.R"))
 
 <details>
   <summary>Click to expand code</summary>
+  
 ```{r, overall, warning=FALSE, message=FALSE, echo=TRUE, eval=FALSE}
 brier_gbsg5 <-
   brier_score(
     tfup = gbsg5$ryear, status = gbsg5$rfs,
-    thorizon = 4.95, survival = 1 - gbsg5$pred5
+    thorizon = 4.99, survival = 1 - gbsg5$pred5
   )
 
 brier_gbsg5b_pgr <-
   brier_score(
     tfup = gbsg5$ryear, status = gbsg5$rfs,
-    thorizon = 4.95, survival = 1 - gbsg5$pred5_pgr
+    thorizon = 4.99, survival = 1 - gbsg5$pred5_pgr
   )
 
 ## Overall measures: Bootstrap confidence intervals ---------------
 B <- 100
-horizon <- 4.95
+horizon <- 4.99
 set.seed(12345)
 boots_ls <- lapply(seq_len(B), function(b) {
   
@@ -796,13 +724,13 @@ boots_ls <- lapply(seq_len(B), function(b) {
   # Get overall measures on boot validation data
   BS_boot <- brier_score(
     tfup = data_boot$ryear, status = data_boot$rfs,
-    thorizon = 4.95, survival = 1 - data_boot$pred5
+    thorizon = 4.99, survival = 1 - data_boot$pred5
   )
   
   # Get overall measures on boot validation data
   BS_boot_pgr <- brier_score(
     tfup = data_boot$ryear, status = data_boot$rfs,
-    thorizon = 4.95, survival = 1 - data_boot$pred5_pgr
+    thorizon = 4.99, survival = 1 - data_boot$pred5_pgr
   )
     
   brier_boot <- BS_boot["Brier"]
@@ -821,9 +749,10 @@ boots_ls <- lapply(seq_len(B), function(b) {
 df_boots <- do.call(rbind.data.frame, boots_ls)
 ```
 </details>
-
-```{r, overall, warning=FALSE, message=FALSE, eval=TRUE}
+  
+```{r, overall, fig.align='center', warning=FALSE, eval=TRUE}
 ```
+
 
 ```{r, overall_table, echo=FALSE}
 ## Table overall measures
@@ -859,38 +788,23 @@ kable(res_ov) %>%
   add_header_above(c(" " = 1, "External" = 3, "External + PGR" = 3))
 ```
 
-As expected the overall performance measures were lower in the external validation. Including information about PGR slightly improved the overall performance.
+As expected the overall performance measures were lower in the external validation compared to the performance in the development data. Including PGR slightly improved the overall performance.
 
 
-## 2. Clinical utility
+## Goal 2. Clinical utility
 
 Discrimination and calibration measures are essential to assess the
 prediction performance but insufficient to evaluate the potential
-clinical utility of a risk prediction model for decision making. When
-new markers are available, clinical utility assessment evaluates whether
-the extended model helps to improve decision making.  
+clinical utility of a risk prediction model for decision making. Clinical utility assessment evaluates whether a prediction model helps to improve decision making.  
 Clinical utility is measured by the net benefit that includes the number
-of true positives and the number of false positives. For example, in
-time-to-event models, the true positives reflect the benefit of being
-event free for a given time horizon using additional interventions such
-as additional treatments, personalized follow-up or additional
-surgeries. The false positives represent the harms of unnecessary
-interventions.  
-Generally, in medicine, clinicians accepts to treat a certain number of
-patients for which interventions are unnecessary to be event free for a
-given time horizon. So, false negatives (the harm of not being event
-free for a given time horizon) are more important than false positives
-(the harm of unnecessary interventions). Thus, net benefit is the number
+of true positives and the number of false positives. The true positives reflect the benefit of correctly predicting patients who will experience an event during a given time horizon, giving the opportunity to use additional interventions such as additional treatments, personalized follow-up or additional surgeries. The false positives represent the harms of incorrectly predicting events possibly leading to unnecessary additional interventions. Net benefit is the number
 of true positives classifications minus the false positives
-classifications weighted by a factor related to the harm of not
-preventing the event versus unnecessary interventions. The weighting is
-derived from the threshold probability to death (one minus survival
-probability) using a defined time horizon (for example 5 years since
-diagnosis). For example, a threshold of 10% implies that additional
-interventions for 10 patients of whom one would have experience the
-event in 5 years if untreated is acceptable (thus treating 9 unnecessary
-patients). This strategy is compared with the strategies of treat all
-and treat none patients. If overtreatment is harmful, a higher threshold
+classifications weighted by a factor related to the harm of failing to predict an event versus and the harm of falsely predicting an event. The weighting is
+derived from a predefined threshold probability using a defined time horizon (for example 5 years since diagnosis). For example, a threshold of 10% implies that additional
+interventions for 10 patients of whom one would have experienced the
+event in the next 5 years if untreated is acceptable (thus treating 9 
+patients unnecessarily). This strategy is compared with the strategies of treating all
+and treating none of the patients. If overtreatment is harmful, a higher threshold
 should be used.  
 The net benefit is calculated as:
 
@@ -907,28 +821,24 @@ For survival data *TP* and *FP* is calculated as follows:
 
 where  
 *S(t)* survival at time *t*  
-*X=1* where the predicted probability at time *t* is *p*<sub>t</sub>
+*X=1* when the predicted probability at time *t* exceeds *p*<sub>t</sub>
 
-And the the decision curve is calculated as follows:
+And the decision curve is calculated as follows:
 
 1.  Choose a time horizon (in this case 5 years);
 2.  Specify a risk threshold which reflects the ratio between harms and
     benefit of an additional intervention;
-3.  Calculate the number of true positive and false positive given the
+3.  Calculate the number of true positives and false positives given the
     threshold specified in (2);
 4.  Calculate the net benefit of the survival model;
 5.  Plot net benefit on the *y-axis* against the risk threshold on the
     *x-axis*;
 6.  Repeat steps 2-4 for each model consideration;
-7.  Repeat steps 2-4 for the strategy of assuming all patients are
+7.  Repeat steps 2-4 for the strategy assuming all patients are
     treated;
 8.  Draw a straight line parallel to the *x-axis* at y=0 representing
-    the net benefit associated with the strategy of assuming that all
-    patients are not treated.
+    the net benefit associated with the strategy assuming that none of the patients are treated.
 
-Given some thresholds, the model/strategy with higher net benefit
-represents the one that potentially improves clinical decision making.
-However, poor discrimination and calibration lead to lower net benefit.
 
 ```{r, function_stdca, message=FALSE,warning=FALSE, fig.align='center',include=FALSE}
 # Run the function to calculate the net benefit and the elements needed to develop decision curve analysis
@@ -937,7 +847,6 @@ source(here::here('Functions/stdca.R'))
 
 <details>
   <summary>Click to expand code</summary>
-  
 ```{r, dca, message=FALSE,warning=FALSE, fig.align='center', echo=TRUE, eval=FALSE}
 # External data
 # Run decision curve analysis
@@ -946,13 +855,13 @@ source(here::here('Functions/stdca.R'))
 # Model without PGR
 gbsg5 <- as.data.frame(gbsg5)
 dca_gbsg5 <- stdca(
-  data = gbsg5, outcome = "status", ttoutcome = "ryear",
+  data = gbsg5, outcome = "rfs", ttoutcome = "ryear",
   timepoint = 5, predictors = "pred5", xstop = 1.0,
   ymin = -0.01, graph = FALSE
 )
 # Model with PGR
 dca_gbsg5_pgr <- stdca(
-  data = gbsg5, outcome = "status", ttoutcome = "ryear",
+  data = gbsg5, outcome = "rfs", ttoutcome = "ryear",
   timepoint = 5, predictors = "pred5_pgr", xstop = 1,
   ymin = -0.01, graph = FALSE
 )
@@ -1000,14 +909,29 @@ legend("topright",
 )
 title("B External data", adj = 0, cex = 1.5)
 ```
- </details>
- 
-```{r, dca, message=FALSE,warning=FALSE, fig.align='center', eval=TRUE}
+</details>
+
+```{r, dca, fig.align='center', warning=FALSE, eval=TRUE}
 ```
 
-The potential net benefit at 23% threshold of the prediction model was 0.27, 0.28 for the basic and extended model in the development data, respectively.
-This means that the model might identify approximately 27/28 patients out of 100 who may develop recurrence or may die within 5 years since diagnosis and thus adjuvant chemotherapy may help to reduce recurrence or mortality.
-For validation data, the potential net benefit was 0.42 for the basic and extended model. 
+```{r, res_dca, echo=FALSE}
+#read off at 23% threshold
+res_dca <- round(cbind(
+  dca_gbsg5$net.benefit[dca_gbsg5$net.benefit$threshold == 0.23, 
+                        c("threshold", "all", "pred5")],
+  dca_gbsg5_pgr$net.benefit[dca_gbsg5_pgr$net.benefit$threshold == 0.23,
+                      c("pred5_pgr")]), 3)
+
+rownames(res_dca) <- NULL
+colnames(res_dca) <- c("Theshold", 
+                       "Net benefit - Treat all",
+                       "Net benefit - basic model",
+                       "Net benefit - extended model with PGR")
+kable(res_dca) %>%
+  kable_styling("striped")
+```
+
+For the validation data, at 23% threshold the potential net benefit was 0.362 and 0.363 for the basic and extended model respectively. These were highly similar to those of the 'treat all' strategy (0.362).
 
 Moreover, net benefit can be defined in terms of reduction of avoidable interventions (e.g adjuvant chemotherapy per 100 patients) by:
 
@@ -1020,6 +944,6 @@ where *NB*<sub>model</sub> is the net benefit of the prediction model,
 ## Reproducibility ticket
 
 ```{r repro_ticket, echo=TRUE}
-sessionInfo()
+sessioninfo::session_info()
 ```
   
