@@ -51,23 +51,6 @@ don’t have them installed, please use install.packages(’‘)
 (e.g. install.packages(’survival’)) or use the user-friendly approach if
 you are using RStudio.
 
-``` r
-# Use pacman to check whether packages are installed, if not load them
-if (!require("pacman")) install.packages("pacman")
-library(pacman)
-pacman::p_load(survival,
-               Hmisc,
-               pec,
-               timeROC,
-               riskRegression,
-               rms,
-               knitr,
-               kableExtra,
-               tidyverse,
-               gtsummary,
-               geepack)
-```
-
 ### Data preparation
 
 Outcome and predictors in the new data must be coded as provided in the
@@ -79,43 +62,6 @@ In the prediction model developed using the Rotterdam data, the data was
 administratively censored at 5 years. For this reason, we also
 administratively censor the data from patients in the new (validation)
 data at 5 years.
-
-<details>
-<summary>
-Click to expand code
-</summary>
-
-``` r
-# Validation data
-gbsg$ryear <- gbsg$rfstime/365.25
-gbsg$rfs   <- gbsg$status           # the GBSG data contains RFS
-gbsg$cnode <- cut(gbsg$nodes, c(-1,0, 3, 51),
-                       c("0", "1-3", ">3"))   # categorized node
-gbsg$csize <- cut(gbsg$size,  c(-1, 20, 50, 500), #categorized size
-                  c("<=20", "20-50", ">50"))
-pgr99 <- 1360 #p99 from development data 
-gbsg$pgr2 <- pmin(gbsg$pgr, pgr99) # Winsorized value
-gbsg$grade3 <- as.factor(gbsg$grade)
-levels(gbsg$grade3) <- c("1-2", "1-2", "3")
-
-# Restricted cubic spline for PGR
-rcs3_pgr <- rcspline.eval(gbsg$pgr2, knots = c(0, 41, 486))
-attr(rcs3_pgr, "dim") <- NULL
-attr(rcs3_pgr, "knots") <- NULL
-gbsg$pgr3 <- rcs3_pgr
-
-
-# The analysis focuses on the first 5 years: create
-# data sets that are censored at 5
-temp <- survSplit(Surv(ryear, rfs) ~ ., data = gbsg, cut=5,
-                  episode ="epoch")
-gbsg5 <- subset(temp, epoch==1)
-
-# Relevel
-gbsg5$cnode <- relevel(gbsg$cnode, "0")
-```
-
-</details>
 
 ## Goal 1: Assessing performance of a developed survival model in a new data
 
@@ -179,43 +125,6 @@ baseline using some algebraic steps.
 This part must be run for all following parts of the code. After running
 this, the user can also focus on one particular performance measure only
 (e.g. discrimination).
-
-<details>
-<summary>
-Click to expand code
-</summary>
-
-``` r
-# Absolute risk calculation -------------
-# Baseline survival at 5 years - basic model
-S0.5yr <- 0.80153 
-# Design matrix of predictors
-des_matr <- as.data.frame(model.matrix(~ csize + cnode + grade3, data = gbsg5))
-des_matr$`(Intercept)` <- NULL
-# Coefficients
-coef <- c(0.383, 0.664, 0.360, 1.063,  0.375)
-# Prognostic index (PI)
-gbsg5$PI <- as.vector(as.matrix(des_matr) %*% cbind(coef))
-# Estimated absolute risk at 5 years (1 - S(t), 1 - survival at time t)
-gbsg5$pred5 <-  as.vector(1 - S0.5yr**exp(gbsg5$PI))
-
-#Absolute risk  at 5 yrs - Extended model with PGR ---------------
-# Baseline survival at 5 years - extended model
-S0.5yr_pgr <- 0.75852  
-# Design matrix of predictors
-des_matr <- as.data.frame(model.matrix(~ csize + cnode + grade3 + 
-                                         I(pgr2) + I(pgr3), data = gbsg5))
-des_matr$`(Intercept)` <- NULL
-# Coefficients
-coef <- c(0.362, 0.641, 0.381, 
-          1.059, 0.317, -0.003, 0.013)
-# Prognostic index (PI)
-gbsg5$PI_pgr <- as.vector(as.matrix(des_matr) %*% cbind(coef))
-# Absolute risk at 5 years (1 - S(t), 1 - survival at time t)
-gbsg5$pred5_pgr <-  as.vector(1 - S0.5yr_pgr**exp(gbsg5$PI_pgr))
-```
-
-</details>
 
 ### 1.2 Discrimination measures
 
