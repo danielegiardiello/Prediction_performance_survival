@@ -258,7 +258,7 @@ numsum_cph <- c(
 numsum_cph
 
 # calibration slope (fixed time point)-------------------------------------
-gval <- coxph(Surv(ryear, rfs) ~ lp, data=gbsg5)
+gval <- coxph(Surv(ryear, rfs) ~ lp, data = gbsg5)
 
 calslope_summary <- c(
   "calibration slope" = gval$coef,
