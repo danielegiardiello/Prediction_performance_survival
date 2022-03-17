@@ -30,7 +30,7 @@ The goals are:
 First of all, install the R packages essential for the analyses.
 We following libraries are needed to achieve the following goals. If you don't have them installed, please use install.packages('') (e.g. install.packages('survival')) or use the user-friendly approach if you are using RStudio.
 
-```{r, wdlib, message=FALSE,warning=FALSE}
+```{r, wdlib, message=FALSE, warning=FALSE, echo=TRUE}
 # Use pacman to check whether packages are installed, if not load them
 if (!require("pacman")) install.packages("pacman")
 library(pacman)
@@ -54,7 +54,9 @@ In our case study, the time-to-event outcome should be in years and the predicto
 
 In the prediction model developed using the Rotterdam data, the data was administratively censored at 5 years. For this reason, we also administratively censor the data from patients in the new (validation) data at 5 years.
 
-```{r, create, message=FALSE, warning=FALSE}
+<details>
+  <summary>Click to expand code</summary>
+```{r, create, message=FALSE, warning=FALSE, echo=TRUE, eval=FALSE}
 # Validation data
 gbsg$ryear <- gbsg$rfstime/365.25
 gbsg$rfs   <- gbsg$status           # the GBSG data contains RFS
@@ -83,7 +85,10 @@ gbsg5 <- subset(temp, epoch==1)
 # Relevel
 gbsg5$cnode <- relevel(gbsg$cnode, "0")
 ```
-
+</details>
+  
+```{r, create, fig.align='center', warning=FALSE, eval=TRUE}
+```
 
 ## Goal 1: Assessing performance of a developed survival model in a new data
 The performance of a risk prediction models may be evaluated through:  
@@ -118,9 +123,11 @@ If the centercept is mentioned in the model equation, this can be used to rescal
 
 ### 1.1 Calculate the absolute risk prediction at 5 years in the validation data
 
-This part must be run for all following parts of the code. After running this, the user can also focus on one particular performance measure only (e.g. discrimination).  
+This part must be run for all following parts of the code. After running this, the user can also focus on one particular performance measure only (e.g. discrimination). 
 
-```{r, predsurv, message=FALSE, warning=FALSE}
+<details>
+  <summary>Click to expand code</summary>
+```{r, predsurv, message=FALSE, warning=FALSE, echo=TRUE, eval=FALSE}
 # Absolute risk calculation -------------
 # Baseline survival at 5 years - basic model
 S0.5yr <- 0.80153 
@@ -149,7 +156,10 @@ gbsg5$PI_pgr <- as.vector(as.matrix(des_matr) %*% cbind(coef))
 # Absolute risk at 5 years (1 - S(t), 1 - survival at time t)
 gbsg5$pred5_pgr <-  as.vector(1 - S0.5yr_pgr**exp(gbsg5$PI_pgr))
 ```
-
+</details>
+  
+```{r, predsurv, fig.align='center', warning=FALSE, eval=TRUE}
+```
 
 ### 1.2 Discrimination measures
 Discrimination is the ability to differentiate between subjects who have the outcome by a certain time point and subjects who do not.
@@ -172,8 +182,8 @@ survival package.
 For all three measures, values close to 1 indicate good discrimination ability, while values close to 0.5 indicated poor discrimination ability.  
 
 <details>
-  <summary>Click to expand code</summary>																		
-```{r, concordance ,message=FALSE, warning=FALSE, echo=TRUE, eval=FALSE}
+  <summary>Click to expand code</summary>																
+```{r, concordance, message=FALSE, warning=FALSE, echo=TRUE, eval=FALSE}
 if (!require("pacman")) install.packages("pacman")
 library(pacman)
 pacman::p_load(survival,
@@ -202,7 +212,7 @@ Uno_C_gbsg5_pgr <- concordance(Surv(ryear, rfs) ~ PI_pgr,
 ```
 </details>														
 
-```{r, concordance ,message=FALSE, warning=FALSE, eval=TRUE}
+```{r, concordance, message=FALSE, warning=FALSE, eval=TRUE}
 ```
 
 ```{r, concordance_table,warning=FALSE,echo=FALSE}
