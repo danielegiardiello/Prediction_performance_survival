@@ -78,9 +78,9 @@ gbsg$pgr3 <- rcs3_pgr
 
 # The analysis focuses on the first 5 years: create
 # data sets that are censored at 5
-temp <- survSplit(Surv(ryear, rfs) ~ ., data = gbsg, cut=5,
+temp <- survSplit(Surv(ryear, rfs) ~ ., data = gbsg, cut = 5,
                   episode ="epoch")
-gbsg5 <- subset(temp, epoch==1)
+gbsg5 <- subset(temp, epoch == 1)
 
 # Relevel
 gbsg5$cnode <- relevel(gbsg$cnode, "0")
