@@ -82,7 +82,7 @@ harrell_C_gbsg5 <- concordance(Surv(ryear, rfs) ~ PI,
 Uno_C_gbsg5 <- concordance(Surv(ryear, rfs) ~ PI, 
                            gbsg5, 
                            reverse = TRUE,
-                           timewt = "n/G2")
+                           timewt = "S/G")
 alpha <- .05
 res_C <- matrix(
   c(
