@@ -164,7 +164,7 @@ Prediction models are useful to provide the estimated probability of a
 specific outcome using personal information. In many studies, especially
 in medicine, the main outcome under assessment is the time to an event
 of interest defined generally as survival time. Prognostic models for
-survival end points, such as recurrence or progression of disease, need
+survival endpoints, such as recurrence or progression of disease, need
 to account for drop out during follow-up. Patients who have not
 experienced the event of interest are censored observations. Cox
 regression analysis is the most popular statistical model to deal with
@@ -657,7 +657,7 @@ df_boots <- do.call(rbind.data.frame, boots_ls)
 
     ##                                Estimate Lower .95  Upper .95
     ## Brier - Validation data            0.22       0.21      0.24
-    ## Scaled Brier - Validation data     0.10       0.05      0.15
+    ## Scaled Brier - Validation data     0.10       0.05      0.16
 
 Brier and scaled Brier score were 0.22 and 0.10, respectively.
 
