@@ -127,10 +127,9 @@ gbsg5$cnode <- relevel(gbsg$cnode, "0")
 ```
 
 
-
 ## Goal 1 - Develop a risk prediction model with a time to event outcome
 Prediction models are useful to provide the estimated probability of a specific outcome using personal information.
-In many studies, especially in medicine, the main outcome under assessment is the time to an event of interest defined generally as survival time. Prognostic models for survival end points, such as recurrence or progression of disease, need to account for drop out during follow-up. Patients who have not experienced the event of interest are censored observations. Cox regression analysis is the most popular statistical model to deal with such data in oncology and other medical research.  
+In many studies, especially in medicine, the main outcome under assessment is the time to an event of interest defined generally as survival time. Prognostic models for survival endpoints, such as recurrence or progression of disease, need to account for drop out during follow-up. Patients who have not experienced the event of interest are censored observations. Cox regression analysis is the most popular statistical model to deal with such data in oncology and other medical research.  
 
 ### 1.1 Model development - fit the risk prediction models
 We develop the risk prediction model in the development data considering the first 5-year follow-up to minimize the violation of proportional hazard including size, node and grade. 
