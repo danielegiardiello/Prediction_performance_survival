@@ -2,7 +2,7 @@
 
 R and SAS Code repository for the manuscript 'Assessing performance and clinical usefulness in prediction models with survival outcomes: practical guidance for Cox proportional hazards models' (in preparation).
 
-A preprint version of the manuscript is [here](https://www.medrxiv.org/content/10.1101/2022.03.17.22272411v1)
+**A preprint version of the manuscript is [here](https://www.medrxiv.org/content/10.1101/2022.03.17.22272411v1)**
 
 
 The repository contains the following code:  
