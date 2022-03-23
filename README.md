@@ -15,7 +15,7 @@ Another nice R code was motivated by the paper of [Royston & Altman](https://bmc
 
 + Extensive output and [code](https://github.com/danielegiardiello/Prediction_performance_survival/blob/main/03_predsurv_extended.md) to develop and validate a risk prediction model with a survival outcome. The .Rmd source code is [here](https://github.com/danielegiardiello/Prediction_performance_survival/blob/main/03_predsurv_extended.Rmd). People with advanced knowledge in statistics are encouraged to use these files.
 
-External functions and figures are available in the corresponding subfolders.  
+External [functions](https://github.com/danielegiardiello/Prediction_performance_survival/tree/main/Functions) and [figures](https://github.com/danielegiardiello/Prediction_performance_survival/tree/main/imgs) are available in the corresponding subfolders.  
 
 SAS code is available [here](https://github.com/danielegiardiello/Prediction_performance_survival/tree/main/SAS_code).
 
