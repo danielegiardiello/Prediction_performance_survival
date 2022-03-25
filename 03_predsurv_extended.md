@@ -478,7 +478,7 @@ fit1_ph <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
 
 
 zp1 <- cox.zph(fit1_ph, transform = "identity")
-kable(round(zp1$table, 3)) %>% kable_styling("striped", position = "center")
+kable(round(zp1$table, 3)) |> kable_styling("striped", position = "center")
 
 oldpar <- par(mfrow = c(2, 2), mar = c(5, 5, 1, 1))
 for (i in 1:3) {
@@ -1372,7 +1372,7 @@ NA
 0.7
 </td>
 <td style="text-align:right;">
-0.68
+0.67
 </td>
 <td style="text-align:right;">
 NA
@@ -1654,133 +1654,6 @@ NA
 
 Time-dependent AUC at 5 years was between 0.71 and 0.72 in the apparent,
 internal and external validation for the basic and extended model.
-
-The discrimination ability may be evaluated over the time since
-diagnosis through a plot showing the AUC over the time (years) in the
-development and validation set in the basic and extended model. Since
-the calculation of the AUC and the standard errors in the development
-set is computationally demanding, we showed only the plot in the
-validation data. However, we provided the R code (as a comment) for the
-development data.
-
-<details>
-<summary>
-Click to expand code
-</summary>
-
-``` r
-# Models 
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
-  data = rott5, x = T, y = T
-)
-# Additional marker
-efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
-
-# NOTE: it takes long time to be computed
-# Apparent without PGR
-# AUC_rott5<-
-#    timeROC(T=rott5$ryear, 
-#            delta=rott5$rfs,
-#            marker=predict(efit1,newdata=rott5),
-#            cause=1,weighting='marginal',
-#            times=quantile(rott5$ryear,probs=seq(0.01,0.85,0.02)),
-#           iid=TRUE)
-
-# Apparent with PGR
-# AUC_rott5_pgr <-
-#    timeROC(T=rott5$ryear, 
-#            delta=rott5$rfs,
-#            marker=predict(efit1_pgr,newdata=rott5),
-#            cause=1,weighting='marginal',
-#            times=quantile(rott5$ryear,probs=seq(0.01,0.85,0.02)),
-#            iid=TRUE)
-
-# Validation without PGR
-AUC_gbsg5 <-
-  timeROC(
-    T = gbsg5$ryear, 
-    delta = gbsg5$rfs,
-    marker = predict(efit1, newdata = gbsg5),
-    cause = 1, weighting = "marginal",
-    times = quantile(gbsg5$ryear, probs = seq(0.02, 0.82, 0.02)),
-    iid = TRUE
-  )
-
-# Validation with PGR
-AUC_gbsg5_pgr <-
-  timeROC(
-    T = gbsg5$ryear, 
-    delta = gbsg5$rfs,
-    marker = predict(efit1_pgr, newdata = gbsg5),
-    cause = 1, weighting = "marginal",
-    times = quantile(gbsg5$ryear, probs = seq(0.02, 0.82, 0.02)),
-    iid = TRUE
-  )
-
-
-# Calculate the confidence intervals
-# AUC_rott5$lower <- AUC_rott5$AUC - qnorm(0.975) * AUC_rott5$inference$vect_sd_1
-# AUC_rott5$upper <- AUC_rott5$AUC + qnorm(0.975) * AUC_rott5$inference$vect_sd_1
-#
-# AUC_rott5_pgr$lower <- AUC_rott5_pgr$AUC - qnorm(0.975)*AUC_rott5_pgr$inference$vect_sd_1
-# AUC_rott5_pgr$upper <- AUC_rott5_pgr$AUC + qnorm(0.975) * AUC_rott5_pgr$inference$vect_sd_1
-
-AUC_gbsg5$lower <- AUC_gbsg5$AUC - qnorm(0.975) * AUC_gbsg5$inference$vect_sd_1
-AUC_gbsg5$upper <- AUC_gbsg5$AUC + qnorm(0.975) * AUC_gbsg5$inference$vect_sd_1
-
-AUC_gbsg5_pgr$lower <- AUC_gbsg5_pgr$AUC - qnorm(0.975) * AUC_gbsg5_pgr$inference$vect_sd_1
-AUC_gbsg5_pgr$upper <- AUC_gbsg5_pgr$AUC + qnorm(0.975) * AUC_gbsg5_pgr$inference$vect_sd_1
-
-par(las = 1, xaxs = "i", yaxs = "i")
-plot(AUC_gbsg5$times, 
-     AUC_gbsg5$AUC,
-     type = "l", 
-     bty = "n",
-     xlim = c(0, 5), 
-     ylim = c(0, 1), 
-     lwd = 2, 
-     xlab = "Time (years)", 
-     ylab = "AUC", 
-     lty = 2
-)
-polygon(c(AUC_gbsg5$times, 
-          rev(AUC_gbsg5$times)),
-        c(AUC_gbsg5$lower, 
-          rev(AUC_gbsg5$upper)),
-  col = rgb(160, 160, 160, maxColorValue = 255, alpha = 100),
-  border = FALSE
-)
-lines(AUC_gbsg5$times, 
-      AUC_gbsg5$AUC, 
-      col = "black", 
-      lwd = 2, 
-      lty = 2)
-polygon(c(AUC_gbsg5_pgr$times, 
-          rev(AUC_gbsg5_pgr$times)),
-  c(AUC_gbsg5_pgr$lower, 
-    rev(AUC_gbsg5_pgr$upper)),
-  col = rgb(96, 96, 96, maxColorValue = 255, alpha = 100),
-  border = FALSE
-)
-lines(AUC_gbsg5_pgr$times, 
-      AUC_gbsg5_pgr$AUC, 
-      col = "black", 
-      lwd = 2, 
-      lty = 1)
-abline(h = 0.5)
-legend("bottomright", 
-       c("Original model", "Original model + PGR"), 
-       lwd = 2, lty = c(2, 1), 
-       bty = "n")
-title("B GBSG data (n=686)", adj = 0)
-```
-
-</details>
-
-<img src="imgs/03_predsurv_extended/plotAUC-1.png" width="672" style="display: block; margin: auto;" />
-
-The discrimination performance is higher in the extended model compared
-to the model without PGR over the entire follow-up.
 
 ### 2.2 Calibration
 
@@ -2522,6 +2395,82 @@ numsum_cph_pgr <- c(
   "ICI" = mean(absdiff_cph_pgr),
   setNames(quantile(absdiff_cph_pgr, c(0.5, 0.9)), c("E50", "E90"))
 )
+
+## Bootstrap confidence intervals
+## for the cal------
+B <- 50 # Set B = 2000 although it takes more time
+gbsg5_boot <- bootstraps(gbsg5, times = B)
+
+# Bootstrap calibration measures
+numsum_boot <- function(split) {
+  
+  pred <- 1 - predictSurvProb(efit1, 
+                                  newdata = analysis(split), 
+                                  times = 5)
+  
+  pred_pgr <- 1 - predictSurvProb(efit1_pgr, 
+                                  newdata = analysis(split), 
+                                  times = 5)
+  
+  pred.cll <- log(-log(1 - pred))
+  pred.cll_pgr <- log(-log(1 - pred_pgr))
+ 
+# Estimate actual risk - basic model
+  vcal <- cph(Surv(ryear, rfs) ~ rcs(pred.cll, 3),
+              x = T,
+              y = T,
+              surv = T,
+              data = analysis(split)
+) 
+ 
+ vcal_pgr <- cph(Surv(ryear, rfs) ~ rcs(pred.cll_pgr, 3),
+            x = T,
+            y = T,
+            surv = T,
+            data = analysis(split)
+) 
+ 
+ # Save objects needed
+db_cal_boot <- data.frame(
+  "obs" = 1 - survest(vcal, 
+                      times = 5, 
+                      newdata = analysis(split))$surv,
+                      
+  "pred" = pred,
+  
+  "obs_pgr" = 1 - survest(vcal_pgr,
+                          times = 5, 
+                          newdata = analysis(split))$surv,
+  
+  "pred_pgr" = pred_pgr
+)
+
+absdiff_boot <- abs(db_cal_boot$obs - db_cal_boot$pred)
+absdiff_boot_pgr <- abs(db_cal_boot$obs_pgr -
+                          db_cal_boot$pred_pgr)
+
+res_cal_boot <- data.frame(
+  "ICI" = mean(absdiff_boot),
+  "ICI_pgr" = mean(absdiff_boot_pgr),
+  "E50" = quantile(absdiff_boot, probs = .5),
+  "E50_pgr" = quantile(absdiff_boot_pgr, probs = .5),
+  "E90" = quantile(absdiff_boot, probs = .9),
+  "E90_pgr" = quantile(absdiff_boot_pgr, probs = .9)
+)
+    
+}
+numsum_b <- gbsg5_boot |>
+  mutate(num_cal_boot = map(splits, numsum_boot),
+         
+         ICI = map_dbl(num_cal_boot, ~ .x$ICI),
+         ICI_pgr = map_dbl(num_cal_boot, ~ .x$ICI_pgr),
+         
+         E50 = map_dbl(num_cal_boot, ~ .x$E50),
+         E50_pgr = map_dbl(num_cal_boot, ~ .x$E50_pgr),
+         
+         E90 = map_dbl(num_cal_boot, ~ .x$E90),
+         E90_pgr = map_dbl(num_cal_boot, ~ .x$E90_pgr)
+         )
 ```
 
 </details>
@@ -2531,16 +2480,65 @@ numsum_cph_pgr <- c(
 <table class="table table-striped" style="margin-left: auto; margin-right: auto;">
 <thead>
 <tr>
+<th style="empty-cells: hide;border-bottom:hidden;" colspan="1">
+</th>
+<th style="border-bottom:hidden;padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="3">
+
+<div style="border-bottom: 1px solid #ddd; padding-bottom: 5px; ">
+
+ICI
+
+</div>
+
+</th>
+<th style="border-bottom:hidden;padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="3">
+
+<div style="border-bottom: 1px solid #ddd; padding-bottom: 5px; ">
+
+E50
+
+</div>
+
+</th>
+<th style="border-bottom:hidden;padding-bottom:0; padding-left:3px;padding-right:3px;text-align: center; " colspan="3">
+
+<div style="border-bottom: 1px solid #ddd; padding-bottom: 5px; ">
+
+E90
+
+</div>
+
+</th>
+</tr>
+<tr>
 <th style="text-align:left;">
 </th>
 <th style="text-align:right;">
-ICI
+Estimate
 </th>
 <th style="text-align:right;">
-E50
+Lower.95
 </th>
 <th style="text-align:right;">
-E90
+Upper.95
+</th>
+<th style="text-align:right;">
+Estimate
+</th>
+<th style="text-align:right;">
+Lower.95
+</th>
+<th style="text-align:right;">
+Upper.95
+</th>
+<th style="text-align:right;">
+Estimate
+</th>
+<th style="text-align:right;">
+Lower.95
+</th>
+<th style="text-align:right;">
+Upper.95
 </th>
 </tr>
 </thead>
@@ -2553,10 +2551,28 @@ External data
 0.03
 </td>
 <td style="text-align:right;">
+0.01
+</td>
+<td style="text-align:right;">
+0.08
+</td>
+<td style="text-align:right;">
 0.03
 </td>
 <td style="text-align:right;">
+0.01
+</td>
+<td style="text-align:right;">
+0.08
+</td>
+<td style="text-align:right;">
 0.06
+</td>
+<td style="text-align:right;">
+0.03
+</td>
+<td style="text-align:right;">
+0.13
 </td>
 </tr>
 <tr>
@@ -2571,6 +2587,24 @@ External data + PGR
 </td>
 <td style="text-align:right;">
 0.07
+</td>
+<td style="text-align:right;">
+0.01
+</td>
+<td style="text-align:right;">
+0.01
+</td>
+<td style="text-align:right;">
+0.08
+</td>
+<td style="text-align:right;">
+0.07
+</td>
+<td style="text-align:right;">
+0.03
+</td>
+<td style="text-align:right;">
+0.12
 </td>
 </tr>
 </tbody>
@@ -3054,12 +3088,12 @@ score_boot_pgr <- function(split) {
 
 
 
-rott5_boot <- rott5_boot %>% mutate(
+rott5_boot <- rott5_boot |> mutate(
   IPA = map_dbl(splits, score_boot),
   IPA_pgr = map_dbl(splits, score_boot_pgr)
 ) # Development dataset
 
-gbsg5_boot <- gbsg5_boot %>% mutate(
+gbsg5_boot <- gbsg5_boot |> mutate(
   IPA = map_dbl(splits, score_boot),
   IPA_pgr = map_dbl(splits, score_boot_pgr)
 ) # Validation dataset
@@ -3671,7 +3705,7 @@ sessioninfo::session_info()
     ##  collate  English_United States.1252
     ##  ctype    English_United States.1252
     ##  tz       Europe/Berlin
-    ##  date     2022-03-22
+    ##  date     2022-03-25
     ##  pandoc   2.14.0.3 @ C:/Program Files/RStudio/bin/pandoc/ (via rmarkdown)
     ## 
     ## - Packages -------------------------------------------------------------------
@@ -3679,17 +3713,12 @@ sessioninfo::session_info()
     ##  assertthat       0.2.1      2019-03-21 [1] CRAN (R 4.1.2)
     ##  backports        1.3.0      2021-10-27 [1] CRAN (R 4.1.1)
     ##  base64enc        0.1-3      2015-07-28 [1] CRAN (R 4.1.1)
-    ##  bit              4.0.4      2020-08-04 [1] CRAN (R 4.1.2)
-    ##  bit64            4.0.5      2020-08-30 [1] CRAN (R 4.1.2)
-    ##  blob             1.2.2      2021-07-23 [1] CRAN (R 4.1.2)
     ##  boot           * 1.3-28     2021-05-03 [2] CRAN (R 4.1.2)
     ##  broom            0.7.10     2021-10-31 [1] CRAN (R 4.1.2)
     ##  broom.helpers    1.5.0      2021-12-07 [1] CRAN (R 4.1.2)
-    ##  cachem           1.0.6      2021-08-19 [1] CRAN (R 4.1.2)
     ##  caret            6.0-90     2021-10-09 [1] CRAN (R 4.1.2)
     ##  cellranger       1.1.0      2016-07-27 [1] CRAN (R 4.1.2)
     ##  checkmate        2.0.0      2020-02-06 [1] CRAN (R 4.1.2)
-    ##  chron            2.3-56     2020-08-18 [1] CRAN (R 4.1.2)
     ##  class            7.3-19     2021-05-03 [2] CRAN (R 4.1.2)
     ##  cli              3.1.0      2021-10-27 [1] CRAN (R 4.1.2)
     ##  cluster          2.1.2      2021-04-17 [2] CRAN (R 4.1.2)
@@ -3722,7 +3751,6 @@ sessioninfo::session_info()
     ##  glue             1.5.1      2021-11-30 [1] CRAN (R 4.1.2)
     ##  gower            0.2.2      2020-06-23 [1] CRAN (R 4.1.1)
     ##  gridExtra      * 2.3        2017-09-09 [1] CRAN (R 4.1.2)
-    ##  gsubfn         * 0.7        2018-03-16 [1] CRAN (R 4.1.2)
     ##  gt               0.3.1      2021-08-07 [1] CRAN (R 4.1.2)
     ##  gtable           0.3.0      2019-03-25 [1] CRAN (R 4.1.2)
     ##  gtsummary      * 1.5.0      2021-10-16 [1] CRAN (R 4.1.2)
@@ -3752,11 +3780,9 @@ sessioninfo::session_info()
     ##  Matrix           1.3-4      2021-06-01 [2] CRAN (R 4.1.2)
     ##  MatrixModels     0.5-0      2021-03-02 [1] CRAN (R 4.1.2)
     ##  matrixStats      0.61.0     2021-09-17 [1] CRAN (R 4.1.2)
-    ##  memoise          2.0.1      2021-11-26 [1] CRAN (R 4.1.2)
     ##  mets             1.2.9      2021-09-06 [1] CRAN (R 4.1.2)
     ##  ModelMetrics     1.2.2.2    2020-03-17 [1] CRAN (R 4.1.2)
     ##  modelr           0.1.8      2020-05-19 [1] CRAN (R 4.1.2)
-    ##  mstate         * 0.3.2      2021-11-08 [1] CRAN (R 4.1.2)
     ##  multcomp         1.4-17     2021-04-29 [1] CRAN (R 4.1.2)
     ##  munsell          0.5.0      2018-06-12 [1] CRAN (R 4.1.2)
     ##  mvtnorm          1.1-3      2021-10-08 [1] CRAN (R 4.1.1)
@@ -3775,7 +3801,6 @@ sessioninfo::session_info()
     ##  polspline        1.1.19     2020-05-15 [1] CRAN (R 4.1.1)
     ##  pROC             1.18.0     2021-09-03 [1] CRAN (R 4.1.2)
     ##  prodlim        * 2019.11.13 2019-11-17 [1] CRAN (R 4.1.2)
-    ##  proto          * 1.0.0      2016-10-29 [1] CRAN (R 4.1.2)
     ##  purrr          * 0.3.4      2020-04-17 [1] CRAN (R 4.1.2)
     ##  quantreg         5.86       2021-06-06 [1] CRAN (R 4.1.2)
     ##  R6               2.5.1      2021-08-19 [1] CRAN (R 4.1.2)
@@ -3794,22 +3819,17 @@ sessioninfo::session_info()
     ##  rpart            4.1-15     2019-04-12 [2] CRAN (R 4.1.2)
     ##  rprojroot        2.0.2      2020-11-15 [1] CRAN (R 4.1.2)
     ##  rsample        * 0.1.1      2021-11-08 [1] CRAN (R 4.1.2)
-    ##  RSQLite        * 2.2.9      2021-12-06 [1] CRAN (R 4.1.2)
     ##  rstudioapi       0.13       2020-11-12 [1] CRAN (R 4.1.2)
     ##  rvest            1.0.2      2021-10-16 [1] CRAN (R 4.1.2)
     ##  sandwich         3.0-1      2021-05-18 [1] CRAN (R 4.1.2)
     ##  scales           1.1.1      2020-05-11 [1] CRAN (R 4.1.2)
     ##  sessioninfo      1.2.2      2021-12-06 [1] CRAN (R 4.1.2)
     ##  SparseM        * 1.81       2021-02-18 [1] CRAN (R 4.1.1)
-    ##  sqldf          * 0.4-11     2017-06-28 [1] CRAN (R 4.1.2)
     ##  stringi          1.7.6      2021-11-29 [1] CRAN (R 4.1.2)
     ##  stringr        * 1.4.0      2019-02-10 [1] CRAN (R 4.1.2)
-    ##  survAUC        * 1.0-5      2012-09-04 [1] CRAN (R 4.1.2)
     ##  survival       * 3.2-13     2021-08-24 [1] CRAN (R 4.1.2)
-    ##  survivalROC    * 1.0.3      2013-01-13 [1] CRAN (R 4.1.1)
     ##  svglite          2.0.0      2021-02-20 [1] CRAN (R 4.1.2)
     ##  systemfonts      1.0.3      2021-10-13 [1] CRAN (R 4.1.2)
-    ##  table1         * 1.4.2      2021-06-06 [1] CRAN (R 4.1.2)
     ##  TH.data          1.1-0      2021-09-27 [1] CRAN (R 4.1.2)
     ##  tibble         * 3.1.6      2021-11-07 [1] CRAN (R 4.1.2)
     ##  tidyr          * 1.1.4      2021-09-27 [1] CRAN (R 4.1.2)
