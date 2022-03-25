@@ -31,7 +31,7 @@ The extended code basically evaluates the prediction performance at a fixed time
 We following libraries are needed to achieve the following goals, if you have not them installed, please use
 install.packages('') (e.g. install.packages('survival')) or use the user-friendly approach if you are using RStudio.
 
-```{r, wdlib, message=FALSE,warning=FALSE}
+```{r, wdlib, message=FALSE,warning=FALSE, echo=TRUE}
 
 # Use pacman to check whether packages are installed, if not load
 if (!require("pacman")) install.packages("pacman")
