@@ -66,6 +66,31 @@ have not them installed, please use install.packages(’‘)
 (e.g. install.packages(’survival’)) or use the user-friendly approach if
 you are using RStudio.
 
+``` r
+# Use pacman to check whether packages are installed, if not load
+if (!require("pacman")) install.packages("pacman")
+library(pacman)
+
+pacman::p_load(
+  rio,
+  survival,
+  rms,
+  pec,
+  riskRegression,
+  timeROC,
+  plotrix,
+  splines,
+  knitr,
+  kableExtra,
+  gtsummary,
+  boot,
+  tidyverse,
+  rsample,
+  gridExtra,
+  webshot
+)
+```
+
 The two primary datasets from the Rotterdam study and the German Breast
 Cancer Study Group (GBSG) are included as example data sets in the
 `survival` package. The Rotterdam data has separate variables for time
@@ -2554,16 +2579,16 @@ External data
 0.01
 </td>
 <td style="text-align:right;">
-0.08
+0.07
 </td>
 <td style="text-align:right;">
 0.03
 </td>
 <td style="text-align:right;">
-0.01
+0.00
 </td>
 <td style="text-align:right;">
-0.08
+0.06
 </td>
 <td style="text-align:right;">
 0.06
@@ -2586,7 +2611,7 @@ External data + PGR
 0.01
 </td>
 <td style="text-align:right;">
-0.07
+0.06
 </td>
 <td style="text-align:right;">
 0.01
@@ -2595,13 +2620,13 @@ External data + PGR
 0.01
 </td>
 <td style="text-align:right;">
-0.08
+0.05
 </td>
 <td style="text-align:right;">
 0.07
 </td>
 <td style="text-align:right;">
-0.03
+0.02
 </td>
 <td style="text-align:right;">
 0.12
