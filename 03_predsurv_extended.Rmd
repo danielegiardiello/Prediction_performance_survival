@@ -41,17 +41,12 @@ pacman::p_load(
   rio,
   survival,
   rms,
-  mstate,
-  sqldf,
   pec,
   riskRegression,
-  survAUC,
-  survivalROC,
   timeROC,
   plotrix,
   splines,
   knitr,
-  table1,
   kableExtra,
   gtsummary,
   boot,
@@ -164,7 +159,7 @@ units(cdata$pgr) <- "ng/mL"
 
 
 gtsummary::tbl_summary(
-  data = cdata %>% select(-pid),
+  data = cdata |> select(-pid),
   label = list(age ~ "Age (years)", csize ~ "Size (cm)", 
                pgr ~ "PGR (ng/mL)",
                grade3 ~ "Grade"),
@@ -174,8 +169,8 @@ gtsummary::tbl_summary(
     "{mean} ({sd})",
     "{median} ({min}, {max})"
   ),
-) %>% 
-  gtsummary::as_kable_extra() %>% 
+) |> 
+  gtsummary::as_kable_extra() |> 
   kableExtra::kable_styling("striped") 
 ```
 
@@ -285,7 +280,7 @@ fit1_ph <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
 
 
 zp1 <- cox.zph(fit1_ph, transform = "identity")
-kable(round(zp1$table, 3)) %>% kable_styling("striped", position = "center")
+kable(round(zp1$table, 3)) |> kable_styling("striped", position = "center")
 
 oldpar <- par(mfrow = c(2, 2), mar = c(5, 5, 1, 1))
 for (i in 1:3) {
@@ -332,7 +327,7 @@ res_efit <- round(rbind(e1 = coef(efit1),
 rownames(res_efit) <- c("Epoch 1: 0-5 years", 
                         "Epoch 2: 5-10 years", 
                         "Epoch 3: >10 years")
-kable(res_efit) %>% kable_styling("striped", position = "center")
+kable(res_efit) |> kable_styling("striped", position = "center")
 
 options(prType = "html")
 tt1 <- table(edata$epoch, edata$rfs, dnn = c("Epoch", "Status"))
@@ -342,7 +337,7 @@ rownames(tt1) <- c("Epoch 1: 0-5 years",
 kable(tt1,
   col.names = c("Censored", "Event"),
   row.names = TRUE
-) %>% kable_styling("striped", position = "center")
+) |> kable_styling("striped", position = "center")
 ```
 
 A drastic change in the size coefficients across all epochs is apparent, along with a major reduction in the nodes coefficient in epoch 3. As an ameleoration of this we will refit the model using only the first epoch, which includes most of the recurrences and deaths.  
@@ -629,8 +624,8 @@ res_C <- matrix(c(
 )
 
 res_C <- round(res_C, 2) # Digits
-kable(res_C) %>%
-  kable_styling("striped", position = "center") %>%
+kable(res_C) |>
+  kable_styling("striped", position = "center") |>
   add_header_above(c(" " = 1, 
                      "Apparent" = 3, 
                      "Internal" = 3, 
@@ -758,8 +753,8 @@ res_AUC <- matrix(c(
 )
 )
 res_AUC <- round(res_AUC, 2) # Digits
-kable(res_AUC) %>%
-  kable_styling("striped", position = "center") %>%
+kable(res_AUC) |>
+  kable_styling("striped", position = "center") |>
   add_header_above(c(" " = 1, 
                      "Apparent" = 3, 
                      "Internal" = 3, 
@@ -772,124 +767,6 @@ kable(res_AUC) %>%
 
 Time-dependent AUC at 5 years was between 0.71 and 0.72 in the apparent, internal and external validation for the basic and extended model.
 
-The discrimination ability may be evaluated over the time since diagnosis through a plot showing the AUC over the time (years) in the development and validation set in the basic and extended model. Since the calculation of the AUC and the standard errors in the development set is computationally demanding, we showed only the plot in the validation data. However, we provided the R code (as a comment) for the development data.
-
-<details>
-  <summary>Click to expand code</summary>
-```{r, plotAUC, fig.align='center', echo=TRUE, eval=FALSE}
-
-# Models 
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
-  data = rott5, x = T, y = T
-)
-# Additional marker
-efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
-
-# NOTE: it takes long time to be computed
-# Apparent without PGR
-# AUC_rott5<-
-#    timeROC(T=rott5$ryear, 
-#            delta=rott5$rfs,
-#            marker=predict(efit1,newdata=rott5),
-#            cause=1,weighting='marginal',
-#            times=quantile(rott5$ryear,probs=seq(0.01,0.85,0.02)),
-#           iid=TRUE)
-
-# Apparent with PGR
-# AUC_rott5_pgr <-
-#    timeROC(T=rott5$ryear, 
-#            delta=rott5$rfs,
-#            marker=predict(efit1_pgr,newdata=rott5),
-#            cause=1,weighting='marginal',
-#            times=quantile(rott5$ryear,probs=seq(0.01,0.85,0.02)),
-#            iid=TRUE)
-
-# Validation without PGR
-AUC_gbsg5 <-
-  timeROC(
-    T = gbsg5$ryear, 
-    delta = gbsg5$rfs,
-    marker = predict(efit1, newdata = gbsg5),
-    cause = 1, weighting = "marginal",
-    times = quantile(gbsg5$ryear, probs = seq(0.02, 0.82, 0.02)),
-    iid = TRUE
-  )
-
-# Validation with PGR
-AUC_gbsg5_pgr <-
-  timeROC(
-    T = gbsg5$ryear, 
-    delta = gbsg5$rfs,
-    marker = predict(efit1_pgr, newdata = gbsg5),
-    cause = 1, weighting = "marginal",
-    times = quantile(gbsg5$ryear, probs = seq(0.02, 0.82, 0.02)),
-    iid = TRUE
-  )
-
-
-# Calculate the confidence intervals
-# AUC_rott5$lower <- AUC_rott5$AUC - qnorm(0.975) * AUC_rott5$inference$vect_sd_1
-# AUC_rott5$upper <- AUC_rott5$AUC + qnorm(0.975) * AUC_rott5$inference$vect_sd_1
-#
-# AUC_rott5_pgr$lower <- AUC_rott5_pgr$AUC - qnorm(0.975)*AUC_rott5_pgr$inference$vect_sd_1
-# AUC_rott5_pgr$upper <- AUC_rott5_pgr$AUC + qnorm(0.975) * AUC_rott5_pgr$inference$vect_sd_1
-
-AUC_gbsg5$lower <- AUC_gbsg5$AUC - qnorm(0.975) * AUC_gbsg5$inference$vect_sd_1
-AUC_gbsg5$upper <- AUC_gbsg5$AUC + qnorm(0.975) * AUC_gbsg5$inference$vect_sd_1
-
-AUC_gbsg5_pgr$lower <- AUC_gbsg5_pgr$AUC - qnorm(0.975) * AUC_gbsg5_pgr$inference$vect_sd_1
-AUC_gbsg5_pgr$upper <- AUC_gbsg5_pgr$AUC + qnorm(0.975) * AUC_gbsg5_pgr$inference$vect_sd_1
-
-par(las = 1, xaxs = "i", yaxs = "i")
-plot(AUC_gbsg5$times, 
-     AUC_gbsg5$AUC,
-     type = "l", 
-     bty = "n",
-     xlim = c(0, 5), 
-     ylim = c(0, 1), 
-     lwd = 2, 
-     xlab = "Time (years)", 
-     ylab = "AUC", 
-     lty = 2
-)
-polygon(c(AUC_gbsg5$times, 
-          rev(AUC_gbsg5$times)),
-        c(AUC_gbsg5$lower, 
-          rev(AUC_gbsg5$upper)),
-  col = rgb(160, 160, 160, maxColorValue = 255, alpha = 100),
-  border = FALSE
-)
-lines(AUC_gbsg5$times, 
-      AUC_gbsg5$AUC, 
-      col = "black", 
-      lwd = 2, 
-      lty = 2)
-polygon(c(AUC_gbsg5_pgr$times, 
-          rev(AUC_gbsg5_pgr$times)),
-  c(AUC_gbsg5_pgr$lower, 
-    rev(AUC_gbsg5_pgr$upper)),
-  col = rgb(96, 96, 96, maxColorValue = 255, alpha = 100),
-  border = FALSE
-)
-lines(AUC_gbsg5_pgr$times, 
-      AUC_gbsg5_pgr$AUC, 
-      col = "black", 
-      lwd = 2, 
-      lty = 1)
-abline(h = 0.5)
-legend("bottomright", 
-       c("Original model", "Original model + PGR"), 
-       lwd = 2, lty = c(2, 1), 
-       bty = "n")
-title("B GBSG data (n=686)", adj = 0)
-```
-</details>
-  
-```{r, plotAUC, fig.align='center', warning=FALSE, eval=TRUE}
-```
-
-
-The discrimination performance is higher in the extended model compared to the model without PGR over the entire follow-up.
 
 ### 2.2 Calibration
 Calibration is the agreement between observed outcomes and predicted probabilities.
@@ -991,8 +868,8 @@ res_OE <- matrix(c(OE,
 )
 
 res_OE <- round(res_OE, 2)
-kable(res_OE) %>%
-  kable_styling("striped", position = "center") %>%
+kable(res_OE) |>
+  kable_styling("striped", position = "center") |>
   add_header_above(c(" " = 1, 
                      "External" = 3, 
                      "External + PGR" = 3))
@@ -1070,8 +947,8 @@ res_cal <- matrix(c(
 
 k <- 2
 res_cal <- round(res_cal, k) # number of digits
-kable(res_cal) %>%
-  kable_styling("striped", position = "center") %>%
+kable(res_cal) |>
+  kable_styling("striped", position = "center") |>
   add_header_above(c(" " = 1,  
                      "External" = 3, 
                      "External + PGR" = 3))
@@ -1137,8 +1014,8 @@ res_cal <- matrix(c(gval$coef,
 )
 
 res_cal <- round(res_cal, 2)
-kable(res_cal) %>%
-  kable_styling("striped", position = "center") %>%
+kable(res_cal) |>
+  kable_styling("striped", position = "center") |>
   add_header_above(c(" " = 1, 
                      "External" = 3, 
                      "External + PGR" = 3))
@@ -1218,8 +1095,8 @@ res_cal <- matrix(c(
 
 k <- 2
 res_cal <- round(res_cal, k) # number of digits
-kable(res_cal) %>%
-  kable_styling("striped", position = "center") %>%
+kable(res_cal) |>
+  kable_styling("striped", position = "center") |>
   add_header_above(c(" " = 1,  
                      "External" = 3, 
                      "External + PGR" = 3))
@@ -1397,6 +1274,82 @@ numsum_cph_pgr <- c(
   setNames(quantile(absdiff_cph_pgr, c(0.5, 0.9)), c("E50", "E90"))
 )
 
+## Bootstrap confidence intervals
+## for the cal------
+B <- 50 # Set B = 2000 although it takes more time
+gbsg5_boot <- bootstraps(gbsg5, times = B)
+
+# Bootstrap calibration measures
+numsum_boot <- function(split) {
+  
+  pred <- 1 - predictSurvProb(efit1, 
+                                  newdata = analysis(split), 
+                                  times = 5)
+  
+  pred_pgr <- 1 - predictSurvProb(efit1_pgr, 
+                                  newdata = analysis(split), 
+                                  times = 5)
+  
+  pred.cll <- log(-log(1 - pred))
+  pred.cll_pgr <- log(-log(1 - pred_pgr))
+ 
+# Estimate actual risk - basic model
+  vcal <- cph(Surv(ryear, rfs) ~ rcs(pred.cll, 3),
+              x = T,
+              y = T,
+              surv = T,
+              data = analysis(split)
+) 
+ 
+ vcal_pgr <- cph(Surv(ryear, rfs) ~ rcs(pred.cll_pgr, 3),
+            x = T,
+            y = T,
+            surv = T,
+            data = analysis(split)
+) 
+ 
+ # Save objects needed
+db_cal_boot <- data.frame(
+  "obs" = 1 - survest(vcal, 
+                      times = 5, 
+                      newdata = analysis(split))$surv,
+                      
+  "pred" = pred,
+  
+  "obs_pgr" = 1 - survest(vcal_pgr,
+                          times = 5, 
+                          newdata = analysis(split))$surv,
+  
+  "pred_pgr" = pred_pgr
+)
+
+absdiff_boot <- abs(db_cal_boot$obs - db_cal_boot$pred)
+absdiff_boot_pgr <- abs(db_cal_boot$obs_pgr -
+                          db_cal_boot$pred_pgr)
+
+res_cal_boot <- data.frame(
+  "ICI" = mean(absdiff_boot),
+  "ICI_pgr" = mean(absdiff_boot_pgr),
+  "E50" = quantile(absdiff_boot, probs = .5),
+  "E50_pgr" = quantile(absdiff_boot_pgr, probs = .5),
+  "E90" = quantile(absdiff_boot, probs = .9),
+  "E90_pgr" = quantile(absdiff_boot_pgr, probs = .9)
+)
+    
+}
+numsum_b <- gbsg5_boot |>
+  mutate(num_cal_boot = map(splits, numsum_boot),
+         
+         ICI = map_dbl(num_cal_boot, ~ .x$ICI),
+         ICI_pgr = map_dbl(num_cal_boot, ~ .x$ICI_pgr),
+         
+         E50 = map_dbl(num_cal_boot, ~ .x$E50),
+         E50_pgr = map_dbl(num_cal_boot, ~ .x$E50_pgr),
+         
+         E90 = map_dbl(num_cal_boot, ~ .x$E90),
+         E90_pgr = map_dbl(num_cal_boot, ~ .x$E90_pgr)
+         )
+
 ```
 </details>
   
@@ -1405,21 +1358,57 @@ numsum_cph_pgr <- c(
 
 
 ```{r, res_numcal, message=FALSE,warning=FALSE, fig.align='center',include=TRUE, echo=FALSE}
-res_numcal <- matrix(c(numsum_cph,
-                       numsum_cph_pgr),
+alpha <- .05
+res_numcal <- matrix(c(numsum_cph["ICI"],
+                       quantile(numsum_b$ICI, probs = alpha / 2),
+                       quantile(numsum_b$ICI, 
+                                probs = 1 - alpha / 2),
+                       
+                       numsum_cph["E50"],
+                       quantile(numsum_b$E50, probs = alpha / 2),
+                       quantile(numsum_b$E50, 
+                                probs = 1 - alpha / 2),
+                       
+                       numsum_cph["E90"],
+                       quantile(numsum_b$E90, probs = alpha / 2),
+                       quantile(numsum_b$E90, 
+                                probs = 1 - alpha / 2),
+                       
+                       numsum_cph_pgr["ICI"],
+                       quantile(numsum_b$ICI_pgr, 
+                                probs = alpha / 2),
+                       quantile(numsum_b$ICI_pgr, 
+                                probs = 1 - alpha /2),
+                       
+                       numsum_cph_pgr["E50"],
+                       quantile(numsum_b$E50_pgr, 
+                                probs = alpha / 2),
+                       quantile(numsum_b$E50_pgr, 
+                                probs = 1 - alpha / 2),
+                       
+                       numsum_cph_pgr["E90"],
+                       quantile(numsum_b$E90_pgr, 
+                                probs = alpha / 2),
+                       quantile(numsum_b$E90_pgr, 
+                                probs = 1 - alpha / 2)),
                      nrow = 2,
-                     ncol = 3,
+                     ncol = 9,
                      byrow = T,
                      dimnames = list(
                        c("External data",
                          "External data + PGR"),
-                       c("ICI", "E50", "E90"))
+                       rep(
+                         c("Estimate", "Lower.95", "Upper.95"),
+                         3))
 )
 
 res_numcal <- round(res_numcal, 2)
-kable(res_numcal) %>%
-  kable_styling("striped", position = "center")
-
+kable(res_numcal) |>
+  kable_styling("striped", position = "center") |>
+  add_header_above(c(" " = 1,  
+                     "ICI" = 3, 
+                     "E50" = 3,
+                     "E90" = 3))
 ```
 
 In the validation, ICI at 5 years was 0.03 and 0.02 for the basic and extended model, respectively.
@@ -1876,12 +1865,12 @@ score_boot_pgr <- function(split) {
 
 
 
-rott5_boot <- rott5_boot %>% mutate(
+rott5_boot <- rott5_boot |> mutate(
   IPA = map_dbl(splits, score_boot),
   IPA_pgr = map_dbl(splits, score_boot_pgr)
 ) # Development dataset
 
-gbsg5_boot <- gbsg5_boot %>% mutate(
+gbsg5_boot <- gbsg5_boot |> mutate(
   IPA = map_dbl(splits, score_boot),
   IPA_pgr = map_dbl(splits, score_boot_pgr)
 ) # Validation dataset
@@ -1992,8 +1981,8 @@ res_ov <- matrix(unlist(c(
 )
 
 res_ov <- round(res_ov, 2) # Digits
-kable(res_ov) %>%
-  kable_styling("striped", position = "center") %>%
+kable(res_ov) |>
+  kable_styling("striped", position = "center") |>
   add_header_above(c(" " = 1, 
                      "Apparent" = 3, 
                      "Internal" = 3, 
@@ -2267,7 +2256,7 @@ colnames(res_dca_val) <- c("Theshold",
 
 res_dca <- rbind(res_dca_dev, res_dca_val)
 rownames(res_dca) <- c("Development data", "Validation data")
-kable(res_dca) %>%
+kable(res_dca) |>
   kable_styling("striped")
 ```
 
