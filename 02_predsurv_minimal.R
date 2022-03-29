@@ -1,11 +1,11 @@
 # Libraries and options ----------------------------------
-
-library(survival)
-library(rms)
-library(pec)
-library(riskRegression)
-library(timeROC)
-library(tidyverse) 
+# General packages
+pkgs <- c("survival", "pec", "rms", 
+          "timeROC", "riskRegression", "tidyverse")
+vapply(pkgs, function(pkg) {
+  if (!require(pkg, character.only = TRUE)) install.packages(pkg)
+  require(pkg, character.only = TRUE, quietly = TRUE)
+}, FUN.VALUE = logical(length = 1L))
 
 options(show.signif.stars = FALSE)  # display statistical intelligence
 palette("Okabe-Ito")  # optionally use color-blind friendly color palette  (needs R 4.0)
