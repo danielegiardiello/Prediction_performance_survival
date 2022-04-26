@@ -39,7 +39,8 @@ The collaboration with STRATOS topic [groups](https://www.stratos-initiative.org
 | ------------------------------------------------------------ | ------------------------------------- | ----------------------|
 | [Daniele Giardiello](https://github.com/danielegiardiello/)  | The Netherlands Cancer Institute (NL) <br /> Leiden University Medical Center (NL) <br /> EURAC research (IT) | Author/maintainer     |
 | [David McLernon](https://twitter.com/davemclernon?lang=en) | University of Aberdeen (UK) | Author of SAS code              |
-| [Nan van Geloven](https://www.lumc.nl/org/bds/medewerkers/1216536) | Leiden University Medical Center (NL) | Review of minimal .R code |
+| [Laure Wynants](https://www.maastrichtuniversity.nl/laure.wynants) | Maastrict University (NL)  <br /> KU Leuven (BE) | Review of minimal .R code |
+| [Nan van Geloven](https://www.lumc.nl/org/bds/medewerkers/1216536) | Leiden University Medical Center (NL) | Review of 02_.R code |
 | [Edouard Bonneville](https://www.lumc.nl/org/bds/medewerkers/1968807) | Leiden University Medical Center (NL) | Contributor  |
 | [Terry Therneau](https://www.mayo.edu/research/faculty/therneau-terry-m-ph-d/bio-00025991) | Mayo Clinic (US)| Contributor  |
 
