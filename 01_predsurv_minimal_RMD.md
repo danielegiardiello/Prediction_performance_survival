@@ -100,24 +100,51 @@ Click to expand code
 </summary>
 
 ``` r
+# Data and recoding ----------------------------------
 # Development data
-# Recurrence free survival is the time until the earlier of
-#  recurrence or death. 
+
 rotterdam$ryear <- rotterdam$rtime/365.25  # time in years
-rotterdam$rfs <- with(rotterdam, pmax(recur, death)) #The variable rfs is a status indicator, 0=alive without relapse, 1= death or relapse.
-rotterdam$ryear[rotterdam$rfs == 1 & rotterdam$recur == 0 & rotterdam$death == 1 & (rotterdam$rtime < rotterdam$dtime)] <- rotterdam$dtime[rotterdam$rfs == 1 & rotterdam$recur == 0 & rotterdam$death == 1 & (rotterdam$rtime < rotterdam$dtime)]/365.25  #Fix the outcome for 43 patients who have died but censored at time of recurrence which was less than death time. The actual death time should be used rather than the earlier censored recurrence time.
+rotterdam$rfs <- with(rotterdam, pmax(recur, death)) #The variable rfs is a status indicator, 0 = alive without relapse, 1 = death or relapse.
+
+# Fix the outcome for 43 patients who have died but 
+# censored at time of recurrence which was less than death time. 
+# The actual death time should be used rather than the earlier censored recurrence time.
+
+rotterdam$ryear[rotterdam$rfs == 1 & 
+                  rotterdam$recur == 0 & 
+                  rotterdam$death == 1 & 
+                  (rotterdam$rtime < rotterdam$dtime)] <- 
+  
+  rotterdam$dtime[rotterdam$rfs == 1 &
+                    rotterdam$recur == 0 & 
+                    rotterdam$death == 1 & 
+                    (rotterdam$rtime < rotterdam$dtime)]/365.25  
 
 # variables used in the analysis
-pgr99 <- quantile(rotterdam$pgr, .99, type = 1) # there is a large outlier of 5000
+pgr99 <- quantile(rotterdam$pgr, .99, type = 1) # there is a large outlier of 5000, used type=1 to get same result as in SAS
 rotterdam$pgr2 <- pmin(rotterdam$pgr, pgr99) # Winsorized value
+nodes99 <- quantile(rotterdam$nodes, .99, type = 1) 
+rotterdam$nodes2 <- pmin(rotterdam$nodes, nodes99) # NOTE: winsorizing also continuous node?
+
 rotterdam$csize <- rotterdam$size           # categorized size
-rotterdam$cnode <- cut(rotterdam$nodes, c(-1, 0, 3, 51),
+rotterdam$cnode <- cut(rotterdam$nodes, 
+                       c(-1,0, 3, 51),
                        c("0", "1-3", ">3"))   # categorized node
 rotterdam$grade3 <- as.factor(rotterdam$grade)
 levels(rotterdam$grade3) <- c("1-2", "3")
 
 # Save in the data the restricted cubic spline term using Hmisc::rcspline.eval() package
-rcs3_pgr <- rcspline.eval(rotterdam$pgr2, knots = c(0, 41, 486))
+
+# Continuous nodes variable
+rcs3_nodes <- rcspline.eval(rotterdam$nodes2, 
+                            knots = c(0, 1, 9))
+attr(rcs3_nodes, "dim") <- NULL
+attr(rcs3_nodes, "knots") <- NULL
+rotterdam$nodes3 <- rcs3_nodes
+
+# PGR
+rcs3_pgr <- rcspline.eval(rotterdam$pgr2, 
+                          knots = c(0, 41, 486)) # using knots of the original variable (not winsorized)
 attr(rcs3_pgr, "dim") <- NULL
 attr(rcs3_pgr, "knots") <- NULL
 rotterdam$pgr3 <- rcs3_pgr
@@ -125,15 +152,25 @@ rotterdam$pgr3 <- rcs3_pgr
 # Validation data
 gbsg$ryear <- gbsg$rfstime/365.25
 gbsg$rfs   <- gbsg$status           # the GBSG data contains RFS
-gbsg$cnode <- cut(gbsg$nodes, c(-1,0, 3, 51),
-                       c("0", "1-3", ">3"))   # categorized node
-gbsg$csize <- cut(gbsg$size,  c(-1, 20, 50, 500), #categorized size
+gbsg$cnode <- cut(gbsg$nodes, 
+                  c(-1,0, 3, 51),
+                  c("0", "1-3", ">3"))   # categorized node
+gbsg$csize <- cut(gbsg$size,  
+                  c(-1, 20, 50, 500), #categorized size
                   c("<=20", "20-50", ">50"))
-gbsg$pgr2 <- pmin(gbsg$pgr, pgr99) # Winsorized value
+gbsg$pgr2 <- pmin(gbsg$pgr, pgr99) # Winsorized value of PGR
+gbsg$nodes2 <- pmin(gbsg$nodes, nodes99) # Winsorized value of continuous nodes
 gbsg$grade3 <- as.factor(gbsg$grade)
 levels(gbsg$grade3) <- c("1-2", "1-2", "3")
 
-# Restricted cubic spline for PGR
+# Restricted cubic spline 
+# Continuous nodes
+rcs3_nodes <- rcspline.eval(gbsg$nodes2, knots = c(0, 1, 9))
+attr(rcs3_nodes, "dim") <- NULL
+attr(rcs3_nodes, "knots") <- NULL
+gbsg$nodes3 <- rcs3_nodes
+
+# PGR
 rcs3_pgr <- rcspline.eval(gbsg$pgr2, knots = c(0, 41, 486))
 attr(rcs3_pgr, "dim") <- NULL
 attr(rcs3_pgr, "knots") <- NULL
@@ -142,13 +179,11 @@ gbsg$pgr3 <- rcs3_pgr
 
 # Much of the analysis will focus on the first 5 years: create
 #  data sets that are censored at 5
-temp <- survSplit(Surv(ryear, rfs) ~ ., data = rotterdam, 
-                  cut = 5,
-                  episode = "epoch")
+temp <- survSplit(Surv(ryear, rfs) ~ ., data = rotterdam, cut = 5,
+                  episode="epoch")
 rott5 <- subset(temp, epoch == 1)  # only the first 5 years
-temp <- survSplit(Surv(ryear, rfs) ~ ., data = gbsg, 
-                  cut = 5,
-                  episode = "epoch")
+temp <- survSplit(Surv(ryear, rfs) ~ ., data = gbsg, cut = 5,
+                  episode ="epoch")
 gbsg5 <- subset(temp, epoch == 1)
 
 # Relevel
@@ -190,7 +225,7 @@ pacman::p_load(survival,
               pec)
 
 # Fit the model without PGR
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
   data = rott5, 
   x = T, 
   y = T)
@@ -209,17 +244,17 @@ efit1_pgr  <- update(efit1, . ~ . + pgr2 + pgr3)
 </details>
 
     ## Call:
-    ## coxph(formula = Surv(ryear, rfs) ~ csize + cnode + grade3, data = rott5, 
-    ##     x = T, y = T)
+    ## coxph(formula = Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + 
+    ##     grade3, data = rott5, x = T, y = T)
     ## 
-    ##               coef exp(coef) se(coef)      z        p
-    ## csize20-50 0.38342   1.46729  0.06504  5.895 3.74e-09
-    ## csize>50   0.66355   1.94167  0.09126  7.271 3.57e-13
-    ## cnode1-3   0.35998   1.43330  0.07534  4.778 1.77e-06
-    ## cnode>3    1.06278   2.89440  0.07035 15.108  < 2e-16
-    ## grade33    0.37477   1.45466  0.07130  5.256 1.47e-07
+    ##                coef exp(coef) se(coef)      z        p
+    ## csize20-50  0.34184   1.40754  0.06542  5.225 1.74e-07
+    ## csize>50    0.57355   1.77456  0.09248  6.202 5.57e-10
+    ## nodes2      0.30397   1.35522  0.02810 10.816  < 2e-16
+    ## nodes3     -0.81117   0.44434  0.10461 -7.754 8.90e-15
+    ## grade33     0.36171   1.43578  0.07133  5.071 3.96e-07
     ## 
-    ## Likelihood ratio test=483.6  on 5 df, p=< 2.2e-16
+    ## Likelihood ratio test=531  on 5 df, p=< 2.2e-16
     ## n= 2982, number of events= 1275
 
 The coefficients of the models indicated that higher size, higher number
@@ -308,6 +343,15 @@ pacman::p_load(survival,
                pec,
                timeROC)
 
+# Fit the model without PGR
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
+  data = rott5, 
+  x = T, 
+  y = T)
+
+# The model with additional PGR marker
+efit1_pgr  <- update(efit1, . ~ . + pgr2 + pgr3)
+
 # Add linear predictor in the validation set
 gbsg5$lp <- predict(efit1, newdata = gbsg5)
 
@@ -330,13 +374,13 @@ Uno_C_gbsg5 <- concordance(Surv(ryear, rfs) ~ lp,
 </details>
 
     ##                              Estimate Lower .95 Upper .95
-    ## Harrell C - Validation data      0.65      0.62      0.68
-    ## Uno C - Validation data          0.64      0.61      0.67
+    ## Harrell C - Validation data      0.65      0.62      0.69
+    ## Uno C - Validation data          0.64      0.60      0.67
 
 Harrell C and Uno C were 0.65 and 0.64, respectively.
 
     ##   Uno AUC Lower .95 Upper .95 
-    ##      0.69      0.63      0.74
+    ##      0.68      0.62      0.73
 
 The time-dependent AUCs at 5 years were in the external validation was
 0.69.
@@ -426,7 +470,7 @@ OE_summary
 </details>
 
     ##        OE     2.5 %    97.5 % 
-    ## 1.0444489 0.9299645 1.1730270
+    ## 1.0173902 0.9058717 1.1426372
 
 Observed and expected ratio was 1.04.
 
@@ -438,6 +482,18 @@ Click to expand code
 </summary>
 
 ``` r
+# Fit the model without PGR
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
+  data = rott5, 
+  x = T, 
+  y = T)
+
+# The model with additional PGR marker
+efit1_pgr  <- update(efit1, . ~ . + pgr2 + pgr3)
+
+# Add linear predictor in the validation set
+gbsg5$lp <- predict(efit1, newdata = gbsg5)
+
 gval <- coxph(Surv(ryear, rfs) ~ lp, data = gbsg5)
 
 calslope_summary <- c(
@@ -452,7 +508,7 @@ calslope_summary
 </details>
 
     ## calibration slope.lp                2.5 %               97.5 % 
-    ##            1.0703257            0.8202242            1.3204271
+    ##            1.0562040            0.8158872            1.2965207
 
 ### 2.2.3 Moderate calibration - fixed time point
 
@@ -498,6 +554,15 @@ library(pacman)
 pacman::p_load(survival,
                Hmisc,
                rms)
+
+# Fit the model without PGR
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
+  data = rott5, 
+  x = T, 
+  y = T)
+
+# The model with additional PGR marker
+efit1_pgr  <- update(efit1, . ~ . + pgr2 + pgr3)
 
 gbsg5$pred <- 1 - predictSurvProb(efit1, 
                                   newdata = gbsg5, 
@@ -552,7 +617,16 @@ lines(dat_cal$pred,
       type = "l", 
       lty = 2, 
       lwd = 2)
-abline(0, 1, lwd = 2, lty = 2, col = "red")
+abline(0, 1, lwd = 2, lty = 2, col = 2)
+legend("bottomright",
+        c("Ideal calibration",
+          "'Secondary' Cox model using cloglog transformation",
+          "95% confidence interval"),
+        col = c(2, 1, 1),
+        lty = c(2, 1, 2),
+        lwd = c(2, 2, 2),
+        bty = "n",
+        cex = 0.85)
 
 # Numerical measures
 absdiff_cph <- abs(dat_cal$pred - dat_cal$obs)
@@ -567,10 +641,10 @@ numsum_cph
 
 </details>
 
-<img src="imgs/01_predsurv_simplified/cal_rcs-1.png" width="672" style="display: block; margin: auto;" />
+<img src="imgs/01_predsurv_simplified/cal_rcs-1.png" width="576" style="display: block; margin: auto;" />
 
     ##        ICI        E50        E90       Emax 
-    ## 0.02724664 0.02973399 0.06101062 0.06912009
+    ## 0.03017958 0.02627822 0.07466548 0.07543556
 
 Good calibration was estimated using calibration plot and calibration
 measures.
@@ -603,7 +677,7 @@ pacman::p_load(survival,
                pec)
 
 # Fit the model without PGR
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
   data = rott5, 
   x = T, 
   y = T)
@@ -657,7 +731,7 @@ df_boots <- do.call(rbind.data.frame, boots_ls)
 
     ##                                Estimate Lower .95  Upper .95
     ## Brier - Validation data            0.22       0.21      0.24
-    ## Scaled Brier - Validation data     0.10       0.05      0.16
+    ## Scaled Brier - Validation data     0.10       0.04      0.15
 
 Brier and scaled Brier score were 0.22 and 0.10, respectively.
 
@@ -731,6 +805,20 @@ library(pacman)
 pacman::p_load(survival,
                Hmisc)
 
+# Fit the model without PGR
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
+  data = rott5, 
+  x = T, 
+  y = T)
+
+# The model with additional PGR marker
+efit1_pgr  <- update(efit1, . ~ . + pgr2 + pgr3)
+
+# Predicted risk 
+gbsg5$pred <- 1 - predictSurvProb(efit1, 
+                                  newdata = gbsg5,
+                                  times = t_horizon)
+
 # Run decision curve analysis
 
 # Development data
@@ -752,39 +840,38 @@ par(xaxs = "i", yaxs = "i", las = 1)
 plot(dca_gbsg5$net.benefit$threshold,
   dca_gbsg5$net.benefit$pred,
   type = "l", 
-  lwd = 2,
-  lty = 1,
+  lwd = 3,
+  lty = 2,
   xlab = "Threshold probability in %", 
   ylab = "Net Benefit",
   xlim = c(0, 1), 
   ylim = c(-0.10, 0.60), 
   bty = "n",
   cex.lab = 1.2, 
-  cex.axis = 1
+  cex.axis = 1,
+  col = 4
 )
 
 lines(dca_gbsg5$net.benefit$threshold, 
       dca_gbsg5$net.benefit$none, 
       type = "l", 
-      lwd = 2, 
-      lty = 4)
+      lwd = 3, 
+      lty = 4,
+      col = 8)
 lines(dca_gbsg5$net.benefit$threshold, 
       dca_gbsg5$net.benefit$all, 
       type = "l", 
-      lwd = 2, 
-      col = "darkgray")
-lines(dca_gbsg5$net.benefit$threshold, 
-      dca_gbsg5$net.benefit$pred, 
-      type = "l", lwd = 2, lty = 5)
+      lwd = 3, 
+      col = 2)
 legend("topright",
   c(
     "Treat All",
     "Original model",
     "Treat None"
   ),
-  lty = c(1, 1, 4), 
-  lwd = 2, 
-  col = c("darkgray", "black", "black"),
+  lty = c(1, 2, 4), 
+  lwd = 3, 
+  col = c(2, 4, 8),
   bty = "n"
 )
 
@@ -794,7 +881,7 @@ dca_gbsg5$net.benefit[dca_gbsg5$net.benefit$threshold == 0.23, ]
 
 </details>
 
-    ## [1] "pred: No observations with risk greater than 84%, and therefore net benefit not calculable in this range."
+    ## [1] "pred: No observations with risk greater than 93%, and therefore net benefit not calculable in this range."
 
 <img src="imgs/01_predsurv_simplified/dca-1.png" width="672" style="display: block; margin: auto;" />
 
