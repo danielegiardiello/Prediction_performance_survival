@@ -1,6 +1,3 @@
-
-
-
 # Libraries and options ----------------------------------
 
 # General packages
@@ -29,14 +26,17 @@ rotterdam$ryear[rotterdam$rfs == 1 &
                   rotterdam$death == 1 & 
                   (rotterdam$rtime < rotterdam$dtime)] <- 
   
-rotterdam$dtime[rotterdam$rfs == 1 &
-                rotterdam$recur == 0 & 
-                rotterdam$death == 1 & 
-                (rotterdam$rtime < rotterdam$dtime)]/365.25  
+  rotterdam$dtime[rotterdam$rfs == 1 &
+                    rotterdam$recur == 0 & 
+                    rotterdam$death == 1 & 
+                    (rotterdam$rtime < rotterdam$dtime)]/365.25  
 
 # variables used in the analysis
 pgr99 <- quantile(rotterdam$pgr, .99, type = 1) # there is a large outlier of 5000, used type=1 to get same result as in SAS
 rotterdam$pgr2 <- pmin(rotterdam$pgr, pgr99) # Winsorized value
+nodes99 <- quantile(rotterdam$nodes, .99, type = 1) 
+rotterdam$nodes2 <- pmin(rotterdam$nodes, nodes99) # NOTE: winsorizing also continuous node?
+
 rotterdam$csize <- rotterdam$size           # categorized size
 rotterdam$cnode <- cut(rotterdam$nodes, 
                        c(-1,0, 3, 51),
@@ -45,8 +45,17 @@ rotterdam$grade3 <- as.factor(rotterdam$grade)
 levels(rotterdam$grade3) <- c("1-2", "3")
 
 # Save in the data the restricted cubic spline term using Hmisc::rcspline.eval() package
+
+# Continuous nodes variable
+rcs3_nodes <- rcspline.eval(rotterdam$nodes2, 
+                            knots = c(0, 1, 9))
+attr(rcs3_nodes, "dim") <- NULL
+attr(rcs3_nodes, "knots") <- NULL
+rotterdam$nodes3 <- rcs3_nodes
+
+# PGR
 rcs3_pgr <- rcspline.eval(rotterdam$pgr2, 
-                          knots = c(0, 41, 486))
+                          knots = c(0, 41, 486)) # using knots of the original variable (not winsorized)
 attr(rcs3_pgr, "dim") <- NULL
 attr(rcs3_pgr, "knots") <- NULL
 rotterdam$pgr3 <- rcs3_pgr
@@ -60,11 +69,19 @@ gbsg$cnode <- cut(gbsg$nodes,
 gbsg$csize <- cut(gbsg$size,  
                   c(-1, 20, 50, 500), #categorized size
                   c("<=20", "20-50", ">50"))
-gbsg$pgr2 <- pmin(gbsg$pgr, pgr99) # Winsorized value
+gbsg$pgr2 <- pmin(gbsg$pgr, pgr99) # Winsorized value of PGR
+gbsg$nodes2 <- pmin(gbsg$nodes, nodes99) # Winsorized value of continuous nodes
 gbsg$grade3 <- as.factor(gbsg$grade)
 levels(gbsg$grade3) <- c("1-2", "1-2", "3")
 
-# Restricted cubic spline for PGR
+# Restricted cubic spline 
+# Continuous nodes
+rcs3_nodes <- rcspline.eval(gbsg$nodes2, knots = c(0, 1, 9))
+attr(rcs3_nodes, "dim") <- NULL
+attr(rcs3_nodes, "knots") <- NULL
+gbsg$nodes3 <- rcs3_nodes
+
+# PGR
 rcs3_pgr <- rcspline.eval(gbsg$pgr2, knots = c(0, 41, 486))
 attr(rcs3_pgr, "dim") <- NULL
 attr(rcs3_pgr, "knots") <- NULL
@@ -87,7 +104,7 @@ gbsg5$cnode <- relevel(gbsg$cnode, "0")
 
 # Model development -------------------------------------
 
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
                data = rott5, 
                x = T, 
                y = T)
@@ -335,7 +352,9 @@ df_nb <- do.call(rbind.data.frame, list_nb)
 # read off at 23% threshold
 df_nb[df_nb$threshold == 0.23,]
 
+# Decision curves plot
 # Make basic decision curve plot
+win.graph()
 par(
   xaxs = "i", 
   yaxs = "i", 
@@ -343,28 +362,40 @@ par(
   mar = c(6.1, 5.8, 4.1, 2.1), 
   mgp = c(4.25, 1, 0)
 )
-plot(
-  df_nb$threshold, 
-  df_nb$NB,
-  type = "l", 
-  lwd = 2,
-  ylim = c(-0.1, 0.6),
-  xlim = c(0, 1), 
-  xlab = "",
-  ylab = "Net Benefit",
-  bty = "n", 
+plot(df_nb$threshold,
+     df_nb$NB,
+     type = "l", 
+     lwd = 3,
+     lty = 2,
+     xlab = "Threshold probability in %", 
+     ylab = "Net Benefit",
+     xlim = c(0, 1), 
+     ylim = c(-0.10, 0.60), 
+     bty = "n",
+     cex.lab = 1.2, 
+     cex.axis = 1,
+     col = 4
 )
-lines(df_nb$threshold, df_nb$treat_all, type = "l", col = "darkgray", lwd = 2)
-abline(h = 0, lty = 2, lwd = 2)
-legend(
-  "topright", 
-  c("Treat all", "Treat none", "Prediction model"),
-  lwd = c(2, 2, 2), 
-  lty = c(1, 2, 1), 
-  col = c("darkgray", "black", "black"), 
-  bty = "n"
+abline(h = 0, 
+      lwd = 3, 
+      lty = 4,
+      col = 8)
+lines(df_nb$threshold, 
+      df_nb$treat_all, 
+      type = "l", 
+      lwd = 3, 
+      col = 2)
+legend("topright",
+       c(
+         "Treat All",
+         "Original model",
+         "Treat None"
+       ),
+       lty = c(1, 2, 4), 
+       lwd = 3, 
+       col = c(2, 4, 8),
+       bty = "n"
 )
-mtext("Threshold probability", 1, line = 2)
 title("Validation data")
 
 # NOTES ---------------------------
