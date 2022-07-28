@@ -736,6 +736,7 @@ source(here::here("Functions/brier_score.R"))
   <summary>Click to expand code</summary>
   
 ```{r, overall, warning=FALSE, message=FALSE, echo=TRUE, eval=FALSE}
+
 brier_gbsg5 <-
   brier_score(
     tfup = gbsg5$ryear, status = gbsg5$rfs,
