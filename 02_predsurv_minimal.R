@@ -13,31 +13,38 @@ palette("Okabe-Ito")  # optionally use color-blind friendly color palette  (need
 # Data and recoding ----------------------------------
 # Validation data
 gbsg$ryear <- gbsg$rfstime/365.25
-gbsg$rfs   <- gbsg$status           
+gbsg$rfs   <- gbsg$status           # the GBSG data contains RFS
 gbsg$cnode <- cut(gbsg$nodes, 
                   c(-1,0, 3, 51),
                   c("0", "1-3", ">3"))   # categorized node
 gbsg$csize <- cut(gbsg$size,  
                   c(-1, 20, 50, 500), #categorized size
                   c("<=20", "20-50", ">50"))
-pgr99 <- 1360 #99th percentile from development dataset
-gbsg$pgr2 <- pmin(gbsg$pgr, pgr99) # Winsorized value
+pgr99 <- 1360 #p99 from development data 
+gbsg$pgr2 <- pmin(gbsg$pgr, pgr99) # Winsorized value of PGR
+nodes99 <- 19 #p99 from development data 
+gbsg$nodes2 <- pmin(gbsg$nodes, nodes99) # Winsorized value of continuous nodes
 gbsg$grade3 <- as.factor(gbsg$grade)
 levels(gbsg$grade3) <- c("1-2", "1-2", "3")
 
-# Restricted cubic spline for PGR
-rcs3_pgr <- rcspline.eval(gbsg$pgr2, 
-                          knots = c(0, 41, 486))
+# Restricted cubic spline 
+# Continuous nodes
+rcs3_nodes <- rcspline.eval(gbsg$nodes2, knots = c(0, 1, 9))
+attr(rcs3_nodes, "dim") <- NULL
+attr(rcs3_nodes, "knots") <- NULL
+gbsg$nodes3 <- rcs3_nodes
+
+# PGR
+rcs3_pgr <- rcspline.eval(gbsg$pgr2, knots = c(0, 41, 486))
 attr(rcs3_pgr, "dim") <- NULL
 attr(rcs3_pgr, "knots") <- NULL
 gbsg$pgr3 <- rcs3_pgr
 
-# The analysis will focus on the first 5 years: create
-# data set with censoring at 5 years
-temp <- survSplit(Surv(ryear, rfs) ~ ., 
-                  data = gbsg, 
-                  cut = 5,
-                  episode = "epoch")
+
+# Much of the analysis will focus on the first 5 years: create
+#  data sets that are censored at 5
+temp <- survSplit(Surv(ryear, rfs) ~ ., data = gbsg, cut = 5,
+                  episode ="epoch")
 gbsg5 <- subset(temp, epoch == 1)
 
 # Relevel
@@ -45,7 +52,7 @@ gbsg5$cnode <- relevel(gbsg$cnode, "0")
 
 # Absolute risk calculation -------------
 # Baseline survival at 5 years - basic model
-S0.5yr <- 0.80153 
+S0.5yr <- 0.804
 # Design matrix of predictors
 des_matr <- as.data.frame(model.matrix(~ csize + cnode + grade3, data = gbsg5))
 des_matr$`(Intercept)` <- NULL
@@ -58,7 +65,7 @@ gbsg5$pred5 <-  as.vector(1 - S0.5yr**exp(gbsg5$PI))
 
 #Absolute risk  at 5 yrs - Extended model with PGR ---------------
 # Baseline survival at 5 years - extended model
-S0.5yr_pgr <- 0.75852  
+S0.5yr_pgr <- 0.761 
 # Design matrix of predictors
 des_matr <- as.data.frame(model.matrix(~ csize + cnode + grade3 + 
                                          I(pgr2) + I(pgr3), data = gbsg5))
