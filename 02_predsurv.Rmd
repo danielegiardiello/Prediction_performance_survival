@@ -143,10 +143,10 @@ This part must be run for all following parts of the code. After running this, t
 # Baseline survival at 5 years - basic model
 S0.5yr <- 0.804 
 # Design matrix of predictors
-des_matr <- as.data.frame(model.matrix(~ csize + cnode + grade3, data = gbsg5))
+des_matr <- as.data.frame(model.matrix(~ csize + nodes2 + nodes3 + grade3,                                    data = gbsg5))
 des_matr$`(Intercept)` <- NULL
 # Coefficients
-coef <- c(0.383, 0.664, 0.360, 1.063,  0.375)
+coef <- c(0.342, 0.574, 0.304, -0.811,  0.362)
 # Prognostic index (PI)
 gbsg5$PI <- as.vector(as.matrix(des_matr) %*% cbind(coef))
 # Estimated absolute risk at 5 years (1 - S(t), 1 - survival at time t)
@@ -156,12 +156,13 @@ gbsg5$pred5 <-  as.vector(1 - S0.5yr**exp(gbsg5$PI))
 # Baseline survival at 5 years - extended model
 S0.5yr_pgr <- 0.761 
 # Design matrix of predictors
-des_matr <- as.data.frame(model.matrix(~ csize + cnode + grade3 + 
+des_matr <- as.data.frame(model.matrix(~ csize + 
+                                         nodes2 + nodes3 + grade3 + 
                                          I(pgr2) + I(pgr3), data = gbsg5))
 des_matr$`(Intercept)` <- NULL
 # Coefficients
-coef <- c(0.362, 0.641, 0.381, 
-          1.059, 0.317, -0.003, 0.013)
+coef <- c(0.320, 0.554, 0.305, 
+          -0.820, 0.305, -0.003, 0.013)
 # Prognostic index (PI)
 gbsg5$PI_pgr <- as.vector(as.matrix(des_matr) %*% cbind(coef))
 # Absolute risk at 5 years (1 - S(t), 1 - survival at time t)
