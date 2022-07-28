@@ -412,7 +412,6 @@ kable(res_OE) |>
   add_header_above(c(" " = 1, 
                      "External" = 3, 
                      "External + PGR" = 3))
-
 ```
 Observed and Expected ratio is 1.07 (95% CI: 0.93 - 1.17) for the basic model and 1.02 (95% CI: 0.91 - 1.14) for the extended model.
 
@@ -660,7 +659,6 @@ numsum_cph_pgr <- c(
 )
 
 ```
-
 </details>
 
 ```{r, cal_rcs_metrics, fig.align='center', warning=FALSE, eval=TRUE}
