@@ -266,12 +266,11 @@ res_C  <- matrix(temp,
 )
 
 res_C <- round(res_C, 2) # Digit
-kable(res_C) %>%
-  kable_styling("striped") %>%
+kable(res_C) |>
+  kable_styling("striped") |>
   add_header_above(c(" " = 1, "External" = 3, "External + PGR" = 3))
 ```
-Concordance was between 0.64 and 0.68. The extended model slightly improved
-discrimination ability compared to the basic model.  
+Concordance was between 0.64 and 0.68. The extended model slightly improved discrimination ability compared to the basic model.  
 
 <details>
   <summary>Click to expand code</summary>
@@ -333,12 +332,12 @@ dimnames =
 )
 
 res_discr <- round(res_discr, k)
-kable(res_discr) %>%
-  kable_styling("striped") %>%
+kable(res_discr) |>
+  kable_styling("striped") |>
   add_header_above(c(" " = 1, "External" = 3, "External + PGR" = 3))
 ```
 
-The time-dependent AUCs at 5 years in the external validation were 0.69 and 0.71 for the basic and extended model, respectively.
+The time-dependent AUCs at 5 years in the external validation were 0.68 and 0.70 for the basic and extended model, respectively.
 
 
 ### 1.3 Calibration
@@ -408,8 +407,8 @@ res_OE <- matrix(c(OE,
 )
 
 res_OE <- round(res_OE, 2)
-kable(res_OE) %>%
-  kable_styling("striped", position = "center") %>%
+kable(res_OE) |>
+  kable_styling("striped", position = "center") |>
   add_header_above(c(" " = 1, 
                      "External" = 3, 
                      "External + PGR" = 3))
@@ -473,8 +472,8 @@ res_cal <- matrix(c(
 )
 
 res_cal <- round(res_cal, 2)
-kable(res_cal) %>%
-  kable_styling("striped", position = "center") %>%
+kable(res_cal) |>
+  kable_styling("striped", position = "center") |>
   add_header_above(c(" " = 1, 
                      "External" = 3, 
                      "External + PGR" = 3))
@@ -501,7 +500,7 @@ Moderate calibration at fixed time point can be assessed using flexible calibrat
 
 <details>
   <summary>Click to expand code</summary>
-```{r, cal_rcs_metrics, fig.align='center', echo=TRUE, eval=FALSE}
+```{r, cal_rcs_metrics, fig.align='center', echo=TRUE, eval=FALSE, fig.width = 6, fig.height = 6}
 if (!require("pacman")) install.packages("pacman")
 library(pacman)
 pacman::p_load(survival,
@@ -594,7 +593,16 @@ lines(dat_cal$pred,
       type = "l", 
       lty = 2, 
       lwd = 2)
-abline(0, 1, lwd = 2, lty = 2, col = "red")
+abline(0, 1, lwd = 2, lty = 2, col = 2)
+legend("bottomright",
+        c("Ideal calibration",
+          "Calibration curve based on secondary Cox model",
+          "95% confidence interval"),
+        col = c(2, 1, 1),
+        lty = c(2, 1, 2),
+        lwd = c(2, 2, 2),
+        bty = "n",
+        cex = 0.85)
 title("Basic model - validation data ")
 
 
@@ -610,8 +618,7 @@ plot(
   ylim = c(0, 1), 
   lwd = 2,
   xlab = "Predicted risk from developed model",
-  ylab = "Predicted risk from refitted model", 
-  bty = "n"
+  ylab = "Predicted risk from refitted model", bty = "n"
 )
 lines(dat_cal$pred_pgr, 
       dat_cal$lower_pgr, 
@@ -623,7 +630,16 @@ lines(dat_cal$pred_pgr,
       type = "l", 
       lty = 2, 
       lwd = 2)
-abline(0, 1, lwd = 2, lty = 2, col = "red")
+abline(0, 1, lwd = 2, lty = 2, col = 2)
+legend("bottomright",
+        c("Ideal calibration",
+          "Calibration curve based on secondary Cox model",
+          "95% confidence interval"),
+        col = c(2, 1, 1),
+        lty = c(2, 1, 2),
+        lwd = c(2, 2, 2),
+        bty = "n",
+        cex = 0.85)
 title("Extended model - validation data ")
 
 # Numerical measures ---------------
@@ -663,7 +679,7 @@ res_numcal <- matrix(c(numsum_cph,
 )
 
 res_numcal <- round(res_numcal, 2)
-kable(res_numcal) %>%
+kable(res_numcal) |>
   kable_styling("striped", position = "center")
 ```
 
@@ -836,8 +852,8 @@ dimnames = list(
 
 res_ov <- round(res_ov, 2) # Digits
 
-kable(res_ov) %>%
-  kable_styling("striped") %>%
+kable(res_ov) |>
+  kable_styling("striped") |>
   add_header_above(c(" " = 1, "External" = 3, "External + PGR" = 3))
 ```
 
@@ -980,7 +996,7 @@ colnames(res_dca) <- c("Theshold",
                        "Net benefit - Treat all",
                        "Net benefit - basic model",
                        "Net benefit - extended model with PGR")
-kable(res_dca) %>%
+kable(res_dca) |>
   kable_styling("striped")
 ```
 
