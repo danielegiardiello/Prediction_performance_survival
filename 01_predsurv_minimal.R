@@ -240,6 +240,7 @@ dat_cal <- cbind.data.frame(
 
 dat_cal <- dat_cal[order(dat_cal$pred), ]
 
+win.graph()
 par(xaxs = "i", yaxs = "i", las = 1)
 plot(
   dat_cal$pred, 
@@ -249,8 +250,8 @@ plot(
   xlim = c(0, 1),
   ylim = c(0, 1), 
   lwd = 2,
-  xlab = "Predicted probability",
-  ylab = "Observed probability", bty = "n"
+  xlab = "Predicted risk from developed model",
+  ylab = "Predicted risk from refitted model", bty = "n"
 )
 lines(dat_cal$pred, 
       dat_cal$lower, 
@@ -262,7 +263,16 @@ lines(dat_cal$pred,
       type = "l", 
       lty = 2, 
       lwd = 2)
-abline(0, 1, lwd = 2, lty = 2, col = "red")
+abline(0, 1, lwd = 2, lty = 2, col = 2)
+legend("bottomright",
+       c("Ideal calibration",
+         "Calibration curve based on secondary Cox model",
+         "95% confidence interval"),
+       col = c(2, 1, 1),
+       lty = c(2, 1, 2),
+       lwd = c(2, 2, 2),
+       bty = "n",
+       cex = 0.85)
 
 # Numerical measures
 absdiff_cph <- abs(dat_cal$pred - dat_cal$obs)

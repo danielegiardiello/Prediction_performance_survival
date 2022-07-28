@@ -311,8 +311,9 @@ res_C
 ```
 Harrell C and Uno C were 0.65 and 0.64, respectively.
 
-
-```{r, AUC, warning=FALSE, echo=FALSE, fig.width=6, fig.height=6}
+<details>
+  <summary>Click to expand code</summary>
+```{r, AUC, warning=FALSE, echo=TRUE, eval=FALSE, fig.width=6, fig.height=6}
 # Time-dependent AUC (in Table 3 called Uno's TD AUC at 5 years) ###
 
 # External validation
@@ -328,6 +329,10 @@ Uno_gbsg5 <-
   )
 
 # COMMENT: if you have a lot of data n > 2000, standard error computation may be really long. Please use bootstrap percentile to calculate confidence intervals.
+```
+</details>
+
+```{r, AUC, fig.align='center', warning=FALSE, eval=TRUE, fig.width=6, fig.height=6}
 ```
 
 ```{r, AUC_table, warning=FALSE, echo=FALSE, fig.width=6, fig.height=6}
@@ -346,7 +351,8 @@ res_discr <- round(res_discr, k)
 res_discr
 ```
 
-The time-dependent AUCs at 5 years were in the external validation was 0.69.
+
+The time-dependent AUCs at 5 years were in the external validation was 0.68.
 
 
 ### 2.2 Calibration
@@ -522,8 +528,8 @@ plot(
   xlim = c(0, 1),
   ylim = c(0, 1), 
   lwd = 2,
-  xlab = "Predicted probability",
-  ylab = "Observed probability", bty = "n"
+  xlab = "Predicted risk from developed model",
+  ylab = "Predicted risk from refitted model", bty = "n"
 )
 lines(dat_cal$pred, 
       dat_cal$lower, 
@@ -538,7 +544,7 @@ lines(dat_cal$pred,
 abline(0, 1, lwd = 2, lty = 2, col = 2)
 legend("bottomright",
         c("Ideal calibration",
-          "'Secondary' Cox model using cloglog transformation",
+          "Calibration curve based on secondary Cox model",
           "95% confidence interval"),
         col = c(2, 1, 1),
         lty = c(2, 1, 2),
