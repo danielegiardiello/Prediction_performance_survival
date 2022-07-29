@@ -2104,33 +2104,34 @@ par(xaxs = "i", yaxs = "i", las = 1)
 plot(dca_rott5$net.benefit$threshold,
   dca_rott5$net.benefit$pred5,
   type = "l", 
-  lwd = 2, 
-  lty = 1,
+  lwd = 3, 
+  lty = 2,
   xlab = "Threshold probability in %", 
   ylab = "Net Benefit",
   xlim = c(0, 1),
   ylim = c(-0.10, 0.45), 
   bty = "n",
   cex.lab = 1.2, 
-  cex.axis = 1
+  cex.axis = 1,
+  col = 4
 )
-# legend('topright',c('Treat all','Treat none','Prediction model'),
-#        lwd=c(2,2,2),lty=c(1,1,2),col=c('darkgray','black','black'),bty='n')
-lines(dca_rott5$net.benefit$threshold, 
-      dca_rott5$net.benefit$none, 
-      type = "l", 
-      lwd = 2, 
-      lty = 4)
+abline(h = 0, 
+       type = "l", 
+       lwd = 3, 
+       lty = 4,
+       col = 8)
 lines(dca_rott5$net.benefit$threshold, 
       dca_rott5$net.benefit$all, 
       type = "l",
-      lwd = 2, 
-      col = "darkgray")
+      lwd = 3,
+      lty = 4,
+      col = 2)
 lines(dca_rott5_pgr$net.benefit$threshold, 
       dca_rott5_pgr$net.benefit$pred5_pgr, 
       type = "l", 
-      lwd = 2, 
-      lty = 5)
+      lwd = 3, 
+      lty = 5,
+      col = 7)
 legend("topright",
   c(
     "Treat All",
@@ -2138,12 +2139,12 @@ legend("topright",
     "Original model + PGR",
     "Treat None"
   ),
-  lty = c(1, 1, 5, 4), 
-  lwd = 2, 
-  col = c("darkgray", "black", "black", "black"),
+  lty = c(4, 2, 5, 4), 
+  lwd = 3, 
+  col = c(2, 4, 7, 8),
   bty = "n"
 )
-title("Development data", adj = 0, cex = 1.5)
+title("Development data", cex = 1.5)
 
 
 # External data
@@ -2191,31 +2192,35 @@ par(xaxs = "i", yaxs = "i", las = 1)
 plot(dca_gbsg5$net.benefit$threshold,
   dca_gbsg5$net.benefit$pred5,
   type = "l", 
-  lwd = 2, 
-  lty = 1,
+  lwd = 3, 
+  lty = 2,
   xlab = "Threshold probability in %", 
   ylab = "Net Benefit",
   xlim = c(0, 1), 
   ylim = c(-0.10, 0.60), 
   bty = "n",
   cex.lab = 1.2, 
-  cex.axis = 1
+  cex.axis = 1,
+  col = 4
+  
 )
-lines(dca_gbsg5$net.benefit$threshold, 
-      dca_gbsg5$net.benefit$none, 
-      type = "l", 
-      lwd = 2, 
-      lty = 4)
+abline(h = 0, 
+       type = "l", 
+       lwd = 3, 
+       lty = 4,
+       col = 8)
 lines(dca_gbsg5$net.benefit$threshold, 
       dca_gbsg5$net.benefit$all, 
       type = "l", 
-      lwd = 2, 
-      col = "darkgray")
+      lwd = 3,
+      lty = 2,
+      col = 2)
 lines(dca_gbsg5_pgr$net.benefit$threshold,
       dca_gbsg5_pgr$net.benefit$pred5_pgr, 
       type = "l", 
-      lwd = 2, 
-      lty = 5)
+      lwd = 3, 
+      lty = 5,
+      col = 7)
 legend("topright",
   c(
     "Treat All",
@@ -2223,11 +2228,12 @@ legend("topright",
     "Original model + PGR",
     "Treat None"
   ),
-  lty = c(1, 1, 5, 4), lwd = 2, 
-  col = c("darkgray", "black", "black", "black"),
+  lty = c(4, 2, 5, 4), 
+  lwd = 3, 
+  col = c(2, 4, 7, 8),
   bty = "n"
 )
-title("External data", adj = 0, cex = 1.5)
+title("External data", cex = 1.5)
 ```
 </details>
   
