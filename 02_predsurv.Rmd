@@ -25,7 +25,6 @@ The goals are:
 1. to assess the prediction performance of a published prediction model with a time-to-event outcome in a new independent (external) data;   
 2. to assess the potential clinical utility of a prediction model with time-to-event outcome in the new data; 
 
-
 ## Install/load packages and import data
 First of all, install the R packages essential for the analyses.
 We following libraries are needed to achieve the following goals. If you don't have them installed, please use install.packages('') (e.g. install.packages('survival')) or use the user-friendly approach if you are using RStudio.
@@ -661,7 +660,7 @@ numsum_cph_pgr <- c(
 ```
 </details>
 
-```{r, cal_rcs_metrics, fig.align='center', warning=FALSE, eval=TRUE}
+```{r, cal_rcs_metrics, fig.align='center', fig.width = 6, fig.height = 6, warning=FALSE, eval=TRUE}
 ```
 
 ```{r, res_numcal, message=FALSE,warning=FALSE, fig.align='center',include=TRUE, echo=FALSE}
@@ -705,7 +704,7 @@ pacman::p_load(riskRegression)
 
 # For basic model
 score_gbsg5 <-
-  Score(list(gbsg5$pred5),
+  Score(list("Validation" = gbsg5$pred5),
         formula = Surv(ryear, rfs) ~ 1, 
         data = gbsg5, 
         conf.int = TRUE, 
@@ -716,7 +715,7 @@ score_gbsg5 <-
 
 # For extended code including PGR
 score_gbsg5_pgr <-
-  Score(list(gbsg5$pred5_pgr),
+  Score(list("Validation with PGR" = gbsg5$pred5_pgr),
         formula = Surv(ryear, rfs) ~ 1, 
         data = gbsg5, 
         conf.int = TRUE, 
@@ -728,112 +727,40 @@ score_gbsg5_pgr <-
 # Extra: bootstrap confidence intervals for IPA ------
 B <- 100
 horizon <- 4.99
-boots_ls <- lapply(seq_len(B), function(b) {
-  
-  # Resample validation data
-  data_boot <- gbsg5[sample(nrow(gbsg5), replace = TRUE), ]
+data_boot <- list()
+b_score <- list()
+b_score_pgr <- list()
+ipa_boot <- c()
+ipa_boot_pgr <- c()
 
+for (j in 1:B) {
+  data_boot[[j]] <- gbsg5[sample(nrow(gbsg5), replace = TRUE), ]
   
-  # Get IPA on boot validation data
-  score_boot <- Score(
-    list("cox_validation" = efit1),
+  b_score[[j]] <- Score(
+    list("Validation" =  data_boot[[j]]$pred5),
     formula = Surv(ryear, rfs) ~ 1,
     cens.model = "km", 
-    data = data_boot, 
+    data = data_boot[[j]], 
     conf.int = FALSE, 
     times = horizon,
     metrics = c("brier"),
     summary = c("ipa")
   )
-  
-  #.. can add other measure heres, eg. concordance
-  
-  ipa_boot <- score_boot$Brier$score[model == "cox_validation"][["IPA"]]
-  cbind.data.frame("ipa" = ipa_boot)
-})
 
-df_boots <- do.call(rbind.data.frame, boots_ls)
-
-
-brier_gbsg5 <-
-  brier_score(
-    tfup = gbsg5$ryear, status = gbsg5$rfs,
-    thorizon = 4.99, survival = 1 - gbsg5$pred5
-  )
-
-brier_gbsg5b_pgr <-
-  brier_score(
-    tfup = gbsg5$ryear, status = gbsg5$rfs,
-    thorizon = 4.99, survival = 1 - gbsg5$pred5_pgr
-  )
-
-## Overall measures: Bootstrap confidence intervals ---------------
-B <- 100
-horizon <- 4.99
-set.seed(12345)
-boots_ls <- lapply(seq_len(B), function(b) {
-  
-  # Resample validation data
-  data_boot <- gbsg5[sample(nrow(gbsg5), replace = TRUE), ]
-
-  
-  # Get overall measures on boot validation data
-  BS_boot <- brier_score(
-    tfup = data_boot$ryear, status = data_boot$rfs,
-    thorizon = 4.99, survival = 1 - data_boot$pred5
-  )
-  
-  # Get overall measures on boot validation data
-  BS_boot_pgr <- brier_score(
-    tfup = data_boot$ryear, status = data_boot$rfs,
-    thorizon = 4.99, survival = 1 - data_boot$pred5_pgr
-  )
-    
-  brier_boot <- BS_boot["Brier"]
-  scaled_brier <- BS_boot["IPA"]
-  brier_boot_pgr <- BS_boot_pgr["Brier"]
-  scaled_brier_pgr <- BS_boot_pgr["IPA"]
-  #.. can add other measure heres, eg. concordance
-  
-  cbind.data.frame(
-    "Brier" = brier_boot,
-    "Scaled Brier" = scaled_brier,
-    "Brier with PGR" = brier_boot_pgr,
-    "Scaled Brier with PGR" = scaled_brier_pgr)
-})
-
-df_boots <- do.call(rbind.data.frame, boots_ls)
-
-
-# Extra: bootstrap confidence intervals for IPA ------
-B <- 100
-horizon <- 4.99
-boots_ls <- lapply(seq_len(B), function(b) {
-  
-  # Resample validation data
-  data_boot <- gbsg5[sample(nrow(gbsg5), replace = TRUE), ]
-
-  
-  # Get IPA on boot validation data
-  score_boot <- Score(
-    list("cox_validation" = efit1),
+   b_score_pgr[[j]] <- Score(
+    list("Validation with PGR" =  data_boot[[j]]$pred5_pgr),
     formula = Surv(ryear, rfs) ~ 1,
     cens.model = "km", 
-    data = data_boot, 
+    data = data_boot[[j]], 
     conf.int = FALSE, 
     times = horizon,
     metrics = c("brier"),
     summary = c("ipa")
   )
-  
-  #.. can add other measure heres, eg. concordance
-  
-  ipa_boot <- score_boot$Brier$score[model == "cox_validation"][["IPA"]]
-  cbind.data.frame("ipa" = ipa_boot)
-})
-
-df_boots <- do.call(rbind.data.frame, boots_ls)
-
+   
+   ipa_boot[j] <- b_score[[j]]$Brier$score[model == "Validation"][["IPA"]]
+   ipa_boot_pgr[j] <- b_score_pgr[[j]]$Brier$score[model == "Validation with PGR"][["IPA"]]
+}
 
 ```
 </details>
@@ -847,20 +774,21 @@ df_boots <- do.call(rbind.data.frame, boots_ls)
 alpha <- .05
 k <- 2 # number of digits
 res_ov <- matrix(c(
-  brier_gbsg5["Brier"],
-  quantile(df_boots$Brier, probs = alpha / 2),
-  quantile(df_boots$Brier, probs = 1 - alpha / 2),
+  score_gbsg5$Brier$score[model == "Validation"][["Brier"]],
+  score_gbsg5$Brier$score[model == "Validation"][["lower"]],
+  score_gbsg5$Brier$score[model == "Validation"][["upper"]],
   
-  brier_gbsg5b_pgr["Brier"],
-  quantile(df_boots$"Brier with PGR", probs = alpha / 2),
-  quantile(df_boots$"Brier with PGR", probs = 1 - alpha / 2),
+  score_gbsg5_pgr$Brier$score[model == "Validation with PGR"][["Brier"]],
+  score_gbsg5_pgr$Brier$score[model == "Validation with PGR"][["lower"]],
+  score_gbsg5_pgr$Brier$score[model == "Validation with PGR"][["upper"]],
   
-  brier_gbsg5["IPA"],
-  quantile(df_boots$"Scaled Brier", probs = alpha / 2),
-  quantile(df_boots$"Scaled Brier", probs = 1 - alpha / 2),
-  brier_gbsg5b_pgr["IPA"],
-  quantile(df_boots$"Scaled Brier with PGR", probs = alpha / 2),
-  quantile(df_boots$"Scaled Brier with PGR", probs = 1 - alpha / 2)
+  score_gbsg5$Brier$score[model == "Validation"][["IPA"]],
+  quantile(ipa_boot, probs = alpha / 2),
+  quantile(ipa_boot, probs = 1 - alpha / 2),
+  
+  score_gbsg5_pgr$Brier$score[model == "Validation with PGR"][["IPA"]],
+  quantile(ipa_boot_pgr, probs = alpha / 2),
+  quantile(ipa_boot_pgr, probs = 1 - alpha / 2)
 ),
 nrow = 2, ncol = 6, byrow = T,
 dimnames = list(
@@ -876,8 +804,7 @@ kable(res_ov) |>
   add_header_above(c(" " = 1, "External" = 3, "External + PGR" = 3))
 ```
 
-As expected the overall performance measures were lower in the external validation compared to the performance in the development data. Including PGR slightly improved the overall performance.
-
+Overall performances for the basic and extended model are quite similar in the validation data.  
 
 ## Goal 2. Clinical utility
 
@@ -939,7 +866,6 @@ source(here::here('Functions/stdca.R'))
 # External data
 # Run decision curve analysis
 
-# Development data
 # Model without PGR
 gbsg5 <- as.data.frame(gbsg5)
 dca_gbsg5 <- stdca(
@@ -984,9 +910,9 @@ lines(dca_gbsg5$net.benefit$threshold,
 lines(dca_gbsg5_pgr$net.benefit$threshold,
       dca_gbsg5_pgr$net.benefit$pred5_pgr, 
       type = "l", 
-      lwd = 2, 
+      lwd = 3, 
       lty = 5,
-      col = 9)
+      col = 7)
 legend("topright",
   c(
     "Treat All",
@@ -994,35 +920,16 @@ legend("topright",
     "Original model + PGR",
     "Treat None"
   ),
-  lty = c(1, 1, 5, 4), lwd = 2, 
-  col = c("darkgray", "black", "black", "black"),
+  lty = c(1, 2, 5, 4), lwd = 3, 
+  col = c(2, 4, 7, 8),
   bty = "n"
 )
-title("B External data", adj = 0, cex = 1.5)
+title("Validation set", cex = 1.5)
 ```
 </details>
 
 ```{r, dca, fig.align='center', warning=FALSE, eval=TRUE}
 ```
-
-```{r, res_dca, echo=FALSE}
-#read off at 23% threshold
-res_dca <- round(cbind(
-  dca_gbsg5$net.benefit[dca_gbsg5$net.benefit$threshold == 0.23, 
-                        c("threshold", "all", "pred5")],
-  dca_gbsg5_pgr$net.benefit[dca_gbsg5_pgr$net.benefit$threshold == 0.23,
-                      c("pred5_pgr")]), 3)
-
-rownames(res_dca) <- NULL
-colnames(res_dca) <- c("Theshold", 
-                       "Net benefit - Treat all",
-                       "Net benefit - basic model",
-                       "Net benefit - extended model with PGR")
-kable(res_dca) |>
-  kable_styling("striped")
-```
-
-For the validation data, at 23% threshold the potential net benefit was 0.362 and 0.363 for the basic and extended model respectively. These were highly similar to those of the 'treat all' strategy (0.362).
 
 Moreover, net benefit can be defined in terms of reduction of avoidable interventions (e.g adjuvant chemotherapy per 100 patients) by:
 
