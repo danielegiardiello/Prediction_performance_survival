@@ -11,16 +11,18 @@ Performance assessment of survival prediction models
     -   [1.1 Calculate the absolute risk prediction at 5 years in the
         validation
         data](#11-calculate-the-absolute-risk-prediction-at-5-years-in-the-validation-data)
-    -   [1.2 Discrimination measures](#12-discrimination-measures)
-    -   [1.3 Calibration](#13-calibration)
-        -   [1.3.1 Mean calibration - fixed time
-            point](#131-mean-calibration---fixed-time-point)
-        -   [1.3.2 Weak calibration - calibration slope for fixed time
-            point](#132-weak-calibration---calibration-slope-for-fixed-time-point)
-        -   [1.3.3 Moderate calibration - fixed time
-            point](#133-moderate-calibration---fixed-time-point)
-    -   [1.4 Overall performance
-        measures](#14-overall-performance-measures)
+    -   [1.2 Histograms of predictions with and without the additional
+        marker](#12-histograms-of-predictions-with-and-without-the-additional-marker)
+    -   [1.3 Discrimination measures](#13-discrimination-measures)
+    -   [1.4 Calibration](#14-calibration)
+        -   [1.4.1 Mean calibration - fixed time
+            point](#141-mean-calibration---fixed-time-point)
+        -   [1.4.2 Weak calibration - calibration slope for fixed time
+            point](#142-weak-calibration---calibration-slope-for-fixed-time-point)
+        -   [1.4.3 Moderate calibration - fixed time
+            point](#143-moderate-calibration---fixed-time-point)
+    -   [1.5 Overall performance
+        measures](#15-overall-performance-measures)
 -   [Goal 2. Clinical utility](#goal-2-clinical-utility)
 -   [Reproducibility ticket](#reproducibility-ticket)
 
@@ -228,7 +230,34 @@ gbsg5$pred5_pgr <-  as.vector(1 - S0.5yr_pgr**exp(gbsg5$PI_pgr))
 
 </details>
 
-### 1.2 Discrimination measures
+### 1.2 Histograms of predictions with and without the additional marker
+
+<details>
+<summary>
+Click to expand code
+</summary>
+
+``` r
+# Validation data
+
+par(las = 1)
+xlab <- c(paste0('Basic model\nvariance = ', 
+                 round(var(gbsg5$pred5), 3)),
+          paste0('Extended model with PGR\nvariance = ',
+                round(var(gbsg5$pred5_pgr), 3)))
+histbackback(gbsg5$pred5, 
+             gbsg5$pred5_pgr, 
+             brks = seq(0.01, 0.99, by = 0.02), 
+             xlab = xlab, 
+             ylab = 'Predicted probability')
+title("Validation data")
+```
+
+</details>
+
+<img src="imgs/02_predsurv/hist_pred-1.png" width="672" style="display: block; margin: auto;" />
+
+### 1.3 Discrimination measures
 
 Discrimination is the ability to differentiate between subjects who have
 the outcome by a certain time point and subjects who do not. Concordance
@@ -509,7 +538,7 @@ Uno AUC
 The time-dependent AUCs at 5 years in the external validation were 0.68
 and 0.70 for the basic and extended model, respectively.
 
-### 1.3 Calibration
+### 1.4 Calibration
 
 Calibration is the agreement between observed outcomes and predicted
 probabilities. For example, in survival models, a predicted survival
@@ -540,7 +569,7 @@ at time *t* (5 years) and coefficients of the model.
 
 More detailed explanations are available in the paper.
 
-#### 1.3.1 Mean calibration - fixed time point
+#### 1.4.1 Mean calibration - fixed time point
 
 The mean calibration at fixed time point (e.g. at 5 years) can be
 estimated using the Observed versus Expected ratio. The observed is
@@ -650,7 +679,7 @@ OE ratio
 Observed and Expected ratio is 1.07 (95% CI: 0.93 - 1.17) for the basic
 model and 1.02 (95% CI: 0.91 - 1.14) for the extended model.
 
-#### 1.3.2 Weak calibration - calibration slope for fixed time point
+#### 1.4.2 Weak calibration - calibration slope for fixed time point
 
 <details>
 <summary>
@@ -762,7 +791,7 @@ Calibration slope
 Calibration slope was 1.07 and 1.20 for the basic and extended model,
 respectively.
 
-#### 1.3.3 Moderate calibration - fixed time point
+#### 1.4.3 Moderate calibration - fixed time point
 
 Moderate calibration at fixed time point can be assessed using flexible
 calibration curve, complemented with ICI, E50, E90 as suggested by
@@ -1015,7 +1044,7 @@ External data + PGR
 In the validation, ICI at 5 years was 0.03 and 0.02 for the basic and
 extended model, respectively.
 
-### 1.4 Overall performance measures
+### 1.5 Overall performance measures
 
 Two overall performance measures are proposed for prediction models with
 a survival outcome:
@@ -1180,16 +1209,16 @@ Scaled Brier
 0.10
 </td>
 <td style="text-align:right;">
-0.03
+0.04
 </td>
 <td style="text-align:right;">
-0.14
+0.16
 </td>
 <td style="text-align:right;">
 0.13
 </td>
 <td style="text-align:right;">
-0.06
+0.08
 </td>
 <td style="text-align:right;">
 0.18

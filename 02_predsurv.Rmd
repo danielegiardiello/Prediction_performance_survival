@@ -173,7 +173,31 @@ gbsg5$pred5_pgr <-  as.vector(1 - S0.5yr_pgr**exp(gbsg5$PI_pgr))
 ```{r, predsurv, fig.align='center', warning=FALSE, eval=TRUE}
 ```
 
-### 1.2 Discrimination measures
+### 1.2 Histograms of predictions with and without the additional marker
+
+<details>
+  <summary>Click to expand code</summary>
+```{r, hist_pred, fig.align='center', echo=TRUE, eval=FALSE}
+# Validation data
+
+par(las = 1)
+xlab <- c(paste0('Basic model\nvariance = ', 
+                 round(var(gbsg5$pred5), 3)),
+          paste0('Extended model with PGR\nvariance = ',
+                round(var(gbsg5$pred5_pgr), 3)))
+histbackback(gbsg5$pred5, 
+             gbsg5$pred5_pgr, 
+             brks = seq(0.01, 0.99, by = 0.02), 
+             xlab = xlab, 
+             ylab = 'Predicted probability')
+title("Validation data")
+```
+</details>
+
+```{r, hist_pred, fig.align='center', eval=TRUE}
+```
+
+### 1.3 Discrimination measures
 Discrimination is the ability to differentiate between subjects who have the outcome by a certain time point and subjects who do not.
 Concordance can be assessed over several different time intervals:
 
@@ -339,7 +363,7 @@ kable(res_discr) |>
 The time-dependent AUCs at 5 years in the external validation were 0.68 and 0.70 for the basic and extended model, respectively.
 
 
-### 1.3 Calibration
+### 1.4 Calibration
 Calibration is the agreement between observed outcomes and predicted probabilities.
 For example, in survival models, a predicted survival probability at a fixed time horizon _t_ of 80% is considered reliable if it can be expected that 80 out of 100 will survive among patients who received a predicted survival probability of 80%.
 Calibration can be assessed at a fixed time point (e.g. at 5 years), and globally (considering the entire range of the data).
@@ -356,7 +380,7 @@ In the scenario we consider here, we can evaluate calibration only at fixed time
 
 More detailed explanations are available in the paper.
 
-#### 1.3.1  Mean calibration - fixed time point
+#### 1.4.1  Mean calibration - fixed time point
 The mean calibration at fixed time point (e.g. at 5 years) can be estimated using the Observed versus Expected ratio. The observed is estimated using the complementary of the Kaplan-Meier curve at the fixed time point. The expected is estimated using the average predicted risk of the event at the fixed time point.
 
 <details>
@@ -414,7 +438,7 @@ kable(res_OE) |>
 ```
 Observed and Expected ratio is 1.07 (95% CI: 0.93 - 1.17) for the basic model and 1.02 (95% CI: 0.91 - 1.14) for the extended model.
 
-#### 1.3.2 Weak calibration - calibration slope for fixed time point
+#### 1.4.2 Weak calibration - calibration slope for fixed time point
 
 <details>
   <summary>Click to expand code</summary>
@@ -478,7 +502,7 @@ kable(res_cal) |>
 ```
 Calibration slope was 1.07 and 1.20 for the basic and extended model, respectively.
 
-#### 1.3.3 Moderate calibration - fixed time point
+#### 1.4.3 Moderate calibration - fixed time point
 Moderate calibration at fixed time point can be assessed using flexible calibration curve, complemented with ICI, E50, E90 as suggested by Austin et al.
 
 + Calibration curve is a graphical representation of moderate calibration. It shows:  
@@ -682,7 +706,7 @@ kable(res_numcal) |>
 
 In the validation, ICI at 5 years was 0.03 and 0.02 for the basic and extended model, respectively.
 
-### 1.4 Overall performance measures
+### 1.5 Overall performance measures
 Two overall performance measures are proposed for prediction models with a survival outcome:
 
 + Brier score: it is the mean squared difference between observed event indicators and predicted risks at a fixed time point (e.g. at 5 years), lower is better;
