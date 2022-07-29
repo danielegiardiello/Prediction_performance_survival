@@ -17,6 +17,8 @@ Performance assessment of survival prediction models - extended code
         assumption](#13-model-development---first-check---the-proportional-hazard-ph-assumption)
     -   [1.4 Model development - fit the risk prediction
         models](#14-model-development---fit-the-risk-prediction-models)
+    -   [1.5 Histograms of predictions with and without the additional
+        marker](#15-histograms-of-predictions-with-and-without-the-additional-marker)
 -   [Goal 2 - Assessing performance in survival prediction
     models](#goal-2---assessing-performance-in-survival-prediction-models)
     -   [2.1 Discrimination measures](#21-discrimination-measures)
@@ -36,8 +38,6 @@ Performance assessment of survival prediction models - extended code
                 point](#2231-moderate-calibration---fixed-time-point)
             -   [2.2.3.2 Moderate calibration - time range
                 assessment](#2232-moderate-calibration---time-range-assessment)
-        -   [2.2.4 Calibration when only coefficients of the model are
-            available](#224-calibration-when-only-coefficients-of-the-model-are-available)
     -   [2.3 Overall performance
         measures](#23-overall-performance-measures)
 -   [Goal 3 - Clinical utility](#goal-3---clinical-utility)
@@ -108,24 +108,51 @@ Click to expand code
 </summary>
 
 ``` r
+# Data and recoding ----------------------------------
 # Development data
-# Recurrence free survival is the time until the earlier of
-#  recurrence or death. 
+
 rotterdam$ryear <- rotterdam$rtime/365.25  # time in years
-rotterdam$rfs <- with(rotterdam, pmax(recur, death)) #The variable rfs is a status indicator, 0=alive without relapse, 1= death or relapse.
-rotterdam$ryear[rotterdam$rfs == 1 & rotterdam$recur == 0 & rotterdam$death == 1 & (rotterdam$rtime < rotterdam$dtime)] <- rotterdam$dtime[rotterdam$rfs == 1 & rotterdam$recur == 0 & rotterdam$death == 1 & (rotterdam$rtime < rotterdam$dtime)]/365.25  #Fix the outcome for 43 patients who have died but censored at time of recurrence which was less than death time. The actual death time should be used rather than the earlier censored recurrence time.
+rotterdam$rfs <- with(rotterdam, pmax(recur, death)) #The variable rfs is a status indicator, 0 = alive without relapse, 1 = death or relapse.
+
+# Fix the outcome for 43 patients who have died but 
+# censored at time of recurrence which was less than death time. 
+# The actual death time should be used rather than the earlier censored recurrence time.
+
+rotterdam$ryear[rotterdam$rfs == 1 & 
+                  rotterdam$recur == 0 & 
+                  rotterdam$death == 1 & 
+                  (rotterdam$rtime < rotterdam$dtime)] <- 
+  
+  rotterdam$dtime[rotterdam$rfs == 1 &
+                    rotterdam$recur == 0 & 
+                    rotterdam$death == 1 & 
+                    (rotterdam$rtime < rotterdam$dtime)]/365.25  
 
 # variables used in the analysis
-pgr99 <- quantile(rotterdam$pgr, .99, type = 1) # there is a large outlier of 5000
+pgr99 <- quantile(rotterdam$pgr, .99, type = 1) # there is a large outlier of 5000, used type=1 to get same result as in SAS
 rotterdam$pgr2 <- pmin(rotterdam$pgr, pgr99) # Winsorized value
+nodes99 <- quantile(rotterdam$nodes, .99, type = 1) 
+rotterdam$nodes2 <- pmin(rotterdam$nodes, nodes99) # NOTE: winsorizing also continuous node?
+
 rotterdam$csize <- rotterdam$size           # categorized size
-rotterdam$cnode <- cut(rotterdam$nodes, c(-1, 0, 3, 51),
+rotterdam$cnode <- cut(rotterdam$nodes, 
+                       c(-1,0, 3, 51),
                        c("0", "1-3", ">3"))   # categorized node
 rotterdam$grade3 <- as.factor(rotterdam$grade)
 levels(rotterdam$grade3) <- c("1-2", "3")
 
 # Save in the data the restricted cubic spline term using Hmisc::rcspline.eval() package
-rcs3_pgr <- rcspline.eval(rotterdam$pgr2, knots = c(0, 41, 486))
+
+# Continuous nodes variable
+rcs3_nodes <- rcspline.eval(rotterdam$nodes2, 
+                            knots = c(0, 1, 9))
+attr(rcs3_nodes, "dim") <- NULL
+attr(rcs3_nodes, "knots") <- NULL
+rotterdam$nodes3 <- rcs3_nodes
+
+# PGR
+rcs3_pgr <- rcspline.eval(rotterdam$pgr2, 
+                          knots = c(0, 41, 486)) # using knots of the original variable (not winsorized)
 attr(rcs3_pgr, "dim") <- NULL
 attr(rcs3_pgr, "knots") <- NULL
 rotterdam$pgr3 <- rcs3_pgr
@@ -133,15 +160,25 @@ rotterdam$pgr3 <- rcs3_pgr
 # Validation data
 gbsg$ryear <- gbsg$rfstime/365.25
 gbsg$rfs   <- gbsg$status           # the GBSG data contains RFS
-gbsg$cnode <- cut(gbsg$nodes, c(-1,0, 3, 51),
-                       c("0", "1-3", ">3"))   # categorized node
-gbsg$csize <- cut(gbsg$size,  c(-1, 20, 50, 500), #categorized size
+gbsg$cnode <- cut(gbsg$nodes, 
+                  c(-1,0, 3, 51),
+                  c("0", "1-3", ">3"))   # categorized node
+gbsg$csize <- cut(gbsg$size,  
+                  c(-1, 20, 50, 500), #categorized size
                   c("<=20", "20-50", ">50"))
-gbsg$pgr2 <- pmin(gbsg$pgr, pgr99) # Winsorized value
+gbsg$pgr2 <- pmin(gbsg$pgr, pgr99) # Winsorized value of PGR
+gbsg$nodes2 <- pmin(gbsg$nodes, nodes99) # Winsorized value of continuous nodes
 gbsg$grade3 <- as.factor(gbsg$grade)
 levels(gbsg$grade3) <- c("1-2", "1-2", "3")
 
-# Restricted cubic spline for PGR
+# Restricted cubic spline 
+# Continuous nodes
+rcs3_nodes <- rcspline.eval(gbsg$nodes2, knots = c(0, 1, 9))
+attr(rcs3_nodes, "dim") <- NULL
+attr(rcs3_nodes, "knots") <- NULL
+gbsg$nodes3 <- rcs3_nodes
+
+# PGR
 rcs3_pgr <- rcspline.eval(gbsg$pgr2, knots = c(0, 41, 486))
 attr(rcs3_pgr, "dim") <- NULL
 attr(rcs3_pgr, "knots") <- NULL
@@ -150,13 +187,11 @@ gbsg$pgr3 <- rcs3_pgr
 
 # Much of the analysis will focus on the first 5 years: create
 #  data sets that are censored at 5
-temp <- survSplit(Surv(ryear, rfs) ~ ., data = rotterdam, 
-                  cut = 5,
-                  episode = "epoch")
+temp <- survSplit(Surv(ryear, rfs) ~ ., data = rotterdam, cut = 5,
+                  episode="epoch")
 rott5 <- subset(temp, epoch == 1)  # only the first 5 years
-temp <- survSplit(Surv(ryear, rfs) ~ ., data = gbsg, 
-                  cut = 5,
-                  episode = "epoch")
+temp <- survSplit(Surv(ryear, rfs) ~ ., data = gbsg, cut = 5,
+                  episode ="epoch")
 gbsg5 <- subset(temp, epoch == 1)
 
 # Relevel
@@ -233,35 +268,24 @@ Number of nodes
 </tr>
 <tr>
 <td style="text-align:left;padding-left: 2em;" indentlevel="1">
-0
+Mean (SD)
 </td>
 <td style="text-align:left;">
-1,436 (48%)
+3 (4)
 </td>
 <td style="text-align:left;">
-0 (0%)
+5 (5)
 </td>
 </tr>
 <tr>
 <td style="text-align:left;padding-left: 2em;" indentlevel="1">
-1-3
+Median (Range)
 </td>
 <td style="text-align:left;">
-764 (26%)
+1 (0, 34)
 </td>
 <td style="text-align:left;">
-376 (55%)
-</td>
-</tr>
-<tr>
-<td style="text-align:left;padding-left: 2em;" indentlevel="1">
-\>3
-</td>
-<td style="text-align:left;">
-782 (26%)
-</td>
-<td style="text-align:left;">
-310 (45%)
+3 (1, 51)
 </td>
 </tr>
 <tr>
@@ -434,7 +458,7 @@ title("Validation set")
 
 </details>
 
-<img src="imgs/03_predsurv_extended/surv-1.png" width="672" style="display: block; margin: auto;" /><img src="imgs/03_predsurv_extended/surv-2.png" width="672" style="display: block; margin: auto;" />
+<img src="imgs/03_predsurv_extended/surv-1.png" width="576" style="display: block; margin: auto;" /><img src="imgs/03_predsurv_extended/surv-2.png" width="576" style="display: block; margin: auto;" />
 
 A number of 2982 patients were included to develop the risk prediction
 model for survival with a median follow-up of 9 years. The 5-year
@@ -474,13 +498,19 @@ dd <- datadist(rotterdam)
 options(datadist = "dd")
 fit_pgr <- cph(Surv(ryear, rfs) ~ rcs(pgr2), 
                data = rotterdam, x = T, y = T, surv = T)
+fit_nodes <- cph(Surv(ryear, rfs) ~ rcs(nodes2), 
+               data = rotterdam, x = T, y = T, surv = T)
+
+oldpar <- par(mfrow = c(2, 2), mar = c(5, 5, 1, 1))
 plot(Predict(fit_pgr))
+plot(Predict(fit_nodes))
 options(datadist = NULL)
+par(oldpar)
 ```
 
 </details>
 
-<img src="imgs/03_predsurv_extended/ff-1.png" width="672" style="display: block; margin: auto;" />
+<img src="imgs/03_predsurv_extended/ff-1.png" width="672" style="display: block; margin: auto;" /><img src="imgs/03_predsurv_extended/ff-2.png" width="672" style="display: block; margin: auto;" />
 
 We should model the progesterone level using a three-knot restricted
 cubic spline. We save the spline in the development and validation data.
@@ -498,7 +528,7 @@ Click to expand code
 </summary>
 
 ``` r
-fit1_ph <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3, 
+fit1_ph <- coxph(Surv(ryear, rfs) ~ csize + rcs(nodes2, 3) + grade3, 
                 data = rotterdam, x = T, y = T)
 
 
@@ -536,7 +566,7 @@ p
 csize
 </td>
 <td style="text-align:right;">
-22.347
+19.423
 </td>
 <td style="text-align:right;">
 2
@@ -547,10 +577,10 @@ csize
 </tr>
 <tr>
 <td style="text-align:left;">
-cnode
+rcs(nodes2, 3)
 </td>
 <td style="text-align:right;">
-24.629
+22.387
 </td>
 <td style="text-align:right;">
 2
@@ -564,13 +594,13 @@ cnode
 grade3
 </td>
 <td style="text-align:right;">
-4.400
+4.144
 </td>
 <td style="text-align:right;">
 1
 </td>
 <td style="text-align:right;">
-0.036
+0.042
 </td>
 </tr>
 <tr>
@@ -578,7 +608,7 @@ grade3
 GLOBAL
 </td>
 <td style="text-align:right;">
-36.773
+32.811
 </td>
 <td style="text-align:right;">
 5
@@ -610,13 +640,13 @@ edata <- survSplit(Surv(ryear, rfs) ~ .,
   data = rotterdam, cut = c(5, 10),
   episode = "epoch"
 )
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
   data = edata[edata$epoch == 1, ], x = T, y = T
 )
-efit2 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
+efit2 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
   data = edata[edata$epoch == 2, ], x = T, y = T
 )
-efit3 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
+efit3 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
   data = edata[edata$epoch == 3, ], x = T, y = T
 )
 ```
@@ -631,13 +661,13 @@ efit3 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
 csize20-50
 </th>
 <th style="text-align:right;">
-csize>50
+csize\>50
 </th>
 <th style="text-align:right;">
-cnode1-3
+nodes2
 </th>
 <th style="text-align:right;">
-cnode>3
+nodes3
 </th>
 <th style="text-align:right;">
 grade33
@@ -650,19 +680,19 @@ grade33
 Epoch 1: 0-5 years
 </td>
 <td style="text-align:right;">
-0.38
+0.34
 </td>
 <td style="text-align:right;">
-0.66
+0.57
+</td>
+<td style="text-align:right;">
+0.30
+</td>
+<td style="text-align:right;">
+-0.81
 </td>
 <td style="text-align:right;">
 0.36
-</td>
-<td style="text-align:right;">
-1.06
-</td>
-<td style="text-align:right;">
-0.37
 </td>
 </tr>
 <tr>
@@ -670,19 +700,19 @@ Epoch 1: 0-5 years
 Epoch 2: 5-10 years
 </td>
 <td style="text-align:right;">
-0.19
+0.17
 </td>
 <td style="text-align:right;">
 0.21
 </td>
 <td style="text-align:right;">
-0.34
+0.25
 </td>
 <td style="text-align:right;">
-0.79
+-0.75
 </td>
 <td style="text-align:right;">
-0.28
+0.27
 </td>
 </tr>
 <tr>
@@ -690,19 +720,19 @@ Epoch 2: 5-10 years
 Epoch 3: \>10 years
 </td>
 <td style="text-align:right;">
--0.21
+-0.22
 </td>
 <td style="text-align:right;">
-0.32
+0.24
 </td>
 <td style="text-align:right;">
-0.35
+0.05
 </td>
 <td style="text-align:right;">
-0.21
+0.11
 </td>
 <td style="text-align:right;">
-0.41
+0.37
 </td>
 </tr>
 </tbody>
@@ -785,7 +815,7 @@ Click to expand code
 ``` r
 # Consider the first 5-year epoch in the development set
 # Refit the model
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
   data = rott5, x = T, y = T
 )
 # Additional marker
@@ -811,8 +841,8 @@ Below the results of the models:
  <strong>Cox Proportional Hazards Model</strong>
  
  <pre>
- cph(formula = Surv(ryear, rfs) ~ csize + cnode + grade3, data = rott5, 
-     x = T, y = T, surv = T)
+ cph(formula = Surv(ryear, rfs) ~ csize + rcs(nodes2, c(0, 1, 
+     9)) + grade3, data = rott5, x = T, y = T, surv = T)
  </pre>
  
  <table class='gmisc_table' style='border-collapse: collapse; margin-top: 1em; margin-bottom: 1em;' >
@@ -826,23 +856,23 @@ Below the results of the models:
 <tbody>
 <tr>
 <td style='min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'>Obs 2982</td>
-<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'>LR χ<sup>2</sup> 483.65</td>
-<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>R</i><sup>2</sup> 0.150</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'>LR χ<sup>2</sup> 531.00</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>R</i><sup>2</sup> 0.163</td>
 </tr>
 <tr>
 <td style='min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'>Events 1275</td>
 <td style='min-width: 9em; border-right: 1px solid black; text-align: center;'>d.f. 5</td>
-<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>D</i><sub>xy</sub> 0.348</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>D</i><sub>xy</sub> 0.364</td>
 </tr>
 <tr>
-<td style='min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'>Center 0.8796</td>
+<td style='min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'>Center 0.8896</td>
 <td style='min-width: 9em; border-right: 1px solid black; text-align: center;'>Pr(>χ<sup>2</sup>) 0.0000</td>
-<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>g</i> 0.685</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>g</i> 0.720</td>
 </tr>
 <tr>
 <td style='min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'></td>
-<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'>Score χ<sup>2</sup> 557.17</td>
-<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>g</i><sub>r</sub> 1.983</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'>Score χ<sup>2</sup> 635.29</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>g</i><sub>r</sub> 2.055</td>
 </tr>
 <tr>
 <td style='min-width: 9em; border-bottom: 2px solid grey; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'></td>
@@ -865,37 +895,37 @@ Below the results of the models:
 <tbody>
 <tr>
 <td style='min-width: 7em; text-align: left;'>csize=20-50</td>
-<td style='min-width: 7em; text-align: right;'> 0.3834</td>
-<td style='min-width: 7em; text-align: right;'> 0.0650</td>
-<td style='min-width: 7em; text-align: right;'> 5.89</td>
+<td style='min-width: 7em; text-align: right;'>  0.3418</td>
+<td style='min-width: 7em; text-align: right;'> 0.0654</td>
+<td style='min-width: 7em; text-align: right;'> 5.23</td>
 <td style='min-width: 7em; text-align: right;'><0.0001</td>
 </tr>
 <tr>
 <td style='min-width: 7em; text-align: left;'>csize=>50</td>
-<td style='min-width: 7em; text-align: right;'> 0.6639</td>
-<td style='min-width: 7em; text-align: right;'> 0.0913</td>
-<td style='min-width: 7em; text-align: right;'> 7.28</td>
+<td style='min-width: 7em; text-align: right;'>  0.5736</td>
+<td style='min-width: 7em; text-align: right;'> 0.0925</td>
+<td style='min-width: 7em; text-align: right;'> 6.20</td>
 <td style='min-width: 7em; text-align: right;'><0.0001</td>
 </tr>
 <tr>
-<td style='min-width: 7em; text-align: left;'>cnode=1-3</td>
-<td style='min-width: 7em; text-align: right;'> 0.3600</td>
-<td style='min-width: 7em; text-align: right;'> 0.0753</td>
-<td style='min-width: 7em; text-align: right;'> 4.78</td>
+<td style='min-width: 7em; text-align: left;'>nodes2</td>
+<td style='min-width: 7em; text-align: right;'>  0.3040</td>
+<td style='min-width: 7em; text-align: right;'> 0.0281</td>
+<td style='min-width: 7em; text-align: right;'>10.82</td>
 <td style='min-width: 7em; text-align: right;'><0.0001</td>
 </tr>
 <tr>
-<td style='min-width: 7em; text-align: left;'>cnode=>3</td>
-<td style='min-width: 7em; text-align: right;'> 1.0627</td>
-<td style='min-width: 7em; text-align: right;'> 0.0703</td>
-<td style='min-width: 7em; text-align: right;'>15.11</td>
+<td style='min-width: 7em; text-align: left;'>nodes2'</td>
+<td style='min-width: 7em; text-align: right;'> -0.8111</td>
+<td style='min-width: 7em; text-align: right;'> 0.1046</td>
+<td style='min-width: 7em; text-align: right;'>-7.75</td>
 <td style='min-width: 7em; text-align: right;'><0.0001</td>
 </tr>
 <tr>
 <td style='min-width: 7em; border-bottom: 2px solid grey; text-align: left;'>grade3=3</td>
-<td style='min-width: 7em; border-bottom: 2px solid grey; text-align: right;'> 0.3748</td>
+<td style='min-width: 7em; border-bottom: 2px solid grey; text-align: right;'>  0.3617</td>
 <td style='min-width: 7em; border-bottom: 2px solid grey; text-align: right;'> 0.0713</td>
-<td style='min-width: 7em; border-bottom: 2px solid grey; text-align: right;'> 5.26</td>
+<td style='min-width: 7em; border-bottom: 2px solid grey; text-align: right;'> 5.07</td>
 <td style='min-width: 7em; border-bottom: 2px solid grey; text-align: right;'><0.0001</td>
 </tr>
 </tbody>
@@ -906,8 +936,9 @@ Below the results of the models:
  <strong>Cox Proportional Hazards Model</strong>
  
  <pre>
- cph(formula = Surv(ryear, rfs) ~ csize + cnode + grade3 + rcs(pgr2, 
-     c(0, 41, 486)), data = rott5, x = T, y = T, surv = T)
+ cph(formula = Surv(ryear, rfs) ~ csize + rcs(nodes2, c(0, 1, 
+     9)) + grade3 + rcs(pgr2, c(0, 41, 486)), data = rott5, x = T, 
+     y = T, surv = T)
  </pre>
  
  <table class='gmisc_table' style='border-collapse: collapse; margin-top: 1em; margin-bottom: 1em;' >
@@ -921,23 +952,23 @@ Below the results of the models:
 <tbody>
 <tr>
 <td style='min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'>Obs 2982</td>
-<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'>LR χ<sup>2</sup> 516.67</td>
-<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>R</i><sup>2</sup> 0.159</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'>LR χ<sup>2</sup> 563.19</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>R</i><sup>2</sup> 0.172</td>
 </tr>
 <tr>
 <td style='min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'>Events 1275</td>
 <td style='min-width: 9em; border-right: 1px solid black; text-align: center;'>d.f. 7</td>
-<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>D</i><sub>xy</sub> 0.365</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>D</i><sub>xy</sub> 0.377</td>
 </tr>
 <tr>
-<td style='min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'>Center 0.6523</td>
+<td style='min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'>Center 0.6592</td>
 <td style='min-width: 9em; border-right: 1px solid black; text-align: center;'>Pr(>χ<sup>2</sup>) 0.0000</td>
-<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>g</i> 0.727</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>g</i> 0.756</td>
 </tr>
 <tr>
 <td style='min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'></td>
-<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'>Score χ<sup>2</sup> 587.22</td>
-<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>g</i><sub>r</sub> 2.069</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'>Score χ<sup>2</sup> 664.84</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>g</i><sub>r</sub> 2.130</td>
 </tr>
 <tr>
 <td style='min-width: 9em; border-bottom: 2px solid grey; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'></td>
@@ -960,51 +991,51 @@ Below the results of the models:
 <tbody>
 <tr>
 <td style='min-width: 7em; text-align: left;'>csize=20-50</td>
-<td style='min-width: 7em; text-align: right;'>  0.3615</td>
-<td style='min-width: 7em; text-align: right;'> 0.0651</td>
-<td style='min-width: 7em; text-align: right;'> 5.55</td>
+<td style='min-width: 7em; text-align: right;'>  0.3204</td>
+<td style='min-width: 7em; text-align: right;'> 0.0655</td>
+<td style='min-width: 7em; text-align: right;'> 4.89</td>
 <td style='min-width: 7em; text-align: right;'><0.0001</td>
 </tr>
 <tr>
 <td style='min-width: 7em; text-align: left;'>csize=>50</td>
-<td style='min-width: 7em; text-align: right;'>  0.6414</td>
-<td style='min-width: 7em; text-align: right;'> 0.0912</td>
-<td style='min-width: 7em; text-align: right;'> 7.03</td>
+<td style='min-width: 7em; text-align: right;'>  0.5542</td>
+<td style='min-width: 7em; text-align: right;'> 0.0924</td>
+<td style='min-width: 7em; text-align: right;'> 6.00</td>
 <td style='min-width: 7em; text-align: right;'><0.0001</td>
 </tr>
 <tr>
-<td style='min-width: 7em; text-align: left;'>cnode=1-3</td>
-<td style='min-width: 7em; text-align: right;'>  0.3810</td>
-<td style='min-width: 7em; text-align: right;'> 0.0754</td>
-<td style='min-width: 7em; text-align: right;'> 5.05</td>
+<td style='min-width: 7em; text-align: left;'>nodes2</td>
+<td style='min-width: 7em; text-align: right;'>  0.3050</td>
+<td style='min-width: 7em; text-align: right;'> 0.0280</td>
+<td style='min-width: 7em; text-align: right;'>10.87</td>
 <td style='min-width: 7em; text-align: right;'><0.0001</td>
 </tr>
 <tr>
-<td style='min-width: 7em; text-align: left;'>cnode=>3</td>
-<td style='min-width: 7em; text-align: right;'>  1.0592</td>
-<td style='min-width: 7em; text-align: right;'> 0.0703</td>
-<td style='min-width: 7em; text-align: right;'>15.07</td>
+<td style='min-width: 7em; text-align: left;'>nodes2'</td>
+<td style='min-width: 7em; text-align: right;'> -0.8198</td>
+<td style='min-width: 7em; text-align: right;'> 0.1044</td>
+<td style='min-width: 7em; text-align: right;'>-7.85</td>
 <td style='min-width: 7em; text-align: right;'><0.0001</td>
 </tr>
 <tr>
 <td style='min-width: 7em; text-align: left;'>grade3=3</td>
-<td style='min-width: 7em; text-align: right;'>  0.3173</td>
+<td style='min-width: 7em; text-align: right;'>  0.3052</td>
 <td style='min-width: 7em; text-align: right;'> 0.0721</td>
-<td style='min-width: 7em; text-align: right;'> 4.40</td>
+<td style='min-width: 7em; text-align: right;'> 4.23</td>
 <td style='min-width: 7em; text-align: right;'><0.0001</td>
 </tr>
 <tr>
 <td style='min-width: 7em; text-align: left;'>pgr2</td>
 <td style='min-width: 7em; text-align: right;'> -0.0029</td>
 <td style='min-width: 7em; text-align: right;'> 0.0006</td>
-<td style='min-width: 7em; text-align: right;'>-5.09</td>
+<td style='min-width: 7em; text-align: right;'>-5.05</td>
 <td style='min-width: 7em; text-align: right;'><0.0001</td>
 </tr>
 <tr>
 <td style='min-width: 7em; border-bottom: 2px solid grey; text-align: left;'>pgr2'</td>
 <td style='min-width: 7em; border-bottom: 2px solid grey; text-align: right;'>  0.0127</td>
 <td style='min-width: 7em; border-bottom: 2px solid grey; text-align: right;'> 0.0028</td>
-<td style='min-width: 7em; border-bottom: 2px solid grey; text-align: right;'> 4.47</td>
+<td style='min-width: 7em; border-bottom: 2px solid grey; text-align: right;'> 4.45</td>
 <td style='min-width: 7em; border-bottom: 2px solid grey; text-align: right;'><0.0001</td>
 </tr>
 </tbody>
@@ -1014,6 +1045,73 @@ The coefficients of the models indicated that higher size, higher number
 of positive lymph nodes and higher grade is more associate with poorer
 prognosis. The association of the progesterone biomarker and the outcome
 is non-linear as investigated previously.
+
+### 1.5 Histograms of predictions with and without the additional marker
+
+<details>
+<summary>
+Click to expand code
+</summary>
+
+``` r
+# Refit the model
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
+  data = rott5, x = T, y = T
+)
+# Additional marker
+efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
+
+# Development data
+t_horizon <- 5
+rott5$pred <- 1 - predictSurvProb(efit1, 
+                                  newdata = rott5,
+                                  times = t_horizon)
+
+rott5$pred_pgr <- 1 - predictSurvProb(efit1_pgr, 
+                                  newdata = rott5,
+                                  times = t_horizon)
+
+# par(mgp=c(4,1,0), mar=c(6,5,2,2))
+# oldpar <- par(mfrow = c(1, 2), las = 1)
+par(las = 1)
+xlab <- c(paste0('Basic model\nvariance = ', 
+                 round(var(rott5$pred), 3)),
+          paste0('Extended model with PGR\nvariance = ',
+                 round(var(rott5$pred_pgr), 3)))
+histbackback(rott5$pred, 
+             rott5$pred_pgr, 
+             brks = seq(0.01, 0.99, by = 0.02), 
+             xlab = xlab, 
+             ylab = 'Predicted probability')
+title("Development data")
+
+
+# Validation data
+gbsg5$pred <- 1 - predictSurvProb(efit1, 
+                                  newdata = gbsg5,
+                                  times = t_horizon)
+
+
+gbsg5$pred_pgr <- 1 - predictSurvProb(efit1_pgr, 
+                                  newdata = gbsg5,
+                                  times = t_horizon)
+
+par(las = 1)
+xlab <- c(paste0('Basic model\nvariance = ', 
+                 round(var(gbsg5$pred), 3)),
+          paste0('Extended model with PGR\nvariance = ',
+                round(var(gbsg5$pred_pgr), 3)))
+histbackback(gbsg5$pred, 
+             gbsg5$pred_pgr, 
+             brks = seq(0.01, 0.99, by = 0.02), 
+             xlab = xlab, 
+             ylab = 'Predicted probability')
+title("Validation data")
+```
+
+</details>
+
+<img src="imgs/03_predsurv_extended/hist_pred-1.png" width="672" style="display: block; margin: auto;" /><img src="imgs/03_predsurv_extended/hist_pred-2.png" width="672" style="display: block; margin: auto;" />
 
 ## Goal 2 - Assessing performance in survival prediction models
 
@@ -1083,7 +1181,7 @@ Click to expand code
 
 ``` r
 # Models 
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
   data = rott5, x = T, y = T
 )
 # Additional marker
@@ -1151,7 +1249,7 @@ Click to expand code
 
 ``` r
 # Models 
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
   data = rott5, x = T, y = T
 )
 # Additional marker
@@ -1162,7 +1260,7 @@ int_val <- bootstrap_cv(db = rott5,
                         time = "ryear",
                         status = "rfs",
                         formula_model = "Surv(ryear, rfs) ~ csize + 
-                        cnode + 
+                        nodes2 + nodes3 + 
                         grade3",
                         formula_ipcw = "Surv(ryear, rfs) ~ 1",
                         pred.time = 4.99)
@@ -1172,7 +1270,7 @@ int_val_pgr <- bootstrap_cv(db = rott5,
                         time = "ryear",
                         status = "rfs",
                         formula_model = "Surv(ryear, rfs) ~ csize + 
-                        cnode + 
+                        nodes2 + nodes3 + 
                         grade3 + pgr2 + pgr3",
                         formula_ipcw = "Surv(ryear, rfs) ~ 1",
                         pred.time = 4.99)
@@ -1311,24 +1409,6 @@ Upper .95
 Harrell C
 </td>
 <td style="text-align:right;">
-0.67
-</td>
-<td style="text-align:right;">
-0.66
-</td>
-<td style="text-align:right;">
-0.69
-</td>
-<td style="text-align:right;">
-0.67
-</td>
-<td style="text-align:right;">
-NA
-</td>
-<td style="text-align:right;">
-NA
-</td>
-<td style="text-align:right;">
 0.68
 </td>
 <td style="text-align:right;">
@@ -1339,6 +1419,24 @@ NA
 </td>
 <td style="text-align:right;">
 0.68
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+0.69
+</td>
+<td style="text-align:right;">
+0.67
+</td>
+<td style="text-align:right;">
+0.7
+</td>
+<td style="text-align:right;">
+0.69
 </td>
 <td style="text-align:right;">
 NA
@@ -1353,13 +1451,13 @@ NA
 0.62
 </td>
 <td style="text-align:right;">
-0.68
+0.69
 </td>
 <td style="text-align:right;">
-0.68
+0.67
 </td>
 <td style="text-align:right;">
-0.65
+0.64
 </td>
 <td style="text-align:right;">
 0.71
@@ -1368,24 +1466,6 @@ NA
 <tr>
 <td style="text-align:left;">
 Uno C
-</td>
-<td style="text-align:right;">
-0.67
-</td>
-<td style="text-align:right;">
-0.66
-</td>
-<td style="text-align:right;">
-0.69
-</td>
-<td style="text-align:right;">
-0.67
-</td>
-<td style="text-align:right;">
-NA
-</td>
-<td style="text-align:right;">
-NA
 </td>
 <td style="text-align:right;">
 0.68
@@ -1397,7 +1477,25 @@ NA
 0.7
 </td>
 <td style="text-align:right;">
+0.68
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+0.69
+</td>
+<td style="text-align:right;">
 0.67
+</td>
+<td style="text-align:right;">
+0.7
+</td>
+<td style="text-align:right;">
+0.69
 </td>
 <td style="text-align:right;">
 NA
@@ -1409,7 +1507,7 @@ NA
 0.64
 </td>
 <td style="text-align:right;">
-0.61
+0.60
 </td>
 <td style="text-align:right;">
 0.67
@@ -1421,13 +1519,13 @@ NA
 0.63
 </td>
 <td style="text-align:right;">
-0.70
+0.69
 </td>
 </tr>
 </tbody>
 </table>
 
-Concordance varied between 0.67 and 0.68 in the apparent, internal and
+Concordance varied between 0.67 and 0.69 in the apparent, internal and
 external validation using the basic and extended model.
 
 <details>
@@ -1437,7 +1535,7 @@ Click to expand code
 
 ``` r
 # Models 
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
   data = rott5, x = T, y = T
 )
 # Additional marker
@@ -1620,24 +1718,6 @@ Upper .95
 Uno AUC
 </td>
 <td style="text-align:right;">
-0.71
-</td>
-<td style="text-align:right;">
-0.69
-</td>
-<td style="text-align:right;">
-0.73
-</td>
-<td style="text-align:right;">
-0.71
-</td>
-<td style="text-align:right;">
-NA
-</td>
-<td style="text-align:right;">
-NA
-</td>
-<td style="text-align:right;">
 0.72
 </td>
 <td style="text-align:right;">
@@ -1647,7 +1727,7 @@ NA
 0.74
 </td>
 <td style="text-align:right;">
-0.71
+0.72
 </td>
 <td style="text-align:right;">
 NA
@@ -1656,28 +1736,46 @@ NA
 NA
 </td>
 <td style="text-align:right;">
-0.69
-</td>
-<td style="text-align:right;">
-0.63
-</td>
-<td style="text-align:right;">
-0.74
+0.73
 </td>
 <td style="text-align:right;">
 0.71
 </td>
 <td style="text-align:right;">
-0.66
+0.75
 </td>
 <td style="text-align:right;">
-0.77
+0.73
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+0.68
+</td>
+<td style="text-align:right;">
+0.62
+</td>
+<td style="text-align:right;">
+0.73
+</td>
+<td style="text-align:right;">
+0.7
+</td>
+<td style="text-align:right;">
+0.65
+</td>
+<td style="text-align:right;">
+0.75
 </td>
 </tr>
 </tbody>
 </table>
 
-Time-dependent AUC at 5 years was between 0.71 and 0.72 in the apparent,
+Time-dependent AUC at 5 years was between 0.68 and 0.72 in the apparent,
 internal and external validation for the basic and extended model.
 
 ### 2.2 Calibration
@@ -1736,7 +1834,7 @@ of calibration can be estimated: mean, weak, and moderate calibration.
             from Poisson model versus cumulative hazard from original
             Cox model.
 
-More detailed explanations are available in the
+More detailed explanations are available in the preprint version of the
 [paper](https://www.medrxiv.org/content/10.1101/2022.03.17.22272411v1).
 
 #### 2.2.1 Mean calibration
@@ -1756,7 +1854,7 @@ Click to expand code
 
 ``` r
 # Models 
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
   data = rott5, x = T, y = T
 )
 # Additional marker
@@ -1835,29 +1933,29 @@ Upper .95
 OE ratio
 </td>
 <td style="text-align:right;">
-1.04
-</td>
-<td style="text-align:right;">
-0.93
-</td>
-<td style="text-align:right;">
-1.17
-</td>
-<td style="text-align:right;">
 1.02
 </td>
 <td style="text-align:right;">
-0.9
+0.91
 </td>
 <td style="text-align:right;">
 1.14
+</td>
+<td style="text-align:right;">
+0.99
+</td>
+<td style="text-align:right;">
+0.88
+</td>
+<td style="text-align:right;">
+1.12
 </td>
 </tr>
 </tbody>
 </table>
 
-Observed and Expected ratio is 1.04 (95% CI: 0.93 - 1.17) for the basic
-model and 1.02 (95% CI: 0.90 - 1.14) for the extended model.
+Observed and Expected ratio is 1.02 (95% CI: 0.91 - 1.14) for the basic
+model and 0.99 (95% CI: 0.88 - 1.12) for the extended model.
 
 ##### 2.2.1.2 Mean calibration - time range assessment
 
@@ -1878,7 +1976,7 @@ Click to expand code
 
 ``` r
 # Models 
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
   data = rott5, x = T, y = T
 )
 
@@ -1961,29 +2059,29 @@ Upper .95
 Calibration in-the-large
 </td>
 <td style="text-align:right;">
-1.06
-</td>
-<td style="text-align:right;">
-0.94
-</td>
-<td style="text-align:right;">
-1.19
-</td>
-<td style="text-align:right;">
 1.02
 </td>
 <td style="text-align:right;">
-0.91
+0.9
 </td>
 <td style="text-align:right;">
-1.15
+1.14
+</td>
+<td style="text-align:right;">
+0.99
+</td>
+<td style="text-align:right;">
+0.88
+</td>
+<td style="text-align:right;">
+1.11
 </td>
 </tr>
 </tbody>
 </table>
 
-The ratio is 1.06 (95% CI: 0.94 - 1.19) for the basic model and 1.02
-(95% CI: 0.91 - 1.15) for the extended model.
+The ratio is 1.02 (95% CI: 0.90 - 1.14) for the basic model and 0.99
+(95% CI: 0.88 - 1.11) for the extended model.
 
 #### 2.2.2 Weak calibration
 
@@ -2003,7 +2101,7 @@ Click to expand code
 
 ``` r
 # Models 
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
   data = rott5, x = T, y = T
 )
 # Additional marker
@@ -2079,29 +2177,29 @@ Upper .95
 Calibration slope
 </td>
 <td style="text-align:right;">
-1.07
+1.06
 </td>
 <td style="text-align:right;">
 0.82
 </td>
 <td style="text-align:right;">
-1.32
+1.3
 </td>
 <td style="text-align:right;">
-1.2
+1.14
 </td>
 <td style="text-align:right;">
-0.95
+0.9
 </td>
 <td style="text-align:right;">
-1.45
+1.38
 </td>
 </tr>
 </tbody>
 </table>
 
-Calibration slope was 1.07 (95% CI: 0.82-1.32) and 1.20 (95% CI:
-0.95-1.45) for the basic and extended model, respectively.
+Calibration slope was 1.06 (95% CI: 0.82-1.30) and 1.14 (95% CI:
+0.90-1.38) for the basic and extended model, respectively.
 
 ##### 2.2.2.2 Weak calibration - time range assessment
 
@@ -2118,7 +2216,7 @@ Click to expand code
 
 ``` r
 # Models 
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
   data = rott5, x = T, y = T
 )
 # Additional marker
@@ -2205,29 +2303,29 @@ Upper .95
 Calibration slope
 </td>
 <td style="text-align:right;">
-1.05
+1.03
 </td>
 <td style="text-align:right;">
 0.8
 </td>
 <td style="text-align:right;">
-1.3
+1.27
 </td>
 <td style="text-align:right;">
-1.16
+1.11
 </td>
 <td style="text-align:right;">
-0.93
+0.89
 </td>
 <td style="text-align:right;">
-1.4
+1.33
 </td>
 </tr>
 </tbody>
 </table>
 
-Calibration slope was 1.05 (95% CI: 0.80-1.30) and 1.16 (95% CI:
-0.93-1.40) for the basic and extended model, respectively.
+Calibration slope was 1.03 (95% CI: 0.80-1.23) and 1.11 (95% CI:
+0.89-1.33) for the basic and extended model, respectively.
 
 #### 2.2.3 Moderate calibration
 
@@ -2278,7 +2376,7 @@ Click to expand code
 
 ``` r
 # Models  ---
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
   data = rott5, x = T, y = T
 )
 # Additional marker
@@ -2359,8 +2457,8 @@ plot(
   xlim = c(0, 1),
   ylim = c(0, 1), 
   lwd = 2,
-  xlab = "Predicted probability",
-  ylab = "Observed probability", bty = "n"
+  xlab = "Predicted risk from developed model",
+  ylab = "Predicted risk from refitted model", bty = "n"
 )
 lines(dat_cal$pred, 
       dat_cal$lower, 
@@ -2372,7 +2470,16 @@ lines(dat_cal$pred,
       type = "l", 
       lty = 2, 
       lwd = 2)
-abline(0, 1, lwd = 2, lty = 2, col = "red")
+abline(0, 1, lwd = 2, lty = 2, col = 2)
+legend("bottomright",
+        c("Ideal calibration",
+          "Calibration curve based on secondary Cox model",
+          "95% confidence interval"),
+        col = c(2, 1, 1),
+        lty = c(2, 1, 2),
+        lwd = c(2, 2, 2),
+        bty = "n",
+        cex = 0.85)
 title("Basic model - validation data ")
 
 
@@ -2387,8 +2494,8 @@ plot(
   xlim = c(0, 1),
   ylim = c(0, 1), 
   lwd = 2,
-  xlab = "Predicted probability",
-  ylab = "Observed probability", 
+  xlab = "Predicted risk from developed model",
+  ylab = "Predicted risk from refitted model", 
   bty = "n"
 )
 lines(dat_cal$pred_pgr, 
@@ -2401,8 +2508,17 @@ lines(dat_cal$pred_pgr,
       type = "l", 
       lty = 2, 
       lwd = 2)
-abline(0, 1, lwd = 2, lty = 2, col = "red")
-title("Extended model - validation data ")
+abline(0, 1, lwd = 2, lty = 2, col = 2)
+legend("bottomright",
+        c("Ideal calibration",
+          "Calibration curve based on secondary Cox model",
+          "95% confidence interval"),
+        col = c(2, 1, 1),
+        lty = c(2, 1, 2),
+        lwd = c(2, 2, 2),
+        bty = "n",
+        cex = 0.85)
+title("Extended model - validation data")
 
 # Numerical measures ---------------
 # Basic model
@@ -2500,7 +2616,7 @@ numsum_b <- gbsg5_boot |>
 
 </details>
 
-<img src="imgs/03_predsurv_extended/cal_rcs_metrics-1.png" width="672" style="display: block; margin: auto;" /><img src="imgs/03_predsurv_extended/cal_rcs_metrics-2.png" width="672" style="display: block; margin: auto;" />
+<img src="imgs/03_predsurv_extended/cal_rcs_metrics-1.png" width="576" style="display: block; margin: auto;" /><img src="imgs/03_predsurv_extended/cal_rcs_metrics-2.png" width="576" style="display: block; margin: auto;" />
 
 <table class="table table-striped" style="margin-left: auto; margin-right: auto;">
 <thead>
@@ -2576,28 +2692,28 @@ External data
 0.03
 </td>
 <td style="text-align:right;">
+0.02
+</td>
+<td style="text-align:right;">
+0.06
+</td>
+<td style="text-align:right;">
+0.03
+</td>
+<td style="text-align:right;">
 0.01
+</td>
+<td style="text-align:right;">
+0.06
 </td>
 <td style="text-align:right;">
 0.07
 </td>
 <td style="text-align:right;">
-0.03
+0.04
 </td>
 <td style="text-align:right;">
-0.00
-</td>
-<td style="text-align:right;">
-0.06
-</td>
-<td style="text-align:right;">
-0.06
-</td>
-<td style="text-align:right;">
-0.03
-</td>
-<td style="text-align:right;">
-0.13
+0.12
 </td>
 </tr>
 <tr>
@@ -2614,22 +2730,22 @@ External data + PGR
 0.06
 </td>
 <td style="text-align:right;">
-0.01
+0.02
 </td>
 <td style="text-align:right;">
 0.01
+</td>
+<td style="text-align:right;">
+0.06
 </td>
 <td style="text-align:right;">
 0.05
 </td>
 <td style="text-align:right;">
-0.07
-</td>
-<td style="text-align:right;">
 0.02
 </td>
 <td style="text-align:right;">
-0.12
+0.11
 </td>
 </tr>
 </tbody>
@@ -2652,7 +2768,7 @@ Click to expand code
 
 ``` r
 # Models ------------
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
   data = rott5, x = T, y = T
 )
 # Additional marker
@@ -2816,7 +2932,7 @@ Click to expand code
 
 ``` r
 # Models ------------
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
                data = rott5, x = T, y = T
 )
 # Additional marker
@@ -2887,119 +3003,7 @@ abline(a = 0, b = 1, lwd = 2)
 
 </details>
 
-<img src="imgs/03_predsurv_extended/cumhaz_plot-1.png" width="672" style="display: block; margin: auto;" />
-
-#### 2.2.4 Calibration when only coefficients of the model are available
-
-When only coefficients of the development model is available and the
-baseline survival is not provided, only visual assessment of calibration
-is possible based on Kaplan-Meier curves between risk groups.
-
-<details>
-<summary>
-Click to expand code
-</summary>
-
-``` r
-# Models 
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
-  data = rott5, x = T, y = T
-)
-# Additional marker
-efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
-
-# Development and validation dataset without pgr ---
-rott5$lp <- predict(efit1, newdata = rott5,
-                    reference = "zero")
-rott5$group1 <- cut(rott5$lp, 
-                    breaks = quantile(rott5$lp, 
-                                      probs = seq(0, 1, 0.25)),
-                    include.lowest = TRUE)
-
-# Save breaks to be applied to external validation data
-rott_breaks <- as.vector(quantile(rott5$lp, 
-                                  probs = seq(0, 1, 0.25)))
-
-
-gbsg5$lp <- predict(efit1, newdata = gbsg5, reference = "zero")
-gbsg5$group1 <- cut(gbsg5$lp, 
-                    breaks = c(
-                      - 1000,
-                      rott_breaks[2:4],
-                      + 1000
-                    ),
-                    include.lowest = TRUE)
-
-
-par(las = 1, xaxs = "i", yaxs = "i")
-plot(survfit(Surv(ryear, rfs) ~ group1, data = gbsg5),
-  bty = "n", 
-  xlim = c(0, 5), 
-  ylim = c(0, 1), 
-  lwd = 2, 
-  col = "black",
-  lty = 2, 
-  xlab = "Time (years)", 
-  ylab = "Survival probability"
-)
-lines(survfit(Surv(ryear, rfs) ~ group1, data = rott5),
-      lwd = 2)
-legend("bottomleft",
-       c("Development", "Validation"),
-       lwd = 2, 
-       lty = c(1, 2),
-       bty = "n")
-title("Basic model", adj = 0)
-
-# Development and validation dataset with pgr ---
-rott5$lp_pgr <- predict(efit1_pgr, newdata = rott5, 
-                        reference = "zero")
-rott5$group1_pgr <- cut(rott5$lp_pgr, 
-                    breaks = quantile(rott5$lp_pgr, 
-                                      probs = seq(0, 1, 0.25)),
-                    include.lowest = TRUE)
-
-# Save breaks to be applied to external validation data
-rott_breaks_pgr <- as.vector(quantile(rott5$lp_pgr, 
-                                  probs = seq(0, 1, 0.25)))
-
-gbsg5$lp_pgr <- predict(efit1_pgr, newdata = gbsg5,
-                        reference = "zero")
-gbsg5$group1_pgr <- cut(gbsg5$lp_pgr, 
-                    breaks = c(
-                      - 1000,
-                      rott_breaks_pgr[2:4],
-                      + 1000
-                    ) ,
-                    include.lowest = TRUE)
-
-
-par(las = 1, xaxs = "i", yaxs = "i")
-plot(survfit(Surv(ryear, rfs) ~ group1_pgr, 
-             data = gbsg5),
-     bty = "n",
-     xlim = c(0, 5), 
-     ylim = c(0, 1), 
-     lwd = 2, 
-     col = "black",
-     lty = 2, 
-     xlab = "Time (years)", 
-     ylab = "Survival probability"
-)
-lines(survfit(Surv(ryear, rfs) ~ group1_pgr, 
-              data = rott5),
-              lwd = 2)
-legend("bottomleft",
-       c("Development", "Validation"),
-       lwd = 2, 
-       lty = c(1, 2),
-       bty = "n")
-title("Extended model", adj = 0)
-```
-
-</details>
-
-<img src="imgs/03_predsurv_extended/km-1.png" width="672" style="display: block; margin: auto;" /><img src="imgs/03_predsurv_extended/km-2.png" width="672" style="display: block; margin: auto;" />
+<img src="imgs/03_predsurv_extended/cumhaz_plot-1.png" width="576" style="display: block; margin: auto;" />
 
 ### 2.3 Overall performance measures
 
@@ -3022,7 +3026,7 @@ Click to expand code
 
 ``` r
 # Models 
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
   data = rott5, x = T, y = T
 )
 # Additional marker
@@ -3110,7 +3114,6 @@ score_boot_pgr <- function(split) {
     summary = "ipa"
   )$Brier$score[model == "model"][["IPA"]]
 }
-
 
 
 rott5_boot <- rott5_boot |> mutate(
@@ -3260,7 +3263,7 @@ Brier
 0.20
 </td>
 <td style="text-align:right;">
-0.22
+0.21
 </td>
 <td style="text-align:right;">
 0.21
@@ -3278,7 +3281,7 @@ NA
 0.20
 </td>
 <td style="text-align:right;">
-0.22
+0.21
 </td>
 <td style="text-align:right;">
 0.21
@@ -3313,34 +3316,34 @@ NA
 IPA
 </td>
 <td style="text-align:right;">
-0.14
-</td>
-<td style="text-align:right;">
-0.12
-</td>
-<td style="text-align:right;">
-0.17
-</td>
-<td style="text-align:right;">
-0.14
-</td>
-<td style="text-align:right;">
-NA
-</td>
-<td style="text-align:right;">
-NA
-</td>
-<td style="text-align:right;">
-0.15
+0.16
 </td>
 <td style="text-align:right;">
 0.13
 </td>
 <td style="text-align:right;">
-0.17
+0.18
+</td>
+<td style="text-align:right;">
+0.15
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+0.16
 </td>
 <td style="text-align:right;">
 0.14
+</td>
+<td style="text-align:right;">
+0.19
+</td>
+<td style="text-align:right;">
+0.16
 </td>
 <td style="text-align:right;">
 NA
@@ -3352,16 +3355,16 @@ NA
 0.10
 </td>
 <td style="text-align:right;">
-0.04
+0.03
 </td>
 <td style="text-align:right;">
 0.12
 </td>
 <td style="text-align:right;">
-0.14
+0.13
 </td>
 <td style="text-align:right;">
-0.08
+0.06
 </td>
 <td style="text-align:right;">
 0.16
@@ -3449,7 +3452,7 @@ Click to expand code
 
 ``` r
 # Models 
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
   data = rott5, x = T, y = T
 )
 # Additional marker
@@ -3500,33 +3503,34 @@ par(xaxs = "i", yaxs = "i", las = 1)
 plot(dca_rott5$net.benefit$threshold,
   dca_rott5$net.benefit$pred5,
   type = "l", 
-  lwd = 2, 
-  lty = 1,
+  lwd = 3, 
+  lty = 2,
   xlab = "Threshold probability in %", 
   ylab = "Net Benefit",
   xlim = c(0, 1),
   ylim = c(-0.10, 0.45), 
   bty = "n",
   cex.lab = 1.2, 
-  cex.axis = 1
+  cex.axis = 1,
+  col = 4
 )
-# legend('topright',c('Treat all','Treat none','Prediction model'),
-#        lwd=c(2,2,2),lty=c(1,1,2),col=c('darkgray','black','black'),bty='n')
-lines(dca_rott5$net.benefit$threshold, 
-      dca_rott5$net.benefit$none, 
-      type = "l", 
-      lwd = 2, 
-      lty = 4)
+abline(h = 0, 
+       type = "l", 
+       lwd = 3, 
+       lty = 4,
+       col = 8)
 lines(dca_rott5$net.benefit$threshold, 
       dca_rott5$net.benefit$all, 
       type = "l",
-      lwd = 2, 
-      col = "darkgray")
+      lwd = 3,
+      lty = 4,
+      col = 2)
 lines(dca_rott5_pgr$net.benefit$threshold, 
       dca_rott5_pgr$net.benefit$pred5_pgr, 
       type = "l", 
-      lwd = 2, 
-      lty = 5)
+      lwd = 3, 
+      lty = 5,
+      col = 7)
 legend("topright",
   c(
     "Treat All",
@@ -3534,12 +3538,12 @@ legend("topright",
     "Original model + PGR",
     "Treat None"
   ),
-  lty = c(1, 1, 5, 4), 
-  lwd = 2, 
-  col = c("darkgray", "black", "black", "black"),
+  lty = c(4, 2, 5, 4), 
+  lwd = 3, 
+  col = c(2, 4, 7, 8),
   bty = "n"
 )
-title("Development data", adj = 0, cex = 1.5)
+title("Development data", cex = 1.5)
 
 
 # External data
@@ -3587,31 +3591,35 @@ par(xaxs = "i", yaxs = "i", las = 1)
 plot(dca_gbsg5$net.benefit$threshold,
   dca_gbsg5$net.benefit$pred5,
   type = "l", 
-  lwd = 2, 
-  lty = 1,
+  lwd = 3, 
+  lty = 2,
   xlab = "Threshold probability in %", 
   ylab = "Net Benefit",
   xlim = c(0, 1), 
   ylim = c(-0.10, 0.60), 
   bty = "n",
   cex.lab = 1.2, 
-  cex.axis = 1
+  cex.axis = 1,
+  col = 4
+  
 )
-lines(dca_gbsg5$net.benefit$threshold, 
-      dca_gbsg5$net.benefit$none, 
-      type = "l", 
-      lwd = 2, 
-      lty = 4)
+abline(h = 0, 
+       type = "l", 
+       lwd = 3, 
+       lty = 4,
+       col = 8)
 lines(dca_gbsg5$net.benefit$threshold, 
       dca_gbsg5$net.benefit$all, 
       type = "l", 
-      lwd = 2, 
-      col = "darkgray")
+      lwd = 3,
+      lty = 2,
+      col = 2)
 lines(dca_gbsg5_pgr$net.benefit$threshold,
       dca_gbsg5_pgr$net.benefit$pred5_pgr, 
       type = "l", 
-      lwd = 2, 
-      lty = 5)
+      lwd = 3, 
+      lty = 5,
+      col = 7)
 legend("topright",
   c(
     "Treat All",
@@ -3619,24 +3627,25 @@ legend("topright",
     "Original model + PGR",
     "Treat None"
   ),
-  lty = c(1, 1, 5, 4), lwd = 2, 
-  col = c("darkgray", "black", "black", "black"),
+  lty = c(4, 2, 5, 4), 
+  lwd = 3, 
+  col = c(2, 4, 7, 8),
   bty = "n"
 )
-title("External data", adj = 0, cex = 1.5)
+title("External data", cex = 1.5)
 ```
 
 </details>
 
-    ## [1] "pred5: No observations with risk greater than 84%, and therefore net benefit not calculable in this range."
+    ## [1] "pred5: No observations with risk greater than 93%, and therefore net benefit not calculable in this range."
 
-    ## [1] "pred5_pgr: No observations with risk greater than 88%, and therefore net benefit not calculable in this range."
+    ## [1] "pred5_pgr: No observations with risk greater than 95%, and therefore net benefit not calculable in this range."
 
 <img src="imgs/03_predsurv_extended/dca-1.png" width="672" style="display: block; margin: auto;" />
 
-    ## [1] "pred5: No observations with risk greater than 84%, and therefore net benefit not calculable in this range."
+    ## [1] "pred5: No observations with risk greater than 93%, and therefore net benefit not calculable in this range."
 
-    ## [1] "pred5_pgr: No observations with risk greater than 88%, and therefore net benefit not calculable in this range."
+    ## [1] "pred5_pgr: No observations with risk greater than 95%, and therefore net benefit not calculable in this range."
 
 <img src="imgs/03_predsurv_extended/dca-2.png" width="672" style="display: block; margin: auto;" />
 
@@ -3674,7 +3683,7 @@ Development data
 0.267
 </td>
 <td style="text-align:right;">
-0.274
+0.273
 </td>
 </tr>
 <tr>
@@ -3691,7 +3700,7 @@ Validation data
 0.362
 </td>
 <td style="text-align:right;">
-0.367
+0.359
 </td>
 </tr>
 </tbody>
@@ -3730,8 +3739,8 @@ sessioninfo::session_info()
     ##  collate  English_United States.1252
     ##  ctype    English_United States.1252
     ##  tz       Europe/Berlin
-    ##  date     2022-03-25
-    ##  pandoc   2.14.0.3 @ C:/Program Files/RStudio/bin/pandoc/ (via rmarkdown)
+    ##  date     2022-07-29
+    ##  pandoc   2.17.1.1 @ C:/Program Files/RStudio/bin/quarto/bin/ (via rmarkdown)
     ## 
     ## - Packages -------------------------------------------------------------------
     ##  package        * version    date (UTC) lib source

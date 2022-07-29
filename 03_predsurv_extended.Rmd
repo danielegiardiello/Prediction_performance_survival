@@ -55,6 +55,9 @@ pacman::p_load(
   gridExtra,
   webshot
 )
+
+options(show.signif.stars = FALSE)  # display statistical intelligence
+palette("Okabe-Ito")  # color-blind friendly  (needs R 4.0)
 ```
 
 The two primary datasets from the Rotterdam study and the

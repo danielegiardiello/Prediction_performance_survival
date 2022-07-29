@@ -1212,16 +1212,16 @@ Scaled Brier
 0.04
 </td>
 <td style="text-align:right;">
-0.16
+0.15
 </td>
 <td style="text-align:right;">
 0.13
 </td>
 <td style="text-align:right;">
-0.08
+0.06
 </td>
 <td style="text-align:right;">
-0.18
+0.19
 </td>
 </tr>
 </tbody>
