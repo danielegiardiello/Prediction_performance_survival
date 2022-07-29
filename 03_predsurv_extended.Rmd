@@ -74,24 +74,51 @@ A categorical variable for nodes is also added.
 <details>
   <summary>Click to expand code</summary>
 ```{r, import,fig.align='center', echo=TRUE, eval=FALSE}
+# Data and recoding ----------------------------------
 # Development data
-# Recurrence free survival is the time until the earlier of
-#  recurrence or death. 
+
 rotterdam$ryear <- rotterdam$rtime/365.25  # time in years
-rotterdam$rfs <- with(rotterdam, pmax(recur, death)) #The variable rfs is a status indicator, 0=alive without relapse, 1= death or relapse.
-rotterdam$ryear[rotterdam$rfs == 1 & rotterdam$recur == 0 & rotterdam$death == 1 & (rotterdam$rtime < rotterdam$dtime)] <- rotterdam$dtime[rotterdam$rfs == 1 & rotterdam$recur == 0 & rotterdam$death == 1 & (rotterdam$rtime < rotterdam$dtime)]/365.25  #Fix the outcome for 43 patients who have died but censored at time of recurrence which was less than death time. The actual death time should be used rather than the earlier censored recurrence time.
+rotterdam$rfs <- with(rotterdam, pmax(recur, death)) #The variable rfs is a status indicator, 0 = alive without relapse, 1 = death or relapse.
+
+# Fix the outcome for 43 patients who have died but 
+# censored at time of recurrence which was less than death time. 
+# The actual death time should be used rather than the earlier censored recurrence time.
+
+rotterdam$ryear[rotterdam$rfs == 1 & 
+                  rotterdam$recur == 0 & 
+                  rotterdam$death == 1 & 
+                  (rotterdam$rtime < rotterdam$dtime)] <- 
+  
+  rotterdam$dtime[rotterdam$rfs == 1 &
+                    rotterdam$recur == 0 & 
+                    rotterdam$death == 1 & 
+                    (rotterdam$rtime < rotterdam$dtime)]/365.25  
 
 # variables used in the analysis
-pgr99 <- quantile(rotterdam$pgr, .99, type = 1) # there is a large outlier of 5000
+pgr99 <- quantile(rotterdam$pgr, .99, type = 1) # there is a large outlier of 5000, used type=1 to get same result as in SAS
 rotterdam$pgr2 <- pmin(rotterdam$pgr, pgr99) # Winsorized value
+nodes99 <- quantile(rotterdam$nodes, .99, type = 1) 
+rotterdam$nodes2 <- pmin(rotterdam$nodes, nodes99) # NOTE: winsorizing also continuous node?
+
 rotterdam$csize <- rotterdam$size           # categorized size
-rotterdam$cnode <- cut(rotterdam$nodes, c(-1, 0, 3, 51),
+rotterdam$cnode <- cut(rotterdam$nodes, 
+                       c(-1,0, 3, 51),
                        c("0", "1-3", ">3"))   # categorized node
 rotterdam$grade3 <- as.factor(rotterdam$grade)
 levels(rotterdam$grade3) <- c("1-2", "3")
 
 # Save in the data the restricted cubic spline term using Hmisc::rcspline.eval() package
-rcs3_pgr <- rcspline.eval(rotterdam$pgr2, knots = c(0, 41, 486))
+
+# Continuous nodes variable
+rcs3_nodes <- rcspline.eval(rotterdam$nodes2, 
+                            knots = c(0, 1, 9))
+attr(rcs3_nodes, "dim") <- NULL
+attr(rcs3_nodes, "knots") <- NULL
+rotterdam$nodes3 <- rcs3_nodes
+
+# PGR
+rcs3_pgr <- rcspline.eval(rotterdam$pgr2, 
+                          knots = c(0, 41, 486)) # using knots of the original variable (not winsorized)
 attr(rcs3_pgr, "dim") <- NULL
 attr(rcs3_pgr, "knots") <- NULL
 rotterdam$pgr3 <- rcs3_pgr
@@ -99,15 +126,25 @@ rotterdam$pgr3 <- rcs3_pgr
 # Validation data
 gbsg$ryear <- gbsg$rfstime/365.25
 gbsg$rfs   <- gbsg$status           # the GBSG data contains RFS
-gbsg$cnode <- cut(gbsg$nodes, c(-1,0, 3, 51),
-                       c("0", "1-3", ">3"))   # categorized node
-gbsg$csize <- cut(gbsg$size,  c(-1, 20, 50, 500), #categorized size
+gbsg$cnode <- cut(gbsg$nodes, 
+                  c(-1,0, 3, 51),
+                  c("0", "1-3", ">3"))   # categorized node
+gbsg$csize <- cut(gbsg$size,  
+                  c(-1, 20, 50, 500), #categorized size
                   c("<=20", "20-50", ">50"))
-gbsg$pgr2 <- pmin(gbsg$pgr, pgr99) # Winsorized value
+gbsg$pgr2 <- pmin(gbsg$pgr, pgr99) # Winsorized value of PGR
+gbsg$nodes2 <- pmin(gbsg$nodes, nodes99) # Winsorized value of continuous nodes
 gbsg$grade3 <- as.factor(gbsg$grade)
 levels(gbsg$grade3) <- c("1-2", "1-2", "3")
 
-# Restricted cubic spline for PGR
+# Restricted cubic spline 
+# Continuous nodes
+rcs3_nodes <- rcspline.eval(gbsg$nodes2, knots = c(0, 1, 9))
+attr(rcs3_nodes, "dim") <- NULL
+attr(rcs3_nodes, "knots") <- NULL
+gbsg$nodes3 <- rcs3_nodes
+
+# PGR
 rcs3_pgr <- rcspline.eval(gbsg$pgr2, knots = c(0, 41, 486))
 attr(rcs3_pgr, "dim") <- NULL
 attr(rcs3_pgr, "knots") <- NULL
@@ -116,13 +153,11 @@ gbsg$pgr3 <- rcs3_pgr
 
 # Much of the analysis will focus on the first 5 years: create
 #  data sets that are censored at 5
-temp <- survSplit(Surv(ryear, rfs) ~ ., data = rotterdam, 
-                  cut = 5,
-                  episode = "epoch")
+temp <- survSplit(Surv(ryear, rfs) ~ ., data = rotterdam, cut = 5,
+                  episode="epoch")
 rott5 <- subset(temp, epoch == 1)  # only the first 5 years
-temp <- survSplit(Surv(ryear, rfs) ~ ., data = gbsg, 
-                  cut = 5,
-                  episode = "epoch")
+temp <- survSplit(Surv(ryear, rfs) ~ ., data = gbsg, cut = 5,
+                  episode ="epoch")
 gbsg5 <- subset(temp, epoch == 1)
 
 # Relevel
@@ -136,8 +171,8 @@ gbsg5$cnode <- relevel(gbsg$cnode, "0")
 
 
 ```{r tab1_bis, echo=FALSE}
-rsel <- rotterdam[, c("pid", "csize", "cnode", "grade3", "age", "pgr")]
-vsel <- gbsg[, c("pid", "csize", "cnode", "grade3", "age", "pgr")]
+rsel <- rotterdam[, c("pid", "csize", "nodes", "grade3", "age", "pgr")]
+vsel <- gbsg[, c("pid", "csize", "nodes", "grade3", "age", "pgr")]
 rsel$dt <- 1
 vsel$dt <- 2
 cdata <- rbind(rsel, vsel)
@@ -147,7 +182,7 @@ cdata$dt <- factor(cdata$dt,
 )
 
 label(cdata$csize) <- "Size"
-label(cdata$cnode) <- "Number of nodes"
+label(cdata$nodes) <- "Number of nodes"
 label(cdata$grade3) <- "Grade of tumor"
 label(cdata$age) <- "Age"
 label(cdata$pgr) <- "PGR"
@@ -184,7 +219,7 @@ First, we draw the survival and the censoring curves of the development and vali
 
 <details>
   <summary>Click to expand code</summary>
-```{r, surv, fig.align='center', echo=TRUE, eval=FALSE}
+```{r, surv, fig.align='center', fig.width = 6, fig.height = 6, echo=TRUE, eval=FALSE}
 # Development set
 sfit_rott <- survfit(Surv(ryear, rfs == 1) ~ 1, 
                      data = rotterdam) # survival
@@ -235,7 +270,7 @@ title("Validation set")
 ```
  </details>
  
-```{r, surv, fig.align='center', warning=FALSE, eval=TRUE}
+```{r, surv, fig.align='center', warning=FALSE, eval=TRUE, fig.width = 6, fig.height = 6}
 ```
 
 A number of 2982 patients were included to develop the risk prediction model for survival with a median follow-up of 9 years. The 5-year survival was 56% (95% CI: 55-58%). 
@@ -257,8 +292,14 @@ dd <- datadist(rotterdam)
 options(datadist = "dd")
 fit_pgr <- cph(Surv(ryear, rfs) ~ rcs(pgr2), 
                data = rotterdam, x = T, y = T, surv = T)
+fit_nodes <- cph(Surv(ryear, rfs) ~ rcs(nodes2), 
+               data = rotterdam, x = T, y = T, surv = T)
+
+oldpar <- par(mfrow = c(2, 2), mar = c(5, 5, 1, 1))
 plot(Predict(fit_pgr))
+plot(Predict(fit_nodes))
 options(datadist = NULL)
+par(oldpar)
 ``` 
 </details>
   
@@ -275,7 +316,7 @@ Firstly, we fit the first prediction model in the development data using size, n
 <details>
   <summary>Click to expand code</summary>
 ```{r,ph, message=FALSE, warning=FALSE,fig.align='center', echo=TRUE, eval=FALSE}
-fit1_ph <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3, 
+fit1_ph <- coxph(Surv(ryear, rfs) ~ csize + rcs(nodes2, 3) + grade3, 
                 data = rotterdam, x = T, y = T)
 
 
@@ -305,13 +346,13 @@ edata <- survSplit(Surv(ryear, rfs) ~ .,
   data = rotterdam, cut = c(5, 10),
   episode = "epoch"
 )
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
   data = edata[edata$epoch == 1, ], x = T, y = T
 )
-efit2 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
+efit2 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
   data = edata[edata$epoch == 2, ], x = T, y = T
 )
-efit3 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
+efit3 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
   data = edata[edata$epoch == 3, ], x = T, y = T
 )
 ```
@@ -352,7 +393,7 @@ We also administratively censored the validation data at 5 years.
 ```{r, model_development, fig.align='center', echo=TRUE, eval=FALSE}
 # Consider the first 5-year epoch in the development set
 # Refit the model
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
   data = rott5, x = T, y = T
 )
 # Additional marker
@@ -380,7 +421,8 @@ Below the results of the models:
 dd <- datadist(rott5)
 options(datadist = "dd")
 options(prType = "html")
-fit_cph_rott5 <- cph(Surv(ryear, rfs) ~ csize + cnode + grade3,
+fit_cph_rott5 <- cph(Surv(ryear, rfs) ~ csize + 
+                       rcs(nodes2, c(0, 1, 9)) + grade3,
   data = rott5, x = T, y = T, surv = T
 )
 print(fit_cph_rott5)
@@ -437,7 +479,7 @@ For all three measures, values close to 1 indicate good discrimination ability, 
 ```{r, concordance, message=FALSE ,warning=FALSE, echo=TRUE, eval=FALSE}
 
 # Models 
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
   data = rott5, x = T, y = T
 )
 # Additional marker
@@ -510,7 +552,7 @@ Internal validation using bootstrap optimism-corrected cross-validation
   <summary>Click to expand code</summary>
 ```{r, int_val_calc_01, warning=FALSE, message=FALSE, echo=TRUE, eval=FALSE}
 # Models 
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
   data = rott5, x = T, y = T
 )
 # Additional marker
@@ -521,7 +563,7 @@ int_val <- bootstrap_cv(db = rott5,
                         time = "ryear",
                         status = "rfs",
                         formula_model = "Surv(ryear, rfs) ~ csize + 
-                        cnode + 
+                        nodes2 + nodes3 + 
                         grade3",
                         formula_ipcw = "Surv(ryear, rfs) ~ 1",
                         pred.time = 4.99)
@@ -531,7 +573,7 @@ int_val_pgr <- bootstrap_cv(db = rott5,
                         time = "ryear",
                         status = "rfs",
                         formula_model = "Surv(ryear, rfs) ~ csize + 
-                        cnode + 
+                        nodes2 + nodes3 + 
                         grade3 + pgr2 + pgr3",
                         formula_ipcw = "Surv(ryear, rfs) ~ 1",
                         pred.time = 4.99)
@@ -635,7 +677,7 @@ kable(res_C) |>
                      "External + PGR" = 3))
 ```
 
-Concordance varied between 0.67 and 0.68 in the apparent, internal and external validation using the basic and extended model.
+Concordance varied between 0.67 and 0.69 in the apparent, internal and external validation using the basic and extended model.
 
 <details>
   <summary>Click to expand code</summary>
