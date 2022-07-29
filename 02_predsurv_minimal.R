@@ -201,6 +201,7 @@ dat_cal <- cbind.data.frame(
 
 dat_cal <- dat_cal[order(dat_cal$pred), ]
 
+win.graph() # If you use windows
 par(xaxs = "i", yaxs = "i", las = 1)
 plot(
   dat_cal$pred, 
@@ -223,7 +224,16 @@ lines(dat_cal$pred,
       type = "l", 
       lty = 2, 
       lwd = 2)
-abline(0, 1, lwd = 2, lty = 2, col = "red")
+abline(0, 1, lwd = 2, lty = 2, col = 2)
+legend("bottomright",
+       c("Ideal calibration",
+         "Calibration curve based on secondary Cox model",
+         "95% confidence interval"),
+       col = c(2, 1, 1),
+       lty = c(2, 1, 2),
+       lwd = c(2, 2, 2),
+       bty = "n",
+       cex = 0.85)
 
 # Numerical measures
 absdiff_cph <- abs(dat_cal$pred - dat_cal$obs)
@@ -315,36 +325,41 @@ head(df_nb)
 df_nb[df_nb$threshold == 0.23,]
 
 # Make basic decision curve plot
-par(
-  xaxs = "i", 
-  yaxs = "i", 
-  las = 1, 
-  mar = c(6.1, 5.8, 4.1, 2.1), 
-  mgp = c(4.25, 1, 0)
+
+# Decision curves plot
+win.graph() # if you use Windows, not usable for Unix/Apple
+par(xaxs = "i", yaxs = "i", las = 1)
+plot(df_nb$threshold,
+     df_nb$NB,
+     type = "l", 
+     lwd = 3, 
+     lty = 2,
+     xlab = "Threshold probability in %", 
+     ylab = "Net Benefit",
+     xlim = c(0, 1), 
+     ylim = c(-0.10, 0.60), 
+     bty = "n",
+     cex.lab = 1.2, 
+     cex.axis = 1,
+     col = 4
 )
-plot(
-  df_nb$threshold, 
-  df_nb$NB,
-  type = "l", 
-  lwd = 2,
-  ylim = c(-0.1, 0.6),
-  xlim = c(0, 1), 
-  xlab = "",
-  ylab = "Net Benefit",
-  bty = "n", 
+lines(df_nb$threshold, 
+      df_nb$treat_all, 
+      type = "l", 
+      lwd = 3, 
+      col = 2)
+abline(h = 0, type = "l", lwd = 3, lty = 4, col = 8)
+legend("topright",
+       c(
+         "Treat All",
+         "Original model",
+         "Treat None"
+       ),
+       lty = c(1, 2, 4), lwd = 3, 
+       col = c(2, 4, 8),
+       bty = "n"
 )
-lines(df_nb$threshold, df_nb$treat_all, type = "l", col = "darkgray", lwd = 2)
-abline(h = 0, lty = 2, lwd = 2)
-legend(
-  "topright", 
-  c("Treat all", "Treat none", "Prediction model"),
-  lwd = c(2, 2, 2), 
-  lty = c(1, 2, 1), 
-  col = c("darkgray", "black", "black"), 
-  bty = "n"
-)
-mtext("Threshold probability", 1, line = 2)
-title("Validation data")
+title("Validation set", cex = 1.5)
 
 
 
