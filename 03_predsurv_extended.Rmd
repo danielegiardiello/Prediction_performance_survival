@@ -684,7 +684,7 @@ Concordance varied between 0.67 and 0.69 in the apparent, internal and external 
 ```{r, AUC, message=FALSE, warning=FALSE, echo=TRUE, eval=FALSE}
 
 # Models 
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
   data = rott5, x = T, y = T
 )
 # Additional marker
@@ -807,7 +807,7 @@ kable(res_AUC) |>
 
 ```
 
-Time-dependent AUC at 5 years was between 0.71 and 0.72 in the apparent, internal and external validation for the basic and extended model.
+Time-dependent AUC at 5 years was between 0.68 and 0.72 in the apparent, internal and external validation for the basic and extended model.
 
 
 ### 2.2 Calibration
@@ -823,7 +823,7 @@ Since different level of information may be available, different level of calibr
 + Mean calibration can be estimated:  
 
   + at a fixed time point:
-    + using the Observed and Expected ratio at time t. The             estimated Observed number of events is calculated by the         Kaplan-Meier curve, and the Expected number of events is         calculated as the average of the estimated predicted risk        at time _t_ (e.g. 5 years);  
+    + using the Observed and Expected ratio at time t. The             estimated Observed number of events is calculated by the         Kaplan-Meier curve, and the Expected number of events is         calculated as the average of the estimated predicted risk at time _t_ (e.g. 5 years);  
     
   + time range:  
     + using the exponential of Poisson model intercept,                exp(a)=(O/E), with log of cumulative hazard as offset.  
@@ -834,7 +834,7 @@ Since different level of information may be available, different level of calibr
     + using a new ‘secondary’ Cox model using all of the             validation  data with the PI from the development model as         the only covariate.  
     
   + time range:  
-    + using slope as the coefficient of PI in Poisson model with       log of baseline cumulative hazard minus PI as offset.  
+    + using slope as the coefficient of PI in Poisson model with log of baseline cumulative hazard minus PI as offset.  
 
 
 + Moderate calibration can estimated:
@@ -844,9 +844,9 @@ Since different level of information may be available, different level of calibr
   + time range: 
     + Plot the observed / expected number of events over time          using Poisson model intercept, exp(a) with log of                cumulative hazard as offset across all time points to _t_ 
       (i.e. 5 years);  
-    + Model relationship between predictions and observed risk in       external dataset using Poisson model. Plot cumulative            hazard from Poisson model versus cumulative hazard from          original Cox model. 
+    + Model relationship between predictions and observed risk in       external dataset using Poisson model. Plot cumulative hazard from Poisson model versus cumulative hazard from original Cox model. 
 
-More detailed explanations are available in the [paper](https://www.medrxiv.org/content/10.1101/2022.03.17.22272411v1).
+More detailed explanations are available in the preprint version of the  [paper](https://www.medrxiv.org/content/10.1101/2022.03.17.22272411v1).
   
 #### 2.2.1 Mean calibration
 ##### 2.2.1.1  Mean calibration - fixed time point
@@ -858,7 +858,7 @@ The expected is estimated using the average predicted risk of the event at the f
   <summary>Click to expand code</summary>
 ```{r, mean_cal_t, message=FALSE, warning=FALSE, echo=TRUE, eval=FALSE}
 # Models 
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
   data = rott5, x = T, y = T
 )
 # Additional marker
@@ -915,10 +915,9 @@ kable(res_OE) |>
   add_header_above(c(" " = 1, 
                      "External" = 3, 
                      "External + PGR" = 3))
-
 ```
 
-Observed and Expected ratio is 1.04 (95% CI: 0.93 - 1.17) for the basic model and 1.02 (95% CI: 0.90 - 1.14) for the extended model.
+Observed and Expected ratio is 1.02 (95% CI: 0.91 - 1.14) for the basic model and 0.99 (95% CI: 0.88 - 1.12) for the extended model.
 
 ##### 2.2.1.2  Mean calibration - time range assessment 
 The mean calibration for the entire data is calculated using the approach proposed by [Crowson et al.](https://journals.sagepub.com/doi/abs/10.1177/0962280213497434) to estimate calibration-in-the-large and slope using Poisson regression.
@@ -929,7 +928,7 @@ For mean calibration, we show the ratio which is the exponential of the intercep
   <summary>Click to expand code</summary>
 ```{r, mean_cal, message=FALSE, warning=FALSE, echo=TRUE, eval=FALSE}
 # Models 
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
   data = rott5, x = T, y = T
 )
 
@@ -995,7 +994,7 @@ kable(res_cal) |>
                      "External" = 3, 
                      "External + PGR" = 3))
 ```
-The ratio is 1.06 (95% CI: 0.94 - 1.19) for the basic model and 1.02 (95% CI: 0.91 - 1.15) for the extended model. 
+The ratio is 1.02 (95% CI: 0.90 - 1.14) for the basic model and 0.99 (95% CI: 0.88 - 1.11) for the extended model. 
 
 
 #### 2.2.2 Weak calibration 
@@ -1007,7 +1006,7 @@ model using all of the validation data with the PI from the development model as
   <summary>Click to expand code</summary>
 ```{r, weak_cal_t, echo=TRUE, message=FALSE, warning=FALSE, eval=FALSE}
 # Models 
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
   data = rott5, x = T, y = T
 )
 # Additional marker
@@ -1063,7 +1062,7 @@ kable(res_cal) |>
                      "External + PGR" = 3))
 
 ```
-Calibration slope was 1.07 (95% CI: 0.82-1.32) and 1.20 (95% CI: 0.95-1.45) for the basic and extended model, respectively.
+Calibration slope was 1.06 (95% CI: 0.82-1.30) and 1.14 (95% CI: 0.90-1.38) for the basic and extended model, respectively.
 
 ##### 2.2.2.2 Weak calibration - time range assessment
 The calibration for the entire data is calculated using the approach proposed by [Crowson et al.](https://journals.sagepub.com/doi/abs/10.1177/0962280213497434) to estimate calibration-in-the-large and slope using Poisson regression.
@@ -1073,7 +1072,7 @@ For weak calibration, we show the calibration slope.
   <summary>Click to expand code</summary>
 ```{r, weak_cal, message=FALSE, warning=FALSE, echo=TRUE, eval=FALSE}
 # Models 
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
   data = rott5, x = T, y = T
 )
 # Additional marker
@@ -1144,7 +1143,7 @@ kable(res_cal) |>
                      "External + PGR" = 3))
 ```
 
-Calibration slope was 1.05 (95% CI: 0.80-1.30) and 1.16 (95% CI: 0.93-1.40) for the basic and extended model, respectively.
+Calibration slope was 1.03 (95% CI: 0.80-1.23) and 1.11 (95% CI: 0.89-1.33) for the basic and extended model, respectively.
 
 
 #### 2.2.3 Moderate calibration 
@@ -1171,9 +1170,9 @@ probabilities;
 
 <details>
   <summary>Click to expand code</summary>
-```{r, cal_rcs_metrics, fig.align='center', echo=TRUE, eval=FALSE}
+```{r, cal_rcs_metrics, fig.align='center', fig.width = 6, fig.height = 6, echo=TRUE, eval=FALSE}
 # Models  ---
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
   data = rott5, x = T, y = T
 )
 # Additional marker
@@ -1254,8 +1253,8 @@ plot(
   xlim = c(0, 1),
   ylim = c(0, 1), 
   lwd = 2,
-  xlab = "Predicted probability",
-  ylab = "Observed probability", bty = "n"
+  xlab = "Predicted risk from developed model",
+  ylab = "Predicted risk from refitted model", bty = "n"
 )
 lines(dat_cal$pred, 
       dat_cal$lower, 
@@ -1267,7 +1266,16 @@ lines(dat_cal$pred,
       type = "l", 
       lty = 2, 
       lwd = 2)
-abline(0, 1, lwd = 2, lty = 2, col = "red")
+abline(0, 1, lwd = 2, lty = 2, col = 2)
+legend("bottomright",
+        c("Ideal calibration",
+          "Calibration curve based on secondary Cox model",
+          "95% confidence interval"),
+        col = c(2, 1, 1),
+        lty = c(2, 1, 2),
+        lwd = c(2, 2, 2),
+        bty = "n",
+        cex = 0.85)
 title("Basic model - validation data ")
 
 
@@ -1282,8 +1290,8 @@ plot(
   xlim = c(0, 1),
   ylim = c(0, 1), 
   lwd = 2,
-  xlab = "Predicted probability",
-  ylab = "Observed probability", 
+  xlab = "Predicted risk from developed model",
+  ylab = "Predicted risk from refitted model", 
   bty = "n"
 )
 lines(dat_cal$pred_pgr, 
@@ -1296,7 +1304,16 @@ lines(dat_cal$pred_pgr,
       type = "l", 
       lty = 2, 
       lwd = 2)
-abline(0, 1, lwd = 2, lty = 2, col = "red")
+abline(0, 1, lwd = 2, lty = 2, col = 2)
+legend("bottomright",
+        c("Ideal calibration",
+          "Calibration curve based on secondary Cox model",
+          "95% confidence interval"),
+        col = c(2, 1, 1),
+        lty = c(2, 1, 2),
+        lwd = c(2, 2, 2),
+        bty = "n",
+        cex = 0.85)
 title("Extended model - validation data ")
 
 # Numerical measures ---------------
@@ -1395,7 +1412,7 @@ numsum_b <- gbsg5_boot |>
 ```
 </details>
   
-```{r, cal_rcs_metrics, fig.align='center', warning=FALSE, eval=TRUE}
+```{r, cal_rcs_metrics, fig.align='center', fig.width = 6, fig.height = 6, warning=FALSE, eval=TRUE}
 ```
 
 
@@ -1462,7 +1479,7 @@ Moderate calibration over the time range can be assessed by plotting the observe
   <summary>Click to expand code</summary>
 ```{r, mod_cal, message=FALSE,warning=FALSE, fig.align='center', echo=TRUE, eval=FALSE}
 # Models ------------
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
   data = rott5, x = T, y = T
 )
 # Additional marker
@@ -1620,10 +1637,10 @@ We also plot the cumulative hazard from Poisson model versus cumulative hazard f
 
 <details>
   <summary>Click to expand code</summary>
-```{r, cumhaz_plot, message=FALSE,warning=FALSE, fig.align='center', echo=TRUE, eval=FALSE}
+```{r, cumhaz_plot, message=FALSE,warning=FALSE, fig.align='center', fig.width = 6, fig.height = 6, echo=TRUE, eval=FALSE}
 
 # Models ------------
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
                data = rott5, x = T, y = T
 )
 # Additional marker
@@ -1695,115 +1712,9 @@ abline(a = 0, b = 1, lwd = 2)
 ```
 </details>
   
-```{r, cumhaz_plot, fig.align='center', warning=FALSE, eval=TRUE}
+```{r, cumhaz_plot, fig.align='center', fig.width = 6, fig.height = 6, warning=FALSE, eval=TRUE}
 ```
 
-#### 2.2.4 Calibration when only coefficients of the model are available
-When only coefficients of the development model is available and the baseline survival is not provided, only visual assessment of calibration is possible based on Kaplan-Meier curves between risk groups.
-
-<details>
-  <summary>Click to expand code</summary>
-```{r, km, message=FALSE, warning=FALSE, echo=TRUE, eval=FALSE}
-
-# Models 
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
-  data = rott5, x = T, y = T
-)
-# Additional marker
-efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
-
-# Development and validation dataset without pgr ---
-rott5$lp <- predict(efit1, newdata = rott5,
-                    reference = "zero")
-rott5$group1 <- cut(rott5$lp, 
-                    breaks = quantile(rott5$lp, 
-                                      probs = seq(0, 1, 0.25)),
-                    include.lowest = TRUE)
-
-# Save breaks to be applied to external validation data
-rott_breaks <- as.vector(quantile(rott5$lp, 
-                                  probs = seq(0, 1, 0.25)))
-
-
-gbsg5$lp <- predict(efit1, newdata = gbsg5, reference = "zero")
-gbsg5$group1 <- cut(gbsg5$lp, 
-                    breaks = c(
-                      - 1000,
-                      rott_breaks[2:4],
-                      + 1000
-                    ),
-                    include.lowest = TRUE)
-
-
-par(las = 1, xaxs = "i", yaxs = "i")
-plot(survfit(Surv(ryear, rfs) ~ group1, data = gbsg5),
-  bty = "n", 
-  xlim = c(0, 5), 
-  ylim = c(0, 1), 
-  lwd = 2, 
-  col = "black",
-  lty = 2, 
-  xlab = "Time (years)", 
-  ylab = "Survival probability"
-)
-lines(survfit(Surv(ryear, rfs) ~ group1, data = rott5),
-      lwd = 2)
-legend("bottomleft",
-       c("Development", "Validation"),
-       lwd = 2, 
-       lty = c(1, 2),
-       bty = "n")
-title("Basic model", adj = 0)
-
-# Development and validation dataset with pgr ---
-rott5$lp_pgr <- predict(efit1_pgr, newdata = rott5, 
-                        reference = "zero")
-rott5$group1_pgr <- cut(rott5$lp_pgr, 
-                    breaks = quantile(rott5$lp_pgr, 
-                                      probs = seq(0, 1, 0.25)),
-                    include.lowest = TRUE)
-
-# Save breaks to be applied to external validation data
-rott_breaks_pgr <- as.vector(quantile(rott5$lp_pgr, 
-                                  probs = seq(0, 1, 0.25)))
-
-gbsg5$lp_pgr <- predict(efit1_pgr, newdata = gbsg5,
-                        reference = "zero")
-gbsg5$group1_pgr <- cut(gbsg5$lp_pgr, 
-                    breaks = c(
-                      - 1000,
-                      rott_breaks_pgr[2:4],
-                      + 1000
-                    ) ,
-                    include.lowest = TRUE)
-
-
-par(las = 1, xaxs = "i", yaxs = "i")
-plot(survfit(Surv(ryear, rfs) ~ group1_pgr, 
-             data = gbsg5),
-     bty = "n",
-     xlim = c(0, 5), 
-     ylim = c(0, 1), 
-     lwd = 2, 
-     col = "black",
-     lty = 2, 
-     xlab = "Time (years)", 
-     ylab = "Survival probability"
-)
-lines(survfit(Surv(ryear, rfs) ~ group1_pgr, 
-              data = rott5),
-              lwd = 2)
-legend("bottomleft",
-       c("Development", "Validation"),
-       lwd = 2, 
-       lty = c(1, 2),
-       bty = "n")
-title("Extended model", adj = 0)
-```
-</details>
-  
-```{r, km, fig.align='center', warning=FALSE, eval=TRUE}
-```
 
 ### 2.3 Overall performance measures
 Two overall performance measures are proposed for prediction models with a survival outcome:
@@ -1816,7 +1727,7 @@ Two overall performance measures are proposed for prediction models with a survi
   <summary>Click to expand code</summary>
 ```{r, overall, warning=FALSE, echo=TRUE, eval=FALSE}
 # Models 
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
   data = rott5, x = T, y = T
 )
 # Additional marker
@@ -1906,7 +1817,6 @@ score_boot_pgr <- function(split) {
 }
 
 
-
 rott5_boot <- rott5_boot |> mutate(
   IPA = map_dbl(splits, score_boot),
   IPA_pgr = map_dbl(splits, score_boot_pgr)
@@ -1930,7 +1840,7 @@ source(here::here('Functions/internal_cv.R'))
 
 ```{r, int_val_calc_02, echo=FALSE, warning=FALSE}
 # Models 
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
   data = rott5, x = T, y = T
 )
 # Additional marker
@@ -1942,7 +1852,7 @@ int_val <- bootstrap_cv(db = rott5,
                         status = "rfs",
                         formula_model = "Surv(ryear, rfs) ~ 
                         csize + 
-                        cnode + 
+                        nodes2 + nodes3 + 
                         grade3",
                         formula_ipcw = "Surv(ryear, rfs) ~ 1",
                         pred.time = 4.99)
@@ -1953,7 +1863,7 @@ int_val_pgr <- bootstrap_cv(db = rott5,
                         status = "rfs",
                         formula_model = "Surv(ryear, rfs) ~ 
                         csize + 
-                        cnode + 
+                        nodes2 + nodes3 + 
                         grade3 + pgr2 + pgr3",
                         formula_ipcw = "Surv(ryear, rfs) ~ 1",
                         pred.time = 4.99)
@@ -2080,7 +1990,7 @@ source(here::here('Functions/stdca.R'))
 ```{r, dca, message=FALSE, warning=FALSE, fig.align='center', echo=TRUE, eval=FALSE}
 
 # Models 
-efit1 <- coxph(Surv(ryear, rfs) ~ csize + cnode + grade3,
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
   data = rott5, x = T, y = T
 )
 # Additional marker
