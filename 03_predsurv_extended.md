@@ -89,6 +89,9 @@ pacman::p_load(
   gridExtra,
   webshot
 )
+
+options(show.signif.stars = FALSE)  # display statistical intelligence
+palette("Okabe-Ito")  # color-blind friendly  (needs R 4.0)
 ```
 
 The two primary datasets from the Rotterdam study and the German Breast
@@ -2695,7 +2698,7 @@ External data
 0.02
 </td>
 <td style="text-align:right;">
-0.06
+0.05
 </td>
 <td style="text-align:right;">
 0.03
@@ -2704,13 +2707,13 @@ External data
 0.01
 </td>
 <td style="text-align:right;">
-0.06
+0.05
 </td>
 <td style="text-align:right;">
 0.07
 </td>
 <td style="text-align:right;">
-0.04
+0.03
 </td>
 <td style="text-align:right;">
 0.12
@@ -2727,7 +2730,7 @@ External data + PGR
 0.01
 </td>
 <td style="text-align:right;">
-0.06
+0.05
 </td>
 <td style="text-align:right;">
 0.02
@@ -2745,7 +2748,7 @@ External data + PGR
 0.02
 </td>
 <td style="text-align:right;">
-0.11
+0.10
 </td>
 </tr>
 </tbody>
