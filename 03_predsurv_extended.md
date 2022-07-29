@@ -1748,7 +1748,7 @@ NA
 0.75
 </td>
 <td style="text-align:right;">
-0.73
+0.72
 </td>
 <td style="text-align:right;">
 NA
@@ -2698,7 +2698,7 @@ External data
 0.02
 </td>
 <td style="text-align:right;">
-0.05
+0.06
 </td>
 <td style="text-align:right;">
 0.03
@@ -2707,7 +2707,7 @@ External data
 0.01
 </td>
 <td style="text-align:right;">
-0.05
+0.07
 </td>
 <td style="text-align:right;">
 0.07
@@ -2716,7 +2716,7 @@ External data
 0.03
 </td>
 <td style="text-align:right;">
-0.12
+0.11
 </td>
 </tr>
 <tr>
@@ -2730,7 +2730,7 @@ External data + PGR
 0.01
 </td>
 <td style="text-align:right;">
-0.05
+0.06
 </td>
 <td style="text-align:right;">
 0.02
@@ -2739,16 +2739,16 @@ External data + PGR
 0.01
 </td>
 <td style="text-align:right;">
-0.06
+0.07
 </td>
 <td style="text-align:right;">
 0.05
 </td>
 <td style="text-align:right;">
-0.02
+0.03
 </td>
 <td style="text-align:right;">
-0.10
+0.11
 </td>
 </tr>
 </tbody>
@@ -2878,7 +2878,7 @@ plot(res_OE_t$time,
      cex.lab = .60,
      bty = "n",
      type = "l",
-     col = "red",
+     col = 2,
      lwd = 2,
      main = " Basic model",
      cex.main = .70,
@@ -2905,7 +2905,7 @@ plot(res_OE_t$time,
      cex.lab = .60,
      bty = "n",
      type = "l",
-     col = "red",
+     col = 2,
      lwd = 2,
      main = "Extended model",
      cex.main = .70,
@@ -2991,7 +2991,7 @@ plot(
   cex.lab = .70,
   cex.axis = .70,
   bty = "n",
-  col = "red"
+  col = 2
 )
 lines(dt_cumhaz$obs,
       dt_cumhaz$pred - qnorm(1 - alpha / 2) * dt_cumhaz$se,
