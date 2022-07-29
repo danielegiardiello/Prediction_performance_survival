@@ -379,11 +379,36 @@ Uno_C_gbsg5 <- concordance(Surv(ryear, rfs) ~ lp,
 
 Harrell C and Uno C were 0.65 and 0.64, respectively.
 
+<details>
+<summary>
+Click to expand code
+</summary>
+
+``` r
+# Time-dependent AUC (in Table 3 called Uno's TD AUC at 5 years) ###
+
+# External validation
+Uno_gbsg5 <-
+  timeROC(
+    T = gbsg5$ryear, 
+    delta = gbsg5$rfs,
+    marker = gbsg5$lp,
+    cause = 1, 
+    weighting = "marginal", 
+    times = 4.99,
+    iid = TRUE
+  )
+
+# COMMENT: if you have a lot of data n > 2000, standard error computation may be really long. Please use bootstrap percentile to calculate confidence intervals.
+```
+
+</details>
+
     ##   Uno AUC Lower .95 Upper .95 
     ##      0.68      0.62      0.73
 
 The time-dependent AUCs at 5 years were in the external validation was
-0.69.
+0.68.
 
 ### 2.2 Calibration
 
@@ -604,8 +629,8 @@ plot(
   xlim = c(0, 1),
   ylim = c(0, 1), 
   lwd = 2,
-  xlab = "Predicted probability",
-  ylab = "Observed probability", bty = "n"
+  xlab = "Predicted risk from developed model",
+  ylab = "Predicted risk from refitted model", bty = "n"
 )
 lines(dat_cal$pred, 
       dat_cal$lower, 
@@ -620,7 +645,7 @@ lines(dat_cal$pred,
 abline(0, 1, lwd = 2, lty = 2, col = 2)
 legend("bottomright",
         c("Ideal calibration",
-          "'Secondary' Cox model using cloglog transformation",
+          "Calibration curve based on secondary Cox model",
           "95% confidence interval"),
         col = c(2, 1, 1),
         lty = c(2, 1, 2),
