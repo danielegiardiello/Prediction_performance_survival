@@ -360,7 +360,7 @@ Calibration is the agreement between observed outcomes and predicted probabiliti
 For example, in survival models, a predicted survival probability at a fixed time horizon _t_ of 80% is considered reliable if it can be expected that 80 out of 100 will survive among patients who received a predicted survival probability of 80%.
 Calibration can be assessed at a fixed time point (e.g. at 5 years), and globally (considering the entire range of the data).
 In addition, different level of calibration assessment can be estimated according to the level of information available in the data. 
-When individual data of development and validation set are available, full assessment of calibration is possible. Calibration at fixed time point is possible when baseline hazard at fixed time point and coefficient are available. When only coefficients are available, assessment of calibration is limited.
+When individual data of development and validation set are available, full assessment of calibration is possible. Calibration at fixed time point is possible when baseline hazard at fixed time point and coefficient are available.
 
 In the scenario we consider here, we can evaluate calibration only at fixed time point _t_ (i.e. 5 years) since we may have baseline survival at time _t_ (5 years) and coefficients of the model.  
 
@@ -372,7 +372,7 @@ In the scenario we consider here, we can evaluate calibration only at fixed time
 
 More detailed explanations are available in the paper.
 
-### 2.2.1  Mean calibration - fixed time point
+#### 2.2.1  Mean calibration - fixed time point
 The mean calibration at fixed time point (e.g. at 5 years) can be estimated using the Observed versus Expected ratio. The observed is estimated using the complementary of the Kaplan-Meier curve at the fixed time point. The expected is estimated using the average predicted risk of the event at the fixed time point. 
 
 <details>
@@ -420,7 +420,7 @@ OE_summary
 
 Observed and expected ratio was 1.04. 
 
-### 2.2.2 Weak calibration - calibration slope for fixed time point
+#### 2.2.2 Weak calibration - calibration slope for fixed time point
 <details>
   <summary>Click to expand code</summary>
 ```{r, cal_slope, fig.align='center',warning=FALSE,message=FALSE, echo=TRUE, eval=FALSE, fig.width=6, fig.height=6}
@@ -452,7 +452,7 @@ calslope_summary
 ```{r, cal_slope, fig.align='center', warning=FALSE, message=FALSE, eval=TRUE, fig.width=6, fig.height=6}
 ```
 
-### 2.2.3 Moderate calibration - fixed time point
+#### 2.2.3 Moderate calibration - fixed time point
 Moderate calibration at fixed time point can be assessed using flexible calibration curve, complemented with ICI, E50, E90 as suggested by Austin et al.
 
 + Calibration curve is a graphical representation of moderate calibration. It shows:  

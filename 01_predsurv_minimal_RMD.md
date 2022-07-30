@@ -13,12 +13,12 @@ Performance assessment of survival prediction models - simplified code
     models](#goal-2---assessing-performance-in-survival-prediction-models)
     -   [2.1 Discrimination measures](#21-discrimination-measures)
     -   [2.2 Calibration](#22-calibration)
-    -   [2.2.1 Mean calibration - fixed time
-        point](#221-mean-calibration---fixed-time-point)
-    -   [2.2.2 Weak calibration - calibration slope for fixed time
-        point](#222-weak-calibration---calibration-slope-for-fixed-time-point)
-    -   [2.2.3 Moderate calibration - fixed time
-        point](#223-moderate-calibration---fixed-time-point)
+        -   [2.2.1 Mean calibration - fixed time
+            point](#221-mean-calibration---fixed-time-point)
+        -   [2.2.2 Weak calibration - calibration slope for fixed time
+            point](#222-weak-calibration---calibration-slope-for-fixed-time-point)
+        -   [2.2.3 Moderate calibration - fixed time
+            point](#223-moderate-calibration---fixed-time-point)
     -   [2.3 Overall performance
         measures](#23-overall-performance-measures)
 -   [Goal 3 - Clinical utility](#goal-3---clinical-utility)
@@ -423,8 +423,7 @@ of calibration assessment can be estimated according to the level of
 information available in the data. When individual data of development
 and validation set are available, full assessment of calibration is
 possible. Calibration at fixed time point is possible when baseline
-hazard at fixed time point and coefficient are available. When only
-coefficients are available, assessment of calibration is limited.
+hazard at fixed time point and coefficient are available.
 
 In the scenario we consider here, we can evaluate calibration only at
 fixed time point *t* (i.e. 5 years) since we may have baseline survival
@@ -441,7 +440,7 @@ at time *t* (5 years) and coefficients of the model.
 
 More detailed explanations are available in the paper.
 
-### 2.2.1 Mean calibration - fixed time point
+#### 2.2.1 Mean calibration - fixed time point
 
 The mean calibration at fixed time point (e.g. at 5 years) can be
 estimated using the Observed versus Expected ratio. The observed is
@@ -499,7 +498,7 @@ OE_summary
 
 Observed and expected ratio was 1.04.
 
-### 2.2.2 Weak calibration - calibration slope for fixed time point
+#### 2.2.2 Weak calibration - calibration slope for fixed time point
 
 <details>
 <summary>
@@ -535,7 +534,7 @@ calslope_summary
     ## calibration slope.lp                2.5 %               97.5 % 
     ##            1.0562040            0.8158872            1.2965207
 
-### 2.2.3 Moderate calibration - fixed time point
+#### 2.2.3 Moderate calibration - fixed time point
 
 Moderate calibration at fixed time point can be assessed using flexible
 calibration curve, complemented with ICI, E50, E90 as suggested by
@@ -756,7 +755,7 @@ df_boots <- do.call(rbind.data.frame, boots_ls)
 
     ##                                Estimate Lower .95  Upper .95
     ## Brier - Validation data            0.22       0.21      0.24
-    ## Scaled Brier - Validation data     0.10       0.04      0.15
+    ## Scaled Brier - Validation data     0.10       0.03      0.16
 
 Brier and scaled Brier score were 0.22 and 0.10, respectively.
 
