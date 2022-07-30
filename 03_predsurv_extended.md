@@ -1498,7 +1498,7 @@ NA
 0.7
 </td>
 <td style="text-align:right;">
-0.69
+0.68
 </td>
 <td style="text-align:right;">
 NA
@@ -1794,8 +1794,7 @@ of calibration assessment can be estimated according to the level of
 information available in the data. When individual data of development
 and validation set are available, full assessment of calibration is
 possible. Calibration at fixed time point is possible when baseline
-hazard at fixed time point and coefficient are available. When only
-coefficients are available, assessment of calibration is limited.
+hazard at fixed time point and coefficient are available.
 
 Since different level of information may be available, different level
 of calibration can be estimated: mean, weak, and moderate calibration.
@@ -2707,16 +2706,16 @@ External data
 0.01
 </td>
 <td style="text-align:right;">
-0.07
+0.05
 </td>
 <td style="text-align:right;">
 0.07
 </td>
 <td style="text-align:right;">
-0.03
+0.02
 </td>
 <td style="text-align:right;">
-0.11
+0.13
 </td>
 </tr>
 <tr>
@@ -2739,13 +2738,13 @@ External data + PGR
 0.01
 </td>
 <td style="text-align:right;">
-0.07
+0.06
 </td>
 <td style="text-align:right;">
 0.05
 </td>
 <td style="text-align:right;">
-0.03
+0.02
 </td>
 <td style="text-align:right;">
 0.11
@@ -3742,7 +3741,7 @@ sessioninfo::session_info()
     ##  collate  English_United States.1252
     ##  ctype    English_United States.1252
     ##  tz       Europe/Berlin
-    ##  date     2022-07-29
+    ##  date     2022-07-30
     ##  pandoc   2.17.1.1 @ C:/Program Files/RStudio/bin/quarto/bin/ (via rmarkdown)
     ## 
     ## - Packages -------------------------------------------------------------------

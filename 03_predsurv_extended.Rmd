@@ -881,8 +881,7 @@ Calibration is the agreement between observed outcomes and predicted probabiliti
 For example, in survival models, a predicted survival probability at a fixed time horizon _t_ of 80% is considered reliable if it can be expected that 80 out of 100 will survive among patients who received a predicted survival probability of 80%.
 Calibration can be assessed at a fixed time point (e.g. at 5 years), and globally (considering the entire range of the data).
 In addition, different level of calibration assessment can be estimated according to the level of information available in the data. 
-When individual data of development and validation set are available, full assessment of calibration is possible. Calibration at fixed time point is possible when baseline hazard at fixed time point and coefficient are available. When only coefficients are available, assessment of calibration is limited.
-
+When individual data of development and validation set are available, full assessment of calibration is possible. Calibration at fixed time point is possible when baseline hazard at fixed time point and coefficient are available.
 
 Since different level of information may be available, different level of calibration can be estimated:  mean, weak, and moderate calibration.
 
