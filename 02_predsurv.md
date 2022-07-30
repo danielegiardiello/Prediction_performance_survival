@@ -157,9 +157,7 @@ at 5 years) of a developed prediction model were provided.
 When the baseline is not available (unfortunately not uncommon in the
 literature), only a graphical representation of calibration is possible.
 We assume here to know the coefficients *and the baseline survival at 5
-years *S*<sub>0</sub>*(t = 5)\* of the developed prediction model. We
-also provide the graphical visualization of the calibration when the
-baseline is not reported in the literature.
+years *S*<sub>0</sub>*(t = 5)\* of the developed prediction model.
 
 If the model equation is provided including the coefficients and the
 baseline at fixed time point *t* (e.g. 5 years), we could validate the
@@ -1209,10 +1207,10 @@ Scaled Brier
 0.10
 </td>
 <td style="text-align:right;">
-0.04
+0.03
 </td>
 <td style="text-align:right;">
-0.15
+0.16
 </td>
 <td style="text-align:right;">
 0.13
@@ -1221,7 +1219,7 @@ Scaled Brier
 0.06
 </td>
 <td style="text-align:right;">
-0.19
+0.20
 </td>
 </tr>
 </tbody>
@@ -1392,7 +1390,7 @@ sessioninfo::session_info()
     ##  collate  English_United States.1252
     ##  ctype    English_United States.1252
     ##  tz       Europe/Berlin
-    ##  date     2022-07-29
+    ##  date     2022-07-30
     ##  pandoc   2.17.1.1 @ C:/Program Files/RStudio/bin/quarto/bin/ (via rmarkdown)
     ## 
     ## - Packages -------------------------------------------------------------------

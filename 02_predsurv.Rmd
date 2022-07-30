@@ -115,7 +115,6 @@ It is common that physicians focus on one or more clinically relevant time horiz
 We aim to assess the prediction performance of a risk prediction model with time-to-event outcome in a new data when information at a fixed time horizon(s) (here at 5 years) of a developed prediction model were provided. 
 
 When the baseline is not available (unfortunately not uncommon in the literature), only a graphical representation of calibration is possible. We assume here to know the coefficients *\beta* and the baseline survival at 5 years *S*<sub>0</sub>*(t = 5)* of the developed prediction model.
-We also provide the graphical visualization of the calibration when the baseline is not reported in the literature.
 
 If the model equation is provided including the coefficients and the baseline at fixed time point _t_ (e.g. 5 years), we could validate the risk prediction model in our external data.
 Typically, the model equation is provided in terms of predicted survival at a fixed time point _t_.
