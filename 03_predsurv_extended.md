@@ -1439,7 +1439,7 @@ NA
 0.7
 </td>
 <td style="text-align:right;">
-0.69
+0.68
 </td>
 <td style="text-align:right;">
 NA
@@ -2706,13 +2706,13 @@ External data
 0.01
 </td>
 <td style="text-align:right;">
-0.05
+0.06
 </td>
 <td style="text-align:right;">
 0.07
 </td>
 <td style="text-align:right;">
-0.02
+0.03
 </td>
 <td style="text-align:right;">
 0.13
@@ -2726,10 +2726,10 @@ External data + PGR
 0.02
 </td>
 <td style="text-align:right;">
-0.01
+0.02
 </td>
 <td style="text-align:right;">
-0.06
+0.05
 </td>
 <td style="text-align:right;">
 0.02
@@ -2744,7 +2744,7 @@ External data + PGR
 0.05
 </td>
 <td style="text-align:right;">
-0.02
+0.03
 </td>
 <td style="text-align:right;">
 0.11
@@ -2976,10 +2976,30 @@ dt_cumhaz <- cbind.data.frame(
 dt_cumhaz <- dt_cumhaz[order(dt_cumhaz$pred), ]
 
 alpha <- .05
+dt_cumhaz$lower <- dt_cumhaz$pred - qnorm(1 - alpha / 2) * dt_cumhaz$se
+dt_cumhaz$upper <- dt_cumhaz$pred + qnorm(1 - alpha / 2) * dt_cumhaz$se
+loess_cumhaz <- loess(pred ~ obs, data = dt_cumhaz)
+loess_lower <- loess(lower ~ obs, data = dt_cumhaz)
+loess_upper <- loess(upper ~ obs, data = dt_cumhaz)
+
+dt_cumhaz_lower <- cbind.data.frame(
+  obs = dt_cumhaz$obs,
+  lower = loess_lower$fitted
+)
+
+dt_cumhaz_lower <- dt_cumhaz_lower[order(dt_cumhaz_lower$lower), ]
+
+dt_cumhaz_upper <- cbind.data.frame(
+  obs = dt_cumhaz$obs,
+  upper = loess_upper$fitted
+)
+
+dt_cumhaz_upper <- dt_cumhaz_upper[order(dt_cumhaz_upper$upper), ]
+
 par(xaxs = "i", yaxs = "i", las = 1)
 plot(
-  dt_cumhaz$obs, 
-  dt_cumhaz$pred,
+  dt_cumhaz$obs,
+  loess_cumhaz$fitted,
   type = "l", 
   lty = 1, 
   xlim = c(0, 2.5),
@@ -2992,12 +3012,12 @@ plot(
   bty = "n",
   col = 2
 )
-lines(dt_cumhaz$obs,
-      dt_cumhaz$pred - qnorm(1 - alpha / 2) * dt_cumhaz$se,
+lines(dt_cumhaz_lower$obs,
+      dt_cumhaz_lower$lower,
       lwd = 2,
       lty = 2)
-lines(dt_cumhaz$obs,
-      dt_cumhaz$pred + qnorm(1 - alpha / 2) * dt_cumhaz$se,
+lines(dt_cumhaz_upper$obs,
+      dt_cumhaz_upper$upper,
       lwd = 2,
       lty = 2)
 abline(a = 0, b = 1, lwd = 2)
@@ -3741,7 +3761,7 @@ sessioninfo::session_info()
     ##  collate  English_United States.1252
     ##  ctype    English_United States.1252
     ##  tz       Europe/Berlin
-    ##  date     2022-07-30
+    ##  date     2022-08-04
     ##  pandoc   2.17.1.1 @ C:/Program Files/RStudio/bin/quarto/bin/ (via rmarkdown)
     ## 
     ## - Packages -------------------------------------------------------------------
