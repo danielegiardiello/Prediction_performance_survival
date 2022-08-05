@@ -1798,7 +1798,7 @@ legend("bottomright",
          "95% confidence interval"),
        lwd = 2,
        col = c(1, 2, 1),
-       lty = c(1, 2, 3),
+       lty = c(1, 1, 3),
        bty = "n",
        cex = .85)
 ```

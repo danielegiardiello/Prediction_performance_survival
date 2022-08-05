@@ -1498,7 +1498,7 @@ NA
 0.7
 </td>
 <td style="text-align:right;">
-0.68
+0.69
 </td>
 <td style="text-align:right;">
 NA
@@ -1748,7 +1748,7 @@ NA
 0.75
 </td>
 <td style="text-align:right;">
-0.72
+0.73
 </td>
 <td style="text-align:right;">
 NA
@@ -2697,16 +2697,16 @@ External data
 0.02
 </td>
 <td style="text-align:right;">
-0.06
+0.07
 </td>
 <td style="text-align:right;">
 0.03
 </td>
 <td style="text-align:right;">
-0.01
+0.02
 </td>
 <td style="text-align:right;">
-0.05
+0.07
 </td>
 <td style="text-align:right;">
 0.07
@@ -2715,7 +2715,7 @@ External data
 0.04
 </td>
 <td style="text-align:right;">
-0.12
+0.13
 </td>
 </tr>
 <tr>
@@ -2729,7 +2729,7 @@ External data + PGR
 0.02
 </td>
 <td style="text-align:right;">
-0.05
+0.06
 </td>
 <td style="text-align:right;">
 0.02
@@ -2738,7 +2738,7 @@ External data + PGR
 0.01
 </td>
 <td style="text-align:right;">
-0.05
+0.06
 </td>
 <td style="text-align:right;">
 0.05
@@ -2747,7 +2747,7 @@ External data + PGR
 0.03
 </td>
 <td style="text-align:right;">
-0.11
+0.12
 </td>
 </tr>
 </tbody>
@@ -3027,7 +3027,7 @@ legend("bottomright",
          "95% confidence interval"),
        lwd = 2,
        col = c(1, 2, 1),
-       lty = c(1, 2, 3),
+       lty = c(1, 1, 3),
        bty = "n",
        cex = .85)
 ```
