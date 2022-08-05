@@ -1439,7 +1439,7 @@ NA
 0.7
 </td>
 <td style="text-align:right;">
-0.68
+0.69
 </td>
 <td style="text-align:right;">
 NA
@@ -2706,16 +2706,16 @@ External data
 0.01
 </td>
 <td style="text-align:right;">
-0.06
+0.05
 </td>
 <td style="text-align:right;">
 0.07
 </td>
 <td style="text-align:right;">
-0.03
+0.04
 </td>
 <td style="text-align:right;">
-0.13
+0.12
 </td>
 </tr>
 <tr>
@@ -2738,7 +2738,7 @@ External data + PGR
 0.01
 </td>
 <td style="text-align:right;">
-0.06
+0.05
 </td>
 <td style="text-align:right;">
 0.05
@@ -3015,12 +3015,21 @@ plot(
 lines(dt_cumhaz_lower$obs,
       dt_cumhaz_lower$lower,
       lwd = 2,
-      lty = 2)
+      lty = 3)
 lines(dt_cumhaz_upper$obs,
       dt_cumhaz_upper$upper,
       lwd = 2,
-      lty = 2)
+      lty = 3)
 abline(a = 0, b = 1, lwd = 2)
+legend("bottomright",
+       c("Ideal calibration",
+         "Calibration curve based on Poisson approach",
+         "95% confidence interval"),
+       lwd = 2,
+       col = c(1, 2, 1),
+       lty = c(1, 2, 3),
+       bty = "n",
+       cex = .85)
 ```
 
 </details>
@@ -3761,7 +3770,7 @@ sessioninfo::session_info()
     ##  collate  English_United States.1252
     ##  ctype    English_United States.1252
     ##  tz       Europe/Berlin
-    ##  date     2022-08-04
+    ##  date     2022-08-05
     ##  pandoc   2.17.1.1 @ C:/Program Files/RStudio/bin/quarto/bin/ (via rmarkdown)
     ## 
     ## - Packages -------------------------------------------------------------------

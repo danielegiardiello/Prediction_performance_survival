@@ -1786,12 +1786,21 @@ plot(
 lines(dt_cumhaz_lower$obs,
       dt_cumhaz_lower$lower,
       lwd = 2,
-      lty = 2)
+      lty = 3)
 lines(dt_cumhaz_upper$obs,
       dt_cumhaz_upper$upper,
       lwd = 2,
-      lty = 2)
+      lty = 3)
 abline(a = 0, b = 1, lwd = 2)
+legend("bottomright",
+       c("Ideal calibration",
+         "Calibration curve based on Poisson approach",
+         "95% confidence interval"),
+       lwd = 2,
+       col = c(1, 2, 1),
+       lty = c(1, 2, 3),
+       bty = "n",
+       cex = .85)
 ```
 </details>
   
