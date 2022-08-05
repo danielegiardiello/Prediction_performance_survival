@@ -1,4 +1,5 @@
-Performance assessment of survival prediction models
+Performance assessment of survival prediction models - only validation
+individual data available
 ================
 
 -   [Goals](#goals)
@@ -1210,16 +1211,16 @@ Scaled Brier
 0.03
 </td>
 <td style="text-align:right;">
-0.16
+0.15
 </td>
 <td style="text-align:right;">
 0.13
 </td>
 <td style="text-align:right;">
-0.06
+0.07
 </td>
 <td style="text-align:right;">
-0.20
+0.18
 </td>
 </tr>
 </tbody>
@@ -1390,7 +1391,7 @@ sessioninfo::session_info()
     ##  collate  English_United States.1252
     ##  ctype    English_United States.1252
     ##  tz       Europe/Berlin
-    ##  date     2022-07-30
+    ##  date     2022-08-05
     ##  pandoc   2.17.1.1 @ C:/Program Files/RStudio/bin/quarto/bin/ (via rmarkdown)
     ## 
     ## - Packages -------------------------------------------------------------------
