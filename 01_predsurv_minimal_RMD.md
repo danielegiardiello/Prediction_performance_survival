@@ -755,7 +755,7 @@ df_boots <- do.call(rbind.data.frame, boots_ls)
 
     ##                                Estimate Lower .95  Upper .95
     ## Brier - Validation data            0.22       0.21      0.24
-    ## Scaled Brier - Validation data     0.10       0.03      0.16
+    ## Scaled Brier - Validation data     0.10       0.02      0.15
 
 Brier and scaled Brier score were 0.22 and 0.10, respectively.
 

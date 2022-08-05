@@ -1,6 +1,5 @@
 ---
 title: "Performance assessment of survival prediction models - simplified code"
-subtitle: "Simplified code when individual data of development and validation set are both available"
 always_allow_html: true
 output:
   github_document:
