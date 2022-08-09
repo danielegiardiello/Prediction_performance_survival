@@ -28,7 +28,7 @@ In particular:
 The extended code basically evaluates the prediction performance at a fixed time horizon (e.g. 5 years) and also for the entire follow-up time.
 
 ### Load packages and import data
-We following libraries are needed to achieve the following goals, if you have not them installed, please use
+The following libraries are needed to achieve the following goals, if you have not them installed, please use
 install.packages('') (e.g. install.packages('survival')) or use the user-friendly approach if you are using RStudio.
 
 ```{r, wdlib, message=FALSE,warning=FALSE, echo=TRUE}
@@ -56,7 +56,7 @@ pacman::p_load(
   webshot
 )
 
-options(show.signif.stars = FALSE)  # display statistical intelligence
+options(show.signif.stars = FALSE)  
 palette("Okabe-Ito")  # color-blind friendly  (needs R 4.0)
 ```
 
@@ -276,8 +276,8 @@ title("Validation set")
 ```{r, surv, fig.align='center', warning=FALSE, eval=TRUE, fig.width = 6, fig.height = 6}
 ```
 
-A number of 2982 patients were included to develop the risk prediction model for survival with a median follow-up of 9 years. The 5-year survival was 56% (95% CI: 55-58%). 
-A number of 686 patients were selected to externally validate the risk prediction model. The median survival in the validation data was 4.5 years. The median survival was 5 years while the 5-year survival was 49% (95% CI: 45-54%).
+In total, 2982 patients were included to develop the risk prediction model for survival with a median follow-up of 9 years. The 5-year survival was 56% (95% CI: 55-58%). 
+In total, 686 patients were selected to externally validate the risk prediction model. The median survival in the validation data was 4.5 years. The median survival was 5 years while the 5-year survival was 49% (95% CI: 45-54%).
 
 
 ### 1.2 Secondary investigation - check non-linearity of continuous predictors
@@ -516,7 +516,6 @@ The performance of a risk prediction models may be evaluated through:
   
 + overall performance measures: a combination of discrimination and calibration.  
   
-Unfortunately, few publications report the complete baseline (cumulative) hazard or survival or even the baseline (cumulative) hazard or survival at fixed time horizon *t*.  
 It is common that physicians focus on one or more clinically relevant time horizons to inform subjects about their risk. 
 We aim to assess the prediction performance of a risk prediction model with time-to-event outcome in a new data when information at a fixed time horizon(s) (here at 5 years) of a developed prediction model were provided. 
 
@@ -2070,7 +2069,7 @@ For survival data *TP* and *FP* is calculated as follows:
 7. Repeat steps 2-4 for the strategy of assuming all patients are treated;
 8. Draw a straight line parallel to the *x-axis* at y=0 representing the net benefit associated with the strategy of assuming that all patients are not treated.
 
-Given some thresholds, the model/strategy with higher net benefit represents the one that potentially improves  clinical decision making. However, poor discrimination and calibration lead to lower net benefit.
+Given some thresholds, the model/strategy with higher net benefit represents the one that potentially improves  clinical decision making. 
 
 ```{r, function_stdca, message=FALSE,warning=FALSE, fig.align='center',include=FALSE}
 # Run the function to calculate the net benefit and the elements needed to develop decision curve analysis
@@ -2310,8 +2309,7 @@ kable(res_dca) |>
   kable_styling("striped")
 ```
 
-The potential net benefit at 23% threshold of the prediction model was 0.26, 0.27 for the basic and extended model in the development data, respectively.
-This means that the model might identify approximately 26/27 patients out of 100 who may develop recurrence or may die within 5 years since diagnosis and thus adjuvant chemotherapy may help to reduce recurrence or mortality.
+The potential net benefit at 23% threshold of the prediction model was 0.26, 0.27 for the basic and extended model in the development data, respectively.  
 For validation data, the potential net benefit was 0.36 for the basic and extended model. 
 
 Moreover, potential net benefit can be defined in terms of reduction of avoidable interventions (e.g adjuvant chemotherapy per 100 patients) by:
