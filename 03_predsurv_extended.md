@@ -2694,7 +2694,7 @@ External data
 0.02
 </td>
 <td style="text-align:right;">
-0.08
+0.07
 </td>
 <td style="text-align:right;">
 0.03
@@ -2709,7 +2709,7 @@ External data
 0.07
 </td>
 <td style="text-align:right;">
-0.04
+0.03
 </td>
 <td style="text-align:right;">
 0.13
@@ -2726,7 +2726,7 @@ External data + PGR
 0.01
 </td>
 <td style="text-align:right;">
-0.07
+0.06
 </td>
 <td style="text-align:right;">
 0.02
@@ -2741,7 +2741,7 @@ External data + PGR
 0.05
 </td>
 <td style="text-align:right;">
-0.02
+0.03
 </td>
 <td style="text-align:right;">
 0.12
