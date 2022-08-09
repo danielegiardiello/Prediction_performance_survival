@@ -2069,7 +2069,7 @@ For survival data *TP* and *FP* is calculated as follows:
 7. Repeat steps 2-4 for the strategy of assuming all patients are treated;
 8. Draw a straight line parallel to the *x-axis* at y=0 representing the net benefit associated with the strategy of assuming that all patients are not treated.
 
-Given some thresholds, the model/strategy with higher net benefit represents the one that potentially improves  clinical decision making. 
+Given some thresholds, the model/strategy with higher net benefit represents the one that potentially improves clinical decision making. 
 
 ```{r, function_stdca, message=FALSE,warning=FALSE, fig.align='center',include=FALSE}
 # Run the function to calculate the net benefit and the elements needed to develop decision curve analysis
