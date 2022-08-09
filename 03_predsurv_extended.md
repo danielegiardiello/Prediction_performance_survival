@@ -61,8 +61,8 @@ time.
 
 ### Load packages and import data
 
-We following libraries are needed to achieve the following goals, if you
-have not them installed, please use install.packages(’‘)
+The following libraries are needed to achieve the following goals, if
+you have not them installed, please use install.packages(’‘)
 (e.g. install.packages(’survival’)) or use the user-friendly approach if
 you are using RStudio.
 
@@ -90,7 +90,7 @@ pacman::p_load(
   webshot
 )
 
-options(show.signif.stars = FALSE)  # display statistical intelligence
+options(show.signif.stars = FALSE)  
 palette("Okabe-Ito")  # color-blind friendly  (needs R 4.0)
 ```
 
@@ -463,12 +463,12 @@ title("Validation set")
 
 <img src="imgs/03_predsurv_extended/surv-1.png" width="576" style="display: block; margin: auto;" /><img src="imgs/03_predsurv_extended/surv-2.png" width="576" style="display: block; margin: auto;" />
 
-A number of 2982 patients were included to develop the risk prediction
+In total, 2982 patients were included to develop the risk prediction
 model for survival with a median follow-up of 9 years. The 5-year
-survival was 56% (95% CI: 55-58%). A number of 686 patients were
-selected to externally validate the risk prediction model. The median
-survival in the validation data was 4.5 years. The median survival was 5
-years while the 5-year survival was 49% (95% CI: 45-54%).
+survival was 56% (95% CI: 55-58%). In total, 686 patients were selected
+to externally validate the risk prediction model. The median survival in
+the validation data was 4.5 years. The median survival was 5 years while
+the 5-year survival was 49% (95% CI: 45-54%).
 
 ### 1.2 Secondary investigation - check non-linearity of continuous predictors
 
@@ -1132,9 +1132,6 @@ The performance of a risk prediction models may be evaluated through:
 -   overall performance measures: a combination of discrimination and
     calibration.
 
-Unfortunately, few publications report the complete baseline
-(cumulative) hazard or survival or even the baseline (cumulative) hazard
-or survival at fixed time horizon *t*.  
 It is common that physicians focus on one or more clinically relevant
 time horizons to inform subjects about their risk. We aim to assess the
 prediction performance of a risk prediction model with time-to-event
@@ -2697,13 +2694,13 @@ External data
 0.02
 </td>
 <td style="text-align:right;">
-0.07
+0.08
 </td>
 <td style="text-align:right;">
 0.03
 </td>
 <td style="text-align:right;">
-0.02
+0.01
 </td>
 <td style="text-align:right;">
 0.07
@@ -2726,10 +2723,10 @@ External data + PGR
 0.02
 </td>
 <td style="text-align:right;">
-0.02
+0.01
 </td>
 <td style="text-align:right;">
-0.06
+0.07
 </td>
 <td style="text-align:right;">
 0.02
@@ -2738,13 +2735,13 @@ External data + PGR
 0.01
 </td>
 <td style="text-align:right;">
-0.06
+0.07
 </td>
 <td style="text-align:right;">
 0.05
 </td>
 <td style="text-align:right;">
-0.03
+0.02
 </td>
 <td style="text-align:right;">
 0.12
@@ -3474,7 +3471,6 @@ And the the decision curve is calculated as follows:
 
 Given some thresholds, the model/strategy with higher net benefit
 represents the one that potentially improves clinical decision making.
-However, poor discrimination and calibration lead to lower net benefit.
 
 <details>
 <summary>
@@ -3739,11 +3735,9 @@ Validation data
 
 The potential net benefit at 23% threshold of the prediction model was
 0.26, 0.27 for the basic and extended model in the development data,
-respectively. This means that the model might identify approximately
-26/27 patients out of 100 who may develop recurrence or may die within 5
-years since diagnosis and thus adjuvant chemotherapy may help to reduce
-recurrence or mortality. For validation data, the potential net benefit
-was 0.36 for the basic and extended model.
+respectively.  
+For validation data, the potential net benefit was 0.36 for the basic
+and extended model.
 
 Moreover, potential net benefit can be defined in terms of reduction of
 avoidable interventions (e.g adjuvant chemotherapy per 100 patients) by:
@@ -3770,7 +3764,7 @@ sessioninfo::session_info()
     ##  collate  English_United States.1252
     ##  ctype    English_United States.1252
     ##  tz       Europe/Berlin
-    ##  date     2022-08-05
+    ##  date     2022-08-09
     ##  pandoc   2.17.1.1 @ C:/Program Files/RStudio/bin/quarto/bin/ (via rmarkdown)
     ## 
     ## - Packages -------------------------------------------------------------------
