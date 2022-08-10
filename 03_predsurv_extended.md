@@ -76,6 +76,7 @@ pacman::p_load(
   survival,
   rms,
   pec,
+  survminer,
   riskRegression,
   timeROC,
   plotrix,
@@ -416,22 +417,73 @@ sfit_rott <- survfit(Surv(ryear, rfs == 1) ~ 1,
 sfit_rott_c <- survfit(Surv(ryear, rfs == 0) ~ 1, 
                        data = rotterdam) # censoring
 
-par(xaxs = "i", yaxs = "i", las = 1)
-plot(sfit_rott, 
-     conf.int = FALSE, 
-     lwd = 2, 
-     xlab = "Years", 
-     bty = "n")
-lines(sfit_rott_c, 
-      conf.int = FALSE, 
-      col = 2, 
-      lwd = 2)
-legend(11, .9, 
-       c("Death", "Censoring"), 
-       col = 1:2, 
-       lwd = 2, 
-       bty = "n")
-title("Development set")
+# Plots development data
+dev_plots <- list()
+
+# KM plot - development data
+dev_plots[[1]] <- ggsurvplot(sfit_rott, data = rotterdam,
+                             risk.table = TRUE,
+                             risk.table.fontsize = 3.6,
+                             palette = 3,
+                             size = 1.5,
+                             censor = FALSE,
+                             legend = "none",
+                             title = "Failure-free survival",
+                             xlab = "Years",
+                             ylab = "Probability",
+                             tables.theme = theme_cleantable())
+
+dev_plots[[1]]$table <- dev_plots[[1]]$table + 
+  theme(
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank()
+  )
+
+# Censoring plot - development data
+dev_plots[[2]] <- ggsurvplot(sfit_rott_c, data = rotterdam,
+                             risk.table = TRUE,
+                             risk.table.fontsize = 3.6,
+                             palette = 2,
+                             size = 1.5,
+                             censor = FALSE,
+                             legend = "none",
+                             title = "Censoring",
+                             xlab = "Years",
+                             ylab = "Probability",
+                             # risk.table.title = "Number at risk",
+                             # risk.table.y.text.col =  TRUE,
+                             tables.theme = theme_cleantable())
+
+dev_plots[[2]]$table <- dev_plots[[2]]$table + 
+  theme(
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank()
+  )
+
+# Join together 
+# oldpar <- par(mar = c(5, 5, 1, 1))
+arrange_ggsurvplots(dev_plots, print = TRUE,
+                    ncol = 2, nrow = 1, risk.table.height = 0.15,
+                    title = "Development data")  
+# par(oldpar)
+
+
+# par(xaxs = "i", yaxs = "i", las = 1)
+# plot(sfit_rott, 
+#      conf.int = FALSE, 
+#      lwd = 2, 
+#      xlab = "Years", 
+#      bty = "n")
+# lines(sfit_rott_c, 
+#       conf.int = FALSE, 
+#       col = 2, 
+#       lwd = 2)
+# legend(11, .9, 
+#        c("Death", "Censoring"), 
+#        col = 1:2, 
+#        lwd = 2, 
+#        bty = "n")
+# title("Development set")
 
 
 # Validation set
@@ -440,28 +492,75 @@ sfit_gbsg <- survfit(Surv(ryear, rfs == 1) ~ 1,
 sfit_gbsg_c <- survfit(Surv(ryear, rfs == 0) ~ 1, 
                        data = gbsg) # censoring
 
-par(xaxs = "i", yaxs = "i", las = 1)
-plot(sfit_gbsg, 
-     conf.int = FALSE, 
-     lwd = 2, 
-     xlab = "Years", 
-     bty = "n", 
-     xlim = c(0, 8))
-lines(sfit_gbsg_c, 
-      conf.int = FALSE, 
-      col = 2,
-      lwd = 2)
-legend("bottomleft", 
-       c("Death", "Censoring"), 
-       col = 1:2, 
-       lwd = 2, 
-       bty = "n")
-title("Validation set")
+# KM plot - validation data
+val_plots <- list()
+val_plots[[1]] <- ggsurvplot(sfit_gbsg, data = gbsg,
+                             risk.table = TRUE,
+                             risk.table.fontsize = 3.6,
+                             palette = 3,
+                             size = 1.5,
+                             censor = FALSE,
+                             legend = "none",
+                             title = "Failure-free survival",
+                             xlab = "Years",
+                             ylab = "Probability",
+                             tables.theme = theme_cleantable())
+
+val_plots[[1]]$table <- val_plots[[1]]$table + 
+  theme(
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank()
+  )
+
+# Censoring - validation data
+val_plots[[2]] <- ggsurvplot(sfit_gbsg_c, data = gbsg,
+                             risk.table = TRUE,
+                             risk.table.fontsize = 3.6,
+                             palette = 2,
+                             size = 1.5,
+                             censor = FALSE,
+                             legend = "none",
+                             title = "Censoring",
+                             xlab = "Years",
+                             ylab = "Probability",
+                             # risk.table.title = "Number at risk",
+                             # risk.table.y.text.col =  TRUE,
+                             tables.theme = theme_cleantable())
+
+val_plots[[2]]$table <- val_plots[[2]]$table + 
+  theme(
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank()
+  )
+
+# Join together 
+arrange_ggsurvplots(val_plots, print = TRUE,
+                    ncol = 2, nrow = 1,
+                    risk.table.height = 0.15,
+                    title = "Validation data")
+
+# par(xaxs = "i", yaxs = "i", las = 1)
+# plot(sfit_gbsg, 
+#      conf.int = FALSE, 
+#      lwd = 2, 
+#      xlab = "Years", 
+#      bty = "n", 
+#      xlim = c(0, 8))
+# lines(sfit_gbsg_c, 
+#       conf.int = FALSE, 
+#       col = 2,
+#       lwd = 2)
+# legend("bottomleft", 
+#        c("Death", "Censoring"), 
+#        col = 1:2, 
+#        lwd = 2, 
+#        bty = "n")
+# title("Validation set")
 ```
 
 </details>
 
-<img src="imgs/03_predsurv_extended/surv-1.png" width="576" style="display: block; margin: auto;" /><img src="imgs/03_predsurv_extended/surv-2.png" width="576" style="display: block; margin: auto;" />
+<img src="imgs/03_predsurv_extended/surv-1.png" width="768" style="display: block; margin: auto;" /><img src="imgs/03_predsurv_extended/surv-2.png" width="768" style="display: block; margin: auto;" />
 
 In total, 2982 patients were included to develop the risk prediction
 model for survival with a median follow-up of 9 years. The 5-year
@@ -2712,7 +2811,7 @@ External data
 0.03
 </td>
 <td style="text-align:right;">
-0.13
+0.14
 </td>
 </tr>
 <tr>
@@ -2726,7 +2825,7 @@ External data + PGR
 0.01
 </td>
 <td style="text-align:right;">
-0.06
+0.07
 </td>
 <td style="text-align:right;">
 0.02
@@ -2741,10 +2840,10 @@ External data + PGR
 0.05
 </td>
 <td style="text-align:right;">
-0.03
+0.02
 </td>
 <td style="text-align:right;">
-0.12
+0.11
 </td>
 </tr>
 </tbody>
@@ -3764,17 +3863,20 @@ sessioninfo::session_info()
     ##  collate  English_United States.1252
     ##  ctype    English_United States.1252
     ##  tz       Europe/Berlin
-    ##  date     2022-08-09
+    ##  date     2022-08-10
     ##  pandoc   2.17.1.1 @ C:/Program Files/RStudio/bin/quarto/bin/ (via rmarkdown)
     ## 
     ## - Packages -------------------------------------------------------------------
     ##  package        * version    date (UTC) lib source
+    ##  abind            1.4-5      2016-07-21 [1] CRAN (R 4.1.1)
     ##  assertthat       0.2.1      2019-03-21 [1] CRAN (R 4.1.2)
     ##  backports        1.3.0      2021-10-27 [1] CRAN (R 4.1.1)
     ##  base64enc        0.1-3      2015-07-28 [1] CRAN (R 4.1.1)
     ##  boot           * 1.3-28     2021-05-03 [2] CRAN (R 4.1.2)
     ##  broom            0.7.10     2021-10-31 [1] CRAN (R 4.1.2)
     ##  broom.helpers    1.5.0      2021-12-07 [1] CRAN (R 4.1.2)
+    ##  car              3.0-12     2021-11-06 [1] CRAN (R 4.1.2)
+    ##  carData          3.0-4      2020-05-22 [1] CRAN (R 4.1.1)
     ##  caret            6.0-90     2021-10-09 [1] CRAN (R 4.1.2)
     ##  cellranger       1.1.0      2016-07-27 [1] CRAN (R 4.1.2)
     ##  checkmate        2.0.0      2020-02-06 [1] CRAN (R 4.1.2)
@@ -3795,6 +3897,7 @@ sessioninfo::session_info()
     ##  ellipsis         0.3.2      2021-04-29 [1] CRAN (R 4.1.2)
     ##  evaluate         0.14       2019-05-28 [1] CRAN (R 4.1.2)
     ##  fansi            0.5.0      2021-05-25 [1] CRAN (R 4.1.2)
+    ##  farver           2.1.0      2021-02-28 [1] CRAN (R 4.1.2)
     ##  fastmap          1.1.0      2021-01-25 [1] CRAN (R 4.1.2)
     ##  forcats        * 0.5.1      2021-01-27 [1] CRAN (R 4.1.2)
     ##  foreach          1.5.1      2020-10-15 [1] CRAN (R 4.1.2)
@@ -3806,10 +3909,14 @@ sessioninfo::session_info()
     ##  future.apply     1.8.1      2021-08-10 [1] CRAN (R 4.1.2)
     ##  generics         0.1.1      2021-10-25 [1] CRAN (R 4.1.2)
     ##  ggplot2        * 3.3.5      2021-06-25 [1] CRAN (R 4.1.2)
+    ##  ggpubr         * 0.4.0      2020-06-27 [1] CRAN (R 4.1.2)
+    ##  ggsignif         0.6.3      2021-09-09 [1] CRAN (R 4.1.2)
+    ##  ggtext           0.1.1      2020-12-17 [1] CRAN (R 4.1.3)
     ##  globals          0.14.0     2020-11-22 [1] CRAN (R 4.1.1)
     ##  glue             1.5.1      2021-11-30 [1] CRAN (R 4.1.2)
     ##  gower            0.2.2      2020-06-23 [1] CRAN (R 4.1.1)
     ##  gridExtra      * 2.3        2017-09-09 [1] CRAN (R 4.1.2)
+    ##  gridtext         0.1.4      2020-12-10 [1] CRAN (R 4.1.3)
     ##  gt               0.3.1      2021-08-07 [1] CRAN (R 4.1.2)
     ##  gtable           0.3.0      2019-03-25 [1] CRAN (R 4.1.2)
     ##  gtsummary      * 1.5.0      2021-10-16 [1] CRAN (R 4.1.2)
@@ -3827,7 +3934,10 @@ sessioninfo::session_info()
     ##  jpeg             0.1-9      2021-07-24 [1] CRAN (R 4.1.1)
     ##  jsonlite         1.7.2      2020-12-09 [1] CRAN (R 4.1.2)
     ##  kableExtra     * 1.3.4      2021-02-20 [1] CRAN (R 4.1.2)
+    ##  km.ci            0.5-6      2022-04-06 [1] CRAN (R 4.1.3)
+    ##  KMsurv           0.1-5      2012-12-03 [1] CRAN (R 4.1.1)
     ##  knitr          * 1.36       2021-09-29 [1] CRAN (R 4.1.2)
+    ##  labeling         0.4.2      2020-10-20 [1] CRAN (R 4.1.1)
     ##  lattice        * 0.20-45    2021-09-22 [2] CRAN (R 4.1.2)
     ##  latticeExtra     0.6-29     2019-12-19 [1] CRAN (R 4.1.2)
     ##  lava             1.6.10     2021-09-02 [1] CRAN (R 4.1.2)
@@ -3878,6 +3988,7 @@ sessioninfo::session_info()
     ##  rpart            4.1-15     2019-04-12 [2] CRAN (R 4.1.2)
     ##  rprojroot        2.0.2      2020-11-15 [1] CRAN (R 4.1.2)
     ##  rsample        * 0.1.1      2021-11-08 [1] CRAN (R 4.1.2)
+    ##  rstatix          0.7.0      2021-02-13 [1] CRAN (R 4.1.2)
     ##  rstudioapi       0.13       2020-11-12 [1] CRAN (R 4.1.2)
     ##  rvest            1.0.2      2021-10-16 [1] CRAN (R 4.1.2)
     ##  sandwich         3.0-1      2021-05-18 [1] CRAN (R 4.1.2)
@@ -3887,6 +3998,8 @@ sessioninfo::session_info()
     ##  stringi          1.7.6      2021-11-29 [1] CRAN (R 4.1.2)
     ##  stringr        * 1.4.0      2019-02-10 [1] CRAN (R 4.1.2)
     ##  survival       * 3.2-13     2021-08-24 [1] CRAN (R 4.1.2)
+    ##  survminer      * 0.4.9      2021-03-09 [1] CRAN (R 4.1.3)
+    ##  survMisc         0.5.6      2022-04-07 [1] CRAN (R 4.1.3)
     ##  svglite          2.0.0      2021-02-20 [1] CRAN (R 4.1.2)
     ##  systemfonts      1.0.3      2021-10-13 [1] CRAN (R 4.1.2)
     ##  TH.data          1.1-0      2021-09-27 [1] CRAN (R 4.1.2)
@@ -3905,6 +4018,7 @@ sessioninfo::session_info()
     ##  withr            2.4.3      2021-11-30 [1] CRAN (R 4.1.2)
     ##  xfun             0.28       2021-11-04 [1] CRAN (R 4.1.2)
     ##  xml2             1.3.3      2021-11-30 [1] CRAN (R 4.1.2)
+    ##  xtable           1.8-4      2019-04-21 [1] CRAN (R 4.1.2)
     ##  yaml             2.2.1      2020-02-01 [1] CRAN (R 4.1.1)
     ##  zip              2.2.0      2021-05-31 [1] CRAN (R 4.1.2)
     ##  zoo              1.8-9      2021-03-09 [1] CRAN (R 4.1.2)

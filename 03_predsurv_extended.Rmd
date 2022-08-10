@@ -42,6 +42,7 @@ pacman::p_load(
   survival,
   rms,
   pec,
+  survminer,
   riskRegression,
   timeROC,
   plotrix,
@@ -222,29 +223,80 @@ First, we draw the survival and the censoring curves of the development and vali
 
 <details>
   <summary>Click to expand code</summary>
-```{r, surv, fig.align='center', fig.width = 6, fig.height = 6, echo=TRUE, eval=FALSE}
+```{r, surv, fig.align='center', fig.width = 8, fig.height = 7, echo=TRUE, eval=FALSE}
 # Development set
 sfit_rott <- survfit(Surv(ryear, rfs == 1) ~ 1, 
                      data = rotterdam) # survival
 sfit_rott_c <- survfit(Surv(ryear, rfs == 0) ~ 1, 
                        data = rotterdam) # censoring
 
-par(xaxs = "i", yaxs = "i", las = 1)
-plot(sfit_rott, 
-     conf.int = FALSE, 
-     lwd = 2, 
-     xlab = "Years", 
-     bty = "n")
-lines(sfit_rott_c, 
-      conf.int = FALSE, 
-      col = 2, 
-      lwd = 2)
-legend(11, .9, 
-       c("Death", "Censoring"), 
-       col = 1:2, 
-       lwd = 2, 
-       bty = "n")
-title("Development set")
+# Plots development data
+dev_plots <- list()
+
+# KM plot - development data
+dev_plots[[1]] <- ggsurvplot(sfit_rott, data = rotterdam,
+                             risk.table = TRUE,
+                             risk.table.fontsize = 3.6,
+                             palette = 3,
+                             size = 1.5,
+                             censor = FALSE,
+                             legend = "none",
+                             title = "Failure-free survival",
+                             xlab = "Years",
+                             ylab = "Probability",
+                             tables.theme = theme_cleantable())
+
+dev_plots[[1]]$table <- dev_plots[[1]]$table + 
+  theme(
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank()
+  )
+
+# Censoring plot - development data
+dev_plots[[2]] <- ggsurvplot(sfit_rott_c, data = rotterdam,
+                             risk.table = TRUE,
+                             risk.table.fontsize = 3.6,
+                             palette = 2,
+                             size = 1.5,
+                             censor = FALSE,
+                             legend = "none",
+                             title = "Censoring",
+                             xlab = "Years",
+                             ylab = "Probability",
+                             # risk.table.title = "Number at risk",
+                             # risk.table.y.text.col =  TRUE,
+                             tables.theme = theme_cleantable())
+
+dev_plots[[2]]$table <- dev_plots[[2]]$table + 
+  theme(
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank()
+  )
+
+# Join together 
+# oldpar <- par(mar = c(5, 5, 1, 1))
+arrange_ggsurvplots(dev_plots, print = TRUE,
+                    ncol = 2, nrow = 1, risk.table.height = 0.15,
+                    title = "Development data")  
+# par(oldpar)
+
+
+# par(xaxs = "i", yaxs = "i", las = 1)
+# plot(sfit_rott, 
+#      conf.int = FALSE, 
+#      lwd = 2, 
+#      xlab = "Years", 
+#      bty = "n")
+# lines(sfit_rott_c, 
+#       conf.int = FALSE, 
+#       col = 2, 
+#       lwd = 2)
+# legend(11, .9, 
+#        c("Death", "Censoring"), 
+#        col = 1:2, 
+#        lwd = 2, 
+#        bty = "n")
+# title("Development set")
 
 
 # Validation set
@@ -253,27 +305,74 @@ sfit_gbsg <- survfit(Surv(ryear, rfs == 1) ~ 1,
 sfit_gbsg_c <- survfit(Surv(ryear, rfs == 0) ~ 1, 
                        data = gbsg) # censoring
 
-par(xaxs = "i", yaxs = "i", las = 1)
-plot(sfit_gbsg, 
-     conf.int = FALSE, 
-     lwd = 2, 
-     xlab = "Years", 
-     bty = "n", 
-     xlim = c(0, 8))
-lines(sfit_gbsg_c, 
-      conf.int = FALSE, 
-      col = 2,
-      lwd = 2)
-legend("bottomleft", 
-       c("Death", "Censoring"), 
-       col = 1:2, 
-       lwd = 2, 
-       bty = "n")
-title("Validation set")
+# KM plot - validation data
+val_plots <- list()
+val_plots[[1]] <- ggsurvplot(sfit_gbsg, data = gbsg,
+                             risk.table = TRUE,
+                             risk.table.fontsize = 3.6,
+                             palette = 3,
+                             size = 1.5,
+                             censor = FALSE,
+                             legend = "none",
+                             title = "Failure-free survival",
+                             xlab = "Years",
+                             ylab = "Probability",
+                             tables.theme = theme_cleantable())
+
+val_plots[[1]]$table <- val_plots[[1]]$table + 
+  theme(
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank()
+  )
+
+# Censoring - validation data
+val_plots[[2]] <- ggsurvplot(sfit_gbsg_c, data = gbsg,
+                             risk.table = TRUE,
+                             risk.table.fontsize = 3.6,
+                             palette = 2,
+                             size = 1.5,
+                             censor = FALSE,
+                             legend = "none",
+                             title = "Censoring",
+                             xlab = "Years",
+                             ylab = "Probability",
+                             # risk.table.title = "Number at risk",
+                             # risk.table.y.text.col =  TRUE,
+                             tables.theme = theme_cleantable())
+
+val_plots[[2]]$table <- val_plots[[2]]$table + 
+  theme(
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank()
+  )
+
+# Join together 
+arrange_ggsurvplots(val_plots, print = TRUE,
+                    ncol = 2, nrow = 1,
+                    risk.table.height = 0.15,
+                    title = "Validation data")
+
+# par(xaxs = "i", yaxs = "i", las = 1)
+# plot(sfit_gbsg, 
+#      conf.int = FALSE, 
+#      lwd = 2, 
+#      xlab = "Years", 
+#      bty = "n", 
+#      xlim = c(0, 8))
+# lines(sfit_gbsg_c, 
+#       conf.int = FALSE, 
+#       col = 2,
+#       lwd = 2)
+# legend("bottomleft", 
+#        c("Death", "Censoring"), 
+#        col = 1:2, 
+#        lwd = 2, 
+#        bty = "n")
+# title("Validation set")
 ```
  </details>
  
-```{r, surv, fig.align='center', warning=FALSE, eval=TRUE, fig.width = 6, fig.height = 6}
+```{r, surv, fig.align='center', warning=FALSE, eval=TRUE, fig.width = 8, fig.height = 7}
 ```
 
 In total, 2982 patients were included to develop the risk prediction model for survival with a median follow-up of 9 years. The 5-year survival was 56% (95% CI: 55-58%). 
