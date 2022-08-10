@@ -461,30 +461,9 @@ dev_plots[[2]]$table <- dev_plots[[2]]$table +
   )
 
 # Join together 
-# oldpar <- par(mar = c(5, 5, 1, 1))
 arrange_ggsurvplots(dev_plots, print = TRUE,
                     ncol = 2, nrow = 1, risk.table.height = 0.15,
                     title = "Development data")  
-# par(oldpar)
-
-
-# par(xaxs = "i", yaxs = "i", las = 1)
-# plot(sfit_rott, 
-#      conf.int = FALSE, 
-#      lwd = 2, 
-#      xlab = "Years", 
-#      bty = "n")
-# lines(sfit_rott_c, 
-#       conf.int = FALSE, 
-#       col = 2, 
-#       lwd = 2)
-# legend(11, .9, 
-#        c("Death", "Censoring"), 
-#        col = 1:2, 
-#        lwd = 2, 
-#        bty = "n")
-# title("Development set")
-
 
 # Validation set
 sfit_gbsg <- survfit(Surv(ryear, rfs == 1) ~ 1, 
@@ -523,8 +502,6 @@ val_plots[[2]] <- ggsurvplot(sfit_gbsg_c, data = gbsg,
                              title = "Censoring",
                              xlab = "Years",
                              ylab = "Probability",
-                             # risk.table.title = "Number at risk",
-                             # risk.table.y.text.col =  TRUE,
                              tables.theme = theme_cleantable())
 
 val_plots[[2]]$table <- val_plots[[2]]$table + 
@@ -538,24 +515,6 @@ arrange_ggsurvplots(val_plots, print = TRUE,
                     ncol = 2, nrow = 1,
                     risk.table.height = 0.15,
                     title = "Validation data")
-
-# par(xaxs = "i", yaxs = "i", las = 1)
-# plot(sfit_gbsg, 
-#      conf.int = FALSE, 
-#      lwd = 2, 
-#      xlab = "Years", 
-#      bty = "n", 
-#      xlim = c(0, 8))
-# lines(sfit_gbsg_c, 
-#       conf.int = FALSE, 
-#       col = 2,
-#       lwd = 2)
-# legend("bottomleft", 
-#        c("Death", "Censoring"), 
-#        col = 1:2, 
-#        lwd = 2, 
-#        bty = "n")
-# title("Validation set")
 ```
 
 </details>
@@ -1844,7 +1803,7 @@ NA
 0.75
 </td>
 <td style="text-align:right;">
-0.73
+0.72
 </td>
 <td style="text-align:right;">
 NA
@@ -1877,6 +1836,425 @@ NA
 Time-dependent AUC at 5 years was between 0.68 and 0.72 in the apparent,
 internal and external validation for the basic and extended model.
 
+We also provide here the plot of the discrimination measures over the
+time.
+<details>
+<summary>
+Click to expand code
+</summary>
+
+``` r
+# Models 
+efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
+  data = rott5, x = T, y = T
+)
+# Additional marker
+efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
+
+# Save PI for development and validation data 
+# Development data 
+lp_dev <- predict(efit1, newdata = rott5)
+lp_dev_pgr <- predict(efit1_pgr, newdata = rott5)
+
+# Validation data 
+lp_val <- predict(efit1, newdata = gbsg5)
+lp_val_pgr <- predict(efit1_pgr, newdata = gbsg5)
+
+mtime <- c((6:59) / 12, 4.99)  # From 0.5 years to 4.99
+
+# Weights to estimate Uno's AUC in the development and validation data
+gwt_dev <- rttright(Surv(ryear, rfs) ~ 1, rott5, times= mtime)
+gwt_val <- rttright(Surv(ryear, rfs) ~ 1, gbsg5, times= mtime)
+
+cstat <- matrix(0, length(mtime), 24) # Uno, Harrell, AUROC, then se of each
+
+for (i in 1:length(mtime)) {
+    # Harrell C - development data (basic + extended model)
+    c0_dev <- concordance(efit1, ymax = mtime[i]) # dev data - basic + ext model
+    c0_dev_pgr <- concordance(efit1_pgr, ymax = mtime[i]) 
+    
+    # Harrell C - validation data (basic + extended model)
+    c0_val <- concordance(efit1, newdata = gbsg5, ymax = mtime[i])
+    c0_val_pgr <- concordance(efit1_pgr, newdata = gbsg5, ymax = mtime[i])
+    
+    # Uno C - development data (basic + extended model)
+    c1_dev <- concordance(efit1, 
+                          ymax = mtime[i], 
+                          timewt= "n/G2")
+    c1_dev_pgr <- concordance(efit1_pgr, 
+                              ymax = mtime[i], 
+                              timewt= "n/G2")
+    
+    # Uno C - validation data (basic + extended model)
+    c1_val <- concordance(efit1, 
+                          newdata = gbsg5,
+                          ymax = mtime[i], 
+                          timewt= "n/G2")
+    
+    c1_val_pgr <- concordance(efit1_pgr, 
+                              newdata = gbsg5,
+                              ymax = mtime[i], 
+                              timewt= "n/G2")
+    # AUC - development data
+    yy_dev <- with(rott5, ifelse(ryear <= mtime[i] & rfs == 1, 1, 0))
+    c2_dev <- concordance(yy_dev ~ lp_dev, 
+                          weight = gwt_dev[,i], 
+                          subset = (gwt_dev[,i] > 0))
+
+    c2_dev_pgr <- concordance(yy_dev ~ lp_dev_pgr, 
+                              weight = gwt_dev[,i], 
+                              subset = (gwt_dev[,i] > 0))
+    
+    # AUC - validation data
+    yy_val <- with(gbsg5, ifelse(ryear <= mtime[i] & rfs == 1, 1, 0))
+    c2_val <- concordance(yy_val ~ lp_val, 
+                          weight = gwt_val[,i], 
+                          subset = (gwt_val > 0))
+
+    c2_val_pgr <- concordance(yy_val ~ lp_val_pgr, 
+                              weight = gwt_val[,i], 
+                              subset = (gwt_val[,i] > 0))
+    # Save results
+    cstat[i,] <- c(coef(c0_dev), 
+                   coef(c0_dev_pgr),
+                   coef(c0_val),
+                   coef(c0_val_pgr),
+                   coef(c1_dev),
+                   coef(c1_dev_pgr),
+                   coef(c1_val),
+                   coef(c1_val_pgr),
+                   coef(c2_dev),
+                   coef(c2_dev_pgr),
+                   coef(c2_val),
+                   coef(c2_val_pgr),
+                   sqrt(c(vcov(c0_dev), 
+                          vcov(c0_dev_pgr), 
+                          vcov(c0_val),
+                          vcov(c0_val_pgr),
+                          vcov(c1_dev), 
+                          vcov(c1_dev_pgr),
+                          vcov(c1_val),
+                          vcov(c1_val_pgr),
+                          vcov(c2_dev), 
+                          vcov(c2_dev_pgr),
+                          vcov(c2_val),
+                          vcov(c2_val_pgr)
+                          )))
+}
+colnames(cstat) <- c("Har_dev",
+                     "Har_dev_pgr",
+                     "Har_val",
+                     "Har_val_pgr",
+                     "Uno_dev",
+                     "Uno_dev_pgr",
+                     "Uno_val",
+                     "Uno_val_pgr",
+                     "AUC_dev",
+                     "AUC_dev_pgr",
+                     "AUC_val",
+                     "AUC_val_pgr",
+                     
+                     "Har_dev_se",
+                     "Har_dev_pgr_se",
+                     "Har_val_se",
+                     "Har_val_pgr_se",
+                     "Uno_dev_se",
+                     "Uno_dev_pgr_se",
+                     "Uno_val_se",
+                     "Uno_val_pgr_se",
+                     "AUC_dev_se",
+                     "AUC_dev_pgr_se",
+                     "AUC_val_se",
+                     "AUC_val_pgr_se"
+                     )
+cstat <- data.frame(cstat)
+alpha <- .05
+
+oldpar <- par(las = 1, xaxs = "i", yaxs = "i", mfrow = c(1, 2))
+# Development - basic model
+plot(mtime, 
+     cstat[, c("Har_dev")], 
+     type = 'l', 
+     col = 1, 
+     ylim = c(.60, .85),
+     xlim = c(0, 5),
+     lty = 1, 
+     lwd = 3,
+     xlab = "Threshold", 
+     ylab = "Concordance",
+     bty = "n")
+polygon(c(
+  mtime,
+  rev(mtime)
+),
+c(
+  cstat[, c("Har_dev")] - qnorm(1 - alpha / 2) * cstat[, c("Har_dev_se")],
+  rev(cstat[, c("Har_dev")] + qnorm(1 - alpha / 2) * cstat[, c("Har_dev_se")])
+),
+col = rgb(160, 160, 160, maxColorValue = 255, alpha = 100),
+border = FALSE
+)
+lines(mtime, 
+      cstat[, c("Uno_dev")],
+      type = "l",
+      col = 2, 
+      lty = 2,
+      lwd = 3)
+polygon(c(
+  mtime,
+  rev(mtime)
+),
+c(
+  cstat[, c("Uno_dev")] - qnorm(1 - alpha / 2) * cstat[, c("Uno_dev_se")],
+  rev(cstat[, c("Uno_dev")] + qnorm(1 - alpha / 2) * cstat[, c("Uno_dev_se")])
+),
+  col = rgb(200, 160, 160, maxColorValue = 255, alpha = 100),
+  border = FALSE
+)
+lines(mtime, 
+      cstat[, c("AUC_dev")],
+      type = "l",
+      col = 3, 
+      lty = 1,
+      lwd = 3)
+polygon(c(
+  mtime,
+  rev(mtime)
+),
+c(
+  cstat[, c("AUC_dev")] - qnorm(1 - alpha / 2) * cstat[, c("AUC_dev_se")],
+  rev(cstat[, c("AUC_dev")] + qnorm(1 - alpha / 2) * cstat[, c("AUC_dev_se")])
+),
+  col = rgb(121, 175, 236, maxColorValue = 255, alpha = 100),
+  border = FALSE
+)
+legend("topright", c("Harrell C", "Uno C", "Uno AUC"),
+       lty = c(1, 2, 1),
+       col = c(1, 2, 3),
+       lwd = 3,
+       bty = "n",
+       cex = 0.85)
+title("Discrimination over the time \ndevelopment data - basic model",
+      cex.main = 0.95)
+
+# Development data - extended model
+plot(mtime, 
+     cstat[, c("Har_dev_pgr")], 
+     type = 'l', 
+     col = 1, 
+     ylim = c(.60, .85),
+     xlim = c(0, 5),
+     lty = 1, 
+     lwd = 3,
+     xlab = "Threshold", 
+     ylab = "Concordance",
+     bty = "n")
+polygon(c(
+  mtime,
+  rev(mtime)
+),
+c(
+  cstat[, c("Har_dev_pgr")] - 
+    qnorm(1 - alpha / 2) * cstat[, c("Har_dev_pgr_se")],
+  rev(cstat[, c("Har_dev_pgr")] + 
+        qnorm(1 - alpha / 2) * cstat[, c("Har_dev_pgr_se")])
+),
+col = rgb(160, 160, 160, maxColorValue = 255, alpha = 100),
+border = FALSE
+)
+lines(mtime, 
+      cstat[, c("Uno_dev")],
+      type = "l",
+      col = 2, 
+      lty = 2,
+      lwd = 3)
+polygon(c(
+  mtime,
+  rev(mtime)
+),
+c(
+  cstat[, c("Uno_dev_pgr")] - 
+    qnorm(1 - alpha / 2) * cstat[, c("Uno_dev_pgr_se")],
+  rev(cstat[, c("Uno_dev_pgr")] + 
+        qnorm(1 - alpha / 2) * cstat[, c("Uno_dev_pgr_se")])
+),
+  col = rgb(200, 160, 160, maxColorValue = 255, alpha = 100),
+  border = FALSE
+)
+lines(mtime, 
+      cstat[, c("AUC_dev")],
+      type = "l",
+      col = 3, 
+      lty = 1,
+      lwd = 3)
+polygon(c(
+  mtime,
+  rev(mtime)
+),
+c(
+  cstat[, c("AUC_dev_pgr")] - 
+    qnorm(1 - alpha / 2) * cstat[, c("AUC_dev_pgr_se")],
+  rev(cstat[, c("AUC_dev_pgr")] + 
+        qnorm(1 - alpha / 2) * cstat[, c("AUC_dev_pgr_se")])
+),
+  col = rgb(121, 175, 236, maxColorValue = 255, alpha = 100),
+  border = FALSE
+)
+legend("topright", c("Harrell C", "Uno C", "Uno AUC"),
+       lty = c(1, 2, 1),
+       col = c(1, 2, 3),
+       lwd = 3,
+       bty = "n",
+       cex = 0.85)
+title("Discrimination over the time \ndevelopment data - extended model",
+      cex.main = 0.95)
+par(oldpar)
+
+
+# Validation data - basic model
+oldpar <- par(las = 1, xaxs = "i", yaxs = "i", mfrow = c(1, 2))
+plot(mtime, 
+     cstat[, c("Har_val")], 
+     type = 'l', 
+     col = 1, 
+     ylim = c(.60, .95),
+     xlim = c(0, 5),
+     lty = 1, 
+     lwd = 3,
+     xlab = "Threshold", 
+     ylab = "Concordance",
+     bty = "n")
+polygon(c(
+  mtime,
+  rev(mtime)
+),
+c(
+  cstat[, c("Har_val")] - qnorm(1 - alpha / 2) * cstat[, c("Har_val_se")],
+  rev(cstat[, c("Har_val")] + qnorm(1 - alpha / 2) * cstat[, c("Har_val_se")])
+),
+  col = rgb(160, 160, 160, maxColorValue = 255, alpha = 100),
+  border = FALSE
+)
+lines(mtime, 
+      cstat[, c("Uno_val")],
+      type = "l",
+      col = 2, 
+      lty = 2,
+      lwd = 3)
+polygon(c(
+  mtime,
+  rev(mtime)
+),
+c(
+  cstat[, c("Uno_val")] - qnorm(1 - alpha / 2) * cstat[, c("Uno_val_se")],
+  rev(cstat[, c("Uno_val")] + qnorm(1 - alpha / 2) * cstat[, c("Uno_val_se")])
+),
+  col = rgb(200, 160, 160, maxColorValue = 255, alpha = 100),
+  border = FALSE
+)
+lines(mtime, 
+      cstat[, c("AUC_val")],
+      type = "l",
+      col = 3, 
+      lty = 1,
+      lwd = 3)
+polygon(c(
+  mtime,
+  rev(mtime)
+),
+c(
+  cstat[, c("AUC_val")] - qnorm(1 - alpha / 2) * cstat[, c("AUC_val_se")],
+  rev(cstat[, c("AUC_val")] + qnorm(1 - alpha / 2) * cstat[, c("AUC_val_se")])
+),
+  col = rgb(121, 175, 236, maxColorValue = 255, alpha = 100),
+  border = FALSE
+)
+legend("topright", c("Harrell C", "Uno C", "Uno AUC"),
+       lty = c(1, 2, 1),
+       col = c(1, 2, 3),
+       lwd = 3,
+       bty = "n",
+       cex = 0.85)
+title("Discrimination over the time \nvalidation data - basic model",
+      cex.main = 0.95)
+
+# Validation data - extended model
+plot(mtime, 
+     cstat[, c("Har_val_pgr")], 
+     type = 'l', 
+     col = 1, 
+     ylim = c(.60, .95),
+     xlim = c(0, 5),
+     lty = 1, 
+     lwd = 3,
+     xlab = "Threshold", 
+     ylab = "Concordance",
+     bty = "n")
+polygon(c(
+  mtime,
+  rev(mtime)
+),
+c(
+  cstat[, c("Har_val_pgr")] - 
+    qnorm(1 - alpha / 2) * cstat[, c("Har_val_pgr_se")],
+  rev(cstat[, c("Har_val_pgr")] + 
+        qnorm(1 - alpha / 2) * cstat[, c("Har_val_pgr_se")])
+),
+  col = rgb(160, 160, 160, maxColorValue = 255, alpha = 100),
+  border = FALSE
+)
+lines(mtime, 
+      cstat[, c("Uno_val_pgr")],
+      type = "l",
+      col = 2, 
+      lty = 2,
+      lwd = 3)
+polygon(c(
+  mtime,
+  rev(mtime)
+),
+c(
+  cstat[, c("Uno_val_pgr")] - 
+    qnorm(1 - alpha / 2) * cstat[, c("Uno_val_pgr_se")],
+  rev(cstat[, c("Uno_val_pgr")] 
+      + qnorm(1 - alpha / 2) * cstat[, c("Uno_val_pgr_se")])
+),
+  col = rgb(200, 160, 160, maxColorValue = 255, alpha = 100),
+  border = FALSE
+)
+lines(mtime, 
+      cstat[, c("AUC_val")],
+      type = "l",
+      col = 3, 
+      lty = 1,
+      lwd = 3)
+polygon(c(
+  mtime,
+  rev(mtime)
+),
+c(
+  cstat[, c("AUC_val_pgr")] - 
+    qnorm(1 - alpha / 2) * cstat[, c("AUC_val_pgr_se")],
+  rev(cstat[, c("AUC_val_pgr")] + 
+        qnorm(1 - alpha / 2) * cstat[, c("AUC_val_pgr_se")])
+),
+  col = rgb(121, 175, 236, maxColorValue = 255, alpha = 100),
+  border = FALSE
+)
+legend("topright", c("Harrell C", "Uno C", "Uno AUC"),
+       lty = c(1, 2, 1),
+       col = c(1, 2, 3),
+       lwd = 3,
+       bty = "n",
+       cex = 0.85)
+title("Discrimination over the time \nvalidation data - extended model",
+      cex.main = 0.95)
+```
+
+</details>
+
+<img src="imgs/03_predsurv_extended/discr_time-1.png" width="672" style="display: block; margin: auto;" /><img src="imgs/03_predsurv_extended/discr_time-2.png" width="672" style="display: block; margin: auto;" />
+
 ### 2.2 Calibration
 
 Calibration is the agreement between observed outcomes and predicted
@@ -1900,9 +2278,9 @@ of calibration can be estimated: mean, weak, and moderate calibration.
     -   at a fixed time point:
         -   using the Observed and Expected ratio at time t. The
             estimated Observed number of events is calculated by the
-            Kaplan-Meier curve, and the Expected number of events is
-            calculated as the average of the estimated predicted risk at
-            time *t* (e.g. 5 years);
+            Kaplan-Meier curve, and the Expected number of events
+            iscalculated as the average of the estimated predicted risk
+            at time *t* (e.g. 5 years);
     -   time range:
         -   using the exponential of Poisson model intercept,
             exp(a)=(O/E), with log of cumulative hazard as offset.
@@ -1920,8 +2298,8 @@ of calibration can be estimated: mean, weak, and moderate calibration.
 -   Moderate calibration can estimated:
 
     -   at a fixed time point:
-        -   using flexible calibration curve, complemented with ICI,
-            E50, E90.
+        -   using flexible calibration curve, complemented with ICI,E50,
+            E90.
     -   time range:
         -   Plot the observed / expected number of events over time
             using Poisson model intercept, exp(a) with log of cumulative
@@ -2793,7 +3171,7 @@ External data
 0.02
 </td>
 <td style="text-align:right;">
-0.07
+0.06
 </td>
 <td style="text-align:right;">
 0.03
@@ -2802,7 +3180,7 @@ External data
 0.01
 </td>
 <td style="text-align:right;">
-0.07
+0.05
 </td>
 <td style="text-align:right;">
 0.07
@@ -2811,7 +3189,7 @@ External data
 0.03
 </td>
 <td style="text-align:right;">
-0.14
+0.13
 </td>
 </tr>
 <tr>
@@ -2825,7 +3203,7 @@ External data + PGR
 0.01
 </td>
 <td style="text-align:right;">
-0.07
+0.05
 </td>
 <td style="text-align:right;">
 0.02
@@ -2834,7 +3212,7 @@ External data + PGR
 0.01
 </td>
 <td style="text-align:right;">
-0.07
+0.05
 </td>
 <td style="text-align:right;">
 0.05
