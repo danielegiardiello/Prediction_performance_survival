@@ -2008,171 +2008,82 @@ kable(res_numcal) |>
 In the validation, ICI at 5 years was 0.03 and 0.02 for the basic and extended model, respectively.
 
 ##### 2.2.3.2 Moderate calibration - time range assessment
-Moderate calibration over the time range can be assessed by plotting the observed / expected number of events over time     using Poisson model intercept, exp(a) with log of                cumulative hazard as offset across all time points to _t_ (here 5 years)
+Moderate calibration over the time range can be assessed by plotting the observed / expected number of events and prognostic index using Poisson model. 
 
 <details>
   <summary>Click to expand code</summary>
 ```{r, mod_cal, message=FALSE,warning=FALSE, fig.align='center', echo=TRUE, eval=FALSE}
 # Models ------------
 efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
-  data = rott5, x = T, y = T
+               data = rott5, x = T, y = T
 )
 # Additional marker
 efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
 
-# Observed / Expected ratio across all time point to t = 5 years
-# Time points
-times_t <- seq(0.15, 5, by = .05)
+# Save prognostic index (PI) and expected number of events
+gbsg5$PI <- predict(efit1, newdata = gbsg5, tpye = "lp") # PI - basic model
+gbsg5$PI_pgr <- predict(efit1_pgr, newdata = gbsg5, tpye = "lp") # PI - extended model
+exp_t <- predict(efit1, newdata = gbsg5, type = "expected") # expected - basic model
+exp_t_pgr <- predict(efit1_pgr, newdata = gbsg5, type = "expected") # expected - extended 
 
-# intercept across all time points - basic model 
-int_t <- matrix(NA, 
-                nrow = length(times_t),
-                ncol = 4)
- 
-# intercept across all time points - extended model
-int_t_pgr <- matrix(NA,
-                    nrow = length(times_t),
-                    ncol = 4)
+fit_01 <- glm(rfs ~ offset(log(exp_t)), 
+               family = poisson,
+               data = gbsg5,
+               subset = (exp_t > 0))
 
-# Estimate intercepts across time t using Poisson model
-for(j in 1:length(times_t)) {
-   # Administratively censoring data at time t
-          temp <- survSplit(Surv(ryear, rfs) ~ ., 
-                     data = gbsg5,
-                     cut = times_t[j],
-                     episode = "epoch") |>
-            filter(epoch == 1)
-          
-  # Calculate cumulative hazard in every data
-  # based on the basic model
-           p <- predict(efit1,
-                        newdata = temp,
-                        type = "expected")
-          
-  # Calculate cumulative hazard in every data
-  # based on the extended model
-          p_pgr <- predict(efit1_pgr,
-                           newdata = temp,
-                           type = "expected")
-          
-  # Fit Poisson model to estimate the intercept
-  # offsetting log cumulative hazard 
-          
-  # Basic model
-          fit <- 
-            glm(rfs ~ offset(log(p)), 
-             family = poisson, 
-             data = temp,
-             subset = (p > 0 ))
-          
-  # Extended model
-          fit_pgr <- 
-            glm(rfs ~ offset(log(p_pgr)), 
-             family = poisson, 
-             data = temp,
-             subset = (p > 0 ))
-          
-          # Save output
-          int_t[j,] <- summary(fit)$coefficients
-          int_t_pgr[j, ] <- summary(fit_pgr)$coefficients
-          
-}
+fit_01_pgr <- glm(rfs ~ offset(log(exp_t_pgr)), 
+               family = poisson,
+               data = gbsg5,
+               subset = (exp_t_pgr > 0))
 
-# Colnames
-colnames(int_t) <- colnames(summary(fit)$coefficients)
-colnames(int_t_pgr) <- colnames(summary(fit_pgr)$coefficients)
+fit_02 <- update(fit_01, . ~ . + ns(PI, df=3))
+fit_02_pgr <- update(fit_01_pgr, . ~ . + ns(PI_pgr, df=3))
 
-# Results
-res_OE_t <- cbind.data.frame(
-  "time" = times_t,
-  
-  "OE" = exp(int_t[, "Estimate"]),
-  
-  "Lower.95" = exp(int_t[, "Estimate"] - 
-                     qnorm(1 - alpha / 2) * 
-                     int_t[, "Std. Error"]),
-  
-  "Upper.95" = exp(int_t[, "Estimate"] + 
-                     qnorm(1 - alpha / 2) * 
-                     int_t[, "Std. Error"]),
-  
-  "OE_pgr" = exp(int_t_pgr[, "Estimate"]),
-  
-  "Lower.95.pgr" = exp(int_t_pgr[, "Estimate"] - 
-                     qnorm(1 - alpha / 2) * 
-                     int_t_pgr[, "Std. Error"]),
-  
-  "Upper.95.pgr" = exp(int_t_pgr[, "Estimate"] + 
-                     qnorm(1 - alpha / 2) * 
-                     int_t_pgr[, "Std. Error"])
-  
-)
-
-# Plot - basic model
-par(xaxs = "i", yaxs = "i", las = 1)
+# Plot - O/E vs PI - basic model
+temp <- termplot(fit_02, term = 1, se = TRUE,  plot = FALSE)[[1]]
+yy <- temp$y + outer(temp$se, c(0, -1.96, 1.96), '*')
+par(las = 1, xaxs = "i", yaxs = "i")
 oldpar <- par(mfrow = c(1, 2))
-plot(res_OE_t$time,
-     res_OE_t$OE,
-     xlim = c(0, 5),
-     ylim = c(0, 2),
-     xlab = "Year of follow-up",
-     ylab = 
-       "Number of observed events / Number of expected events",
-     cex.lab = .60,
-     bty = "n",
-     type = "l",
-     col = 2,
-     lwd = 2,
-     main = " Basic model",
-     cex.main = .70,
-     cex.axis = .60)
-lines(res_OE_t$time,
-      res_OE_t$Lower.95,
-      lwd = 2,
-      lty = 2)
-lines(res_OE_t$time,
-      res_OE_t$Upper.95,
-      lwd = 2,
-      lty = 2)
-abline (h = 1)
+matplot(temp$x, 
+        exp(yy), 
+        log = 'y', 
+        type = 'l', 
+        lwd = c(2 ,1 ,1), 
+        lty = c(1 ,2, 2), 
+        col = 1,
+        xlim = c(-0.5, 2),
+        ylim = c(0.5, 2.5),
+        xlab = "Prognostic Index", 
+        ylab = "N of observed events / N of expected events", 
+        bty = "n",
+        main = "Basic model")
+abline(0, 0, lty = 3)
 
-# Plot - extended model
-par(xaxs = "i", yaxs = "i", las = 1)
-plot(res_OE_t$time,
-     res_OE_t$OE_pgr,
-     xlim = c(0, 5),
-     ylim = c(0, 2),
-     xlab = "Year of follow-up",
-     ylab = 
-       "Number of observed events / Number of expected events",
-     cex.lab = .60,
-     bty = "n",
-     type = "l",
-     col = 2,
-     lwd = 2,
-     main = "Extended model",
-     cex.main = .70,
-     cex.axis = .60)
-lines(res_OE_t$time,
-      res_OE_t$Lower.95.pgr,
-      lwd = 2,
-      lty = 2)
-lines(res_OE_t$time,
-      res_OE_t$Upper.95.pgr,
-      lwd = 2,
-      lty = 2)
-abline (h = 1)
+# Plot - O/E vs PI - extended model
+temp_pgr <- termplot(fit_02_pgr, term = 1, se = TRUE,  plot = FALSE)[[1]]
+yy_pgr <- temp_pgr$y + outer(temp_pgr$se, c(0, -1.96, 1.96), '*')
+matplot(temp_pgr$x, 
+        exp(yy_pgr), 
+        log = 'y', 
+        type = 'l', 
+        lwd = c(2 ,1 ,1), 
+        lty = c(1 ,2, 2), 
+        col = 1,
+        xlim = c(-0.5, 2),
+        ylim = c(0.5, 2.5),
+        xlab = "Prognostic Index", 
+        ylab = "N of observed events / N of expected events", 
+        bty = "n",
+        main = "Extended model")
+abline(0, 0, lty = 3)
 ```
 </details>
   
 ```{r, mod_cal, fig.align='center', warning=FALSE, eval=TRUE}
 ```
 
-We also plot the cumulative hazard from Poisson model versus cumulative hazard from original Cox model.
 
-<details>
-  <summary>Click to expand code</summary>
-```{r, cumhaz_plot, message=FALSE,warning=FALSE, fig.align='center', fig.width = 6, fig.height = 6, echo=TRUE, eval=FALSE}
+```{r, cumhaz_plot, message=FALSE,warning=FALSE, fig.align='center', fig.width = 6, fig.height = 6, echo=FALSE, eval=FALSE, include=FALSE}
 
 # Models ------------
 efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
@@ -2274,7 +2185,7 @@ legend("bottomright",
 ```
 </details>
   
-```{r, cumhaz_plot, fig.align='center', fig.width = 6, fig.height = 6, warning=FALSE, eval=TRUE}
+```{r, cumhaz_plot, fig.align='center', fig.width = 6, fig.height = 6, warning=FALSE, eval=FALSE, include=FALSE}
 ```
 
 
