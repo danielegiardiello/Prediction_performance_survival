@@ -1,12 +1,11 @@
 *******************************************************************************;	
 * Program: 			STRATOS External validation when model estimates and       ;
 *					baseline survival available.sas							   ;
-*					available.sas  											   ;
 * Author: 			David McLernon											   ;
-* Date: 			24th Jan 2022											   ;
+* Date: 			4th Aug 2022											   ;
 * Purpose: 			This is SAS code for the STRATOS paper on validation of	   ;
-*					survival risk prediction models. This programme covers:    ;
-*					1. external validation when the original dataset used to   ;
+*					survival risk prediction models. This programme covers     ;
+*					external validation when the original dataset used to      ;
 *					develop the model is not available but the PI and baseline ;
 *					survival are available									   ;
 * Note:				This programme is not currently automated. It is coded	   ;
@@ -52,8 +51,8 @@ proc import out= gbsg
 run;
 
 *** Estimating Baseline Survival Function under PH;
-** Here S0 at 5 years =  0.80153;
-** For model with PGR added, S0 = 0.75852;
+** Here S0 at 5 years =  0.80385;
+** For model with PGR added, S0 = 0.76055;
 ** S(t)=S0(t)**exp(ß1X1+ß2X2+ß3X3+...+ßpXp)=S0(t)**exp(PI);
 
 *code up predictors and apply the original model;
@@ -62,53 +61,50 @@ data l2gbsg_va;
 	if size le 20 then sizecat=0;
 	if 21 <= size <= 50 then sizecat=1;
 	if size >50 then sizecat=2;
-    nodescat = 1* (1 <= nodes <=3) + 2*(nodes > 3);
 	gradecat = grade-1;
 	if grade in (1,2) then gradecat=0;
 	if grade = 3 then gradecat=1;
     survtime = rfstime/365.25;  * days to years;
-	*Winzorise PGR to the 99th percentile to deal with very large influential 
-	values;
+	*Winzorise nodes and PGR to the 99th percentile to deal with very large 
+	influential values;
 	if pgr>1360 then pgr=1360;
+	if (nodes > 19) then nodes=19;
 	*use formula to code up spline term for PGR;
 	PGR1=max(PGR/61.81,0)**3
 		+(41*max((PGR-486)/61.81,0)**3 -486*max((PGR-41)/61.81,0)**3)/445;
+	*use formula to code up spline term for number of nodes;
+	nodes1=max(nodes/4.33,0)**3
+		+(max((nodes-9)/4.33,0)**3 -9*max((nodes-1)/4.33,0)**3)/8;
 	*now calculate the prob of survival to 5 years;
 	sizepi = 0;
-	if sizecat=1 then sizepi=0.383;
-	if sizecat=2 then sizepi=0.664;
-	nodepi = 0;
-	if nodescat=1 then nodepi=0.360;
-	if nodescat=2 then nodepi=1.063;
+	if sizecat=1 then sizepi=0.342;
+	if sizecat=2 then sizepi=0.574;
 	gradepi = 0;
-	if gradecat=1 then gradepi=0.375;
-	pi = sizepi + nodepi + gradepi;
-	psurv = 0.80153**exp(pi);
+	if gradecat=1 then gradepi=0.362;
+	pi = sizepi + 0.304*nodes - 0.811*nodes1 + gradepi;
+	psurv = 0.80385**exp(pi);
 	prob = 1- psurv;
 	*now calculate the prob of survival to 5 years for model with pgr included;
 	sizepi2 = 0;
-	if sizecat=1 then sizepi2=0.362;
-	if sizecat=2 then sizepi2=0.641;
-	nodepi2 = 0;
-	if nodescat=1 then nodepi2=0.381;
-	if nodescat=2 then nodepi2=1.059;
+	if sizecat=1 then sizepi2=0.320;
+	if sizecat=2 then sizepi2=0.554;
 	gradepi2 = 0;
-	if gradecat=1 then gradepi2=0.317;
-	pi2 = sizepi2 + nodepi2 + gradepi2 - 0.003*pgr + 0.013*pgr1;
-	psurv2 = 0.75852**exp(pi2);
+	if gradecat=1 then gradepi2=0.305;
+	pi2 = sizepi2 + 0.305*nodes - 0.820*nodes1 + gradepi2 - 0.003*pgr + 0.013*pgr1;
+	psurv2 = 0.76055**exp(pi2);
 	prob2 = 1-psurv2;
-	keep pid sizecat nodescat gradecat age pgr pgr1 survtime status
-	sizepi nodepi gradepi pi psurv prob sizepi2 nodepi2 gradepi2 pi2 psurv2 
+	keep pid sizecat nodes nodes1 gradecat age pgr pgr1 survtime status
+	sizepi gradepi pi psurv prob sizepi2 gradepi2 pi2 psurv2 
 		prob2;
 run;
 
 *** Descriptive statistics;
 proc freq data=l2gbsg_va;
-	tables sizecat nodescat gradecat status;
+	tables sizecat gradecat status;
 run;
 
 proc univariate data=l2gbsg_va;
-	var age pgr;
+	var age pgr nodes;
 run;
 
 *use reverse Kaplan-Meier to obtain median follow-up time;
@@ -236,8 +232,9 @@ run;
 
 
 * Matrix code to calculate Uno's C-statistic;
-* Should get C=0.639;
+* Should get C=0.634;
 * NOTE: You must enter manual information below;
+* You can easily bootstrap these by adapting the code for outboot;
 proc iml;
 use outkm_ext_uno var {status survtime pi wsq};
 read all;
@@ -273,7 +270,7 @@ run;
 
 
 * Matrix code to calculate Uno's Time-dependent AUROC at 5 years;
-* Should get C=0.693;
+* Should get C=0.678;
 * NOTE: You must enter manual information below;
 * The below formula comes from Blanche et al 2013 Biom J paper;
 
@@ -312,7 +309,7 @@ run;
 
 ***** Now for extended model with PGR;
 * Matrix code to calculate Uno's C-statistic;
-* Should get C=0.667, SAS gives 0.665 when data available;
+* Should get C=0.657;
 * NOTE: You must enter manual information below;
 proc iml;
 use outkm_ext_uno var {status survtime pi2 wsq};
@@ -348,7 +345,7 @@ proc print data = cstat;
 run;
 
 * Matrix code to calculate Uno's Time-dependent AUROC at 5 years;
-* Should get C=0.722;
+* Should get C=0.704;
 * NOTE: You must enter manual information below;
 * The below formula comes from Blanche et al 2013 Biom J paper;
 
@@ -430,66 +427,13 @@ data mean2;
 	merge l2outkm_ext_c2 mean1;
 	by n;
 	prop = (1-survival)/(meanpred);
+	lclprop = prop * exp(-1.96*sqrt(1/285));
+	uclprop = prop * exp(+1.96*sqrt(1/285));
 run;
 
 title 'Calibration-in-large using ratio of Kaplan-Meier & Avg predicted risk';
 proc print data=mean2;
 run;
-
-**********- Bootstrap the 95% CIs for calibration-in-the-large ***********;
-
-proc lifetest data=outboot method=km atrisk outsurv=l2outkm_ext_c_ noprint;
-		by replicate;
-        time survtime*status(0);
-run;
-
-data l2outkm_ext_c1_;
-	set l2outkm_ext_c_;
-	where _censor_ = 0;
-run;
-
-*output observed survival at 5 years;
-data l2outkm_ext_c2_;
-	set l2outkm_ext_c1_;
-	by replicate _censor_;
-	if last._censor_;
-	keep replicate survival;
-run;
-
-*output predicted;
-proc univariate data=outboot noprint;
-	by replicate;
-	var prob;
-	output out=mean_ mean=meanpred;
-run;
-
-data mean2_;
-	merge l2outkm_ext_c2_ mean_;
-	by replicate;
-	prop = (1-survival)/(meanpred);
-	proc print;
-run;
-
-proc univariate data=mean2_ noprint;
-	var prop;
-	output out=confincal pctlpts=2.5 97.5 pctlpre=prop_ 
-		pctlname=lower95 upper95;
-run;
-
-data confincal1;
-	set confincal;
-	n=1;
-run;
-
-data callarge;
- 	retain prop prop_lower95 prop_upper95;
-	merge mean2 confincal1;
-	by n;
-	drop n survival meanpred;
-	title 'External Calibration-in-the-large with 95% CI';
-	proc print;
-run;
-
 
 
 ** Calibration slope;
@@ -522,9 +466,10 @@ run;
 
 proc print data=knots; run;
 
-/* here we find the following values:
+
+/* here we find the following values which need to be pasted into rcspline:
 P_CLL10 P_CLL50 P_CLL90 
--1.14854 -0.44554 0.31246 
+ -0.98237 -0.44751 0.32842  
 */
 
 *Use Frank Harrell's RCSPLINE macro for calculating the spline terms;
@@ -532,7 +477,7 @@ data predhar1;
 	set l2gbsg_val;
 	* NOTE: you will need to take the spline information from the log 
 	window and edit gridcox2 below;
-	%RCSPLINE(CLL, -1.14854, -0.44554, 0.31246);
+	%rcspline(cll, -0.98237, -0.44751, 0.32842);
 run;
 
 proc univariate data = predhar1 noprint;
@@ -549,10 +494,10 @@ data gridcox2(rename=(col1=prob));
 	cll=log(-log(1-col1));
 	*Warning! - take the below formula from the log window after running above 
 	rcspline - this will be different according to your data!;
-	 _kd_= (0.31246 - -1.14854)**.666666666666 ;
-	cll1=max((cll--1.14854)/_kd_,0)**3
-		+((-0.44554--1.14854)*max((cll-0.31246)/_kd_,0)**3
-		-(0.31246--1.14854)*max((cll--0.44554)/_kd_,0)**3)/(0.31246--0.44554);
+	 _kd_= (0.32842 - -0.98237)**.666666666666 ;
+	cll1=max((cll--0.98237)/_kd_,0)**3
+		+((-0.44751--0.98237)*max((cll-0.32842)/_kd_,0)**3 
+		-(0.32842--0.98237)*max((cll--0.44751)/_kd_,0)**3)/(0.32842--0.44751);
 run;
 
 *Calibration for predictions of 5-year survival probabilities;
@@ -571,8 +516,8 @@ data gridcox4;
 	u1=1-l;
 	if _name_='p_1' then diag1=0;
 	if _name_='p_1' then diag2=0;
-	if _name_='p_15' then diag1=1;
-	if _name_='p_15' then diag2=1;
+	if _name_='p_9' then diag1=1;
+	if _name_='p_9' then diag2=1;
 run;
 
 proc sort data=gridcox4;
@@ -601,19 +546,23 @@ ods listing sge=on style=printer image_dpi=300 gpath='c:';
 ods graphics on / reset=all noborder outputfmt=tiff  
 	imagename="Calbration plot Ext Harrell with RCS" antialias=off;
 
-proc sgplot data=logiplot2 noautolegend ;
+proc sgplot data=logiplot2 noautolegend aspect=1;
 	xaxis       	label="Predicted risk from developed model" 
 		values=(0 to 1 by 0.20);
 	yaxis        	label="Predicted risk from refitted model" 
 		values=(0 to 1 by 0.20);
-	y2axis			values=(0 to 20 by 1) display=none;
-  	series x=prob y=obsprob / lineattrs=(color=red thickness=2) ;
+	y2axis		label=" " values=(0 to 20 by 1) display=none;
+	keylegend "ref" "cal" "conf" "dens" / location=inside position=topleft
+		valueattrs=(size=8) down=4 noborder;
+  	series x=prob y=obsprob / lineattrs=(color=red thickness=2) name="cal" 
+		legendlabel="Calibration curve based on secondary Cox model";
   	band x=prob lower=l1 upper=u1 / nofill lineattrs=(color=black 
-		pattern=mediumdash thickness=2) noextend outline;
+		pattern=mediumdash thickness=2) noextend outline name="conf" 
+		legendlabel="95% confidence interval";
   	reg x=diag1 y=diag2 / lineattrs=(pattern=shortdash) markerattrs=(size=1px 
-		symbol=circlefilled);
+		symbol=circlefilled) name="ref" legendlabel="Ideal calibration";
   	series x=_value_ y=_density_/lineattrs=(color=black thickness=1 pattern=1)
-		y2axis;
+		y2axis name="dens" legendlabel="Density function of predicted risk";
 run;
 
 ods graphics off;
@@ -771,68 +720,13 @@ data mean2_pgr;
 	merge l2outkm_ext_c2 mean1;
 	by n;
 	prop = (1-survival)/(meanpred);
+	lclprop = prop * exp(-1.96*sqrt(1/285));
+	uclprop = prop * exp(+1.96*sqrt(1/285));
 run;
 
 title 'Calibration-in-large using ratio of Kaplan-Meier & Avg predicted risk';
 proc print data=mean2_pgr;
 run;
-
-**********- Bootstrap the 95% CIs for calibration-in-the-large ***********;
-
-/*
-*no need to rerun below if you have already run for model without pgr;
-proc lifetest data=outboot method=km atrisk outsurv=l2outkm_ext_c_ noprint;
-		by replicate;
-        time survtime*status(0);
-run;
-
-data l2outkm_ext_c1_;
-	set l2outkm_ext_c_;
-	where _censor_ = 0;
-run;
-
-*output observed survival at 5 years;
-data l2outkm_ext_c2_;
-	set l2outkm_ext_c1_;
-	by replicate _censor_;
-	if last._censor_;
-	keep replicate survival;
-run;
-*/
-
-*output predicted;
-proc univariate data=OUTBOOT noprint;
-	by replicate;
-	var prob2;
-	output out=mean__ mean=meanpred;
-run;
-
-data mean2_pgr_;
-	merge l2outkm_ext_c2_ mean__;
-	by replicate;
-	prop = (1-survival)/(meanpred);
-run;
-
-proc univariate data=mean2_pgr_ noprint;
-	var prop;
-	output out = confincal_ pctlpts=2.5 97.5 pctlpre= prop_ 
-		pctlname=lower95 upper95;
-run;
-
-data confincal1_;
-	set confincal_;
-	n=1;
-run;
-
-data callarge_;
- 	retain prop prop_lower95 prop_upper95;
-	merge mean2_pgr confincal1_;
-	by n;
-	drop n ;
-	title 'External Calibration-in-the-large with 95% CI (PGR included)';
-	proc print;
-run;
-
 
 
 ** Calibration slope;
@@ -865,17 +759,17 @@ run;
 
 proc print data=knots; run;
 
-/* here we find the following values:
+/* here we find the following values which you need to enter into rcspline call below:
 
 P_CLL10 P_CLL50 P_CLL90 
--1.01594 -0.38373 0.37213  
-*/
+-1.06326 -0.39526 0.40648 */
+
 *Use Frank Harrell's RCSPLINE macro for calculating the spline terms;
 data predharpgr1;
 	set l2gbsg_val;
 	* NOTE: you will need to take the spline information from the log 
 	window and edit gridcox2 below;
-	%rcspline(cll_, -1.01594, -0.38373, 0.37213);
+	%rcspline(cll_, -1.06326, -0.39526, 0.40648);
 run;
 
 proc univariate data = predharpgr1 noprint;
@@ -892,10 +786,10 @@ data gridcox2(rename=(col1=prob));
 	cll_=log(-log(1-col1));
 	*Warning! - take the below formula from the log window after running above 
 	rcspline - this will be different according to your data!;
- 	_kd_= (0.37213 - -1.01594)**.666666666666;
-	cll_1=max((cll_--1.01594)/_kd_,0)**3
-		+((-0.38373--1.01594)*max((cll_-0.37213)/_kd_,0)**3
-		-(0.37213--1.01594)*max((cll_--0.38373)/_kd_,0)**3)/(0.37213--0.38373);
+ 	_kd_= (0.40648 - -1.06326)**.666666666666;
+	cll_1=max((cll_--1.06326)/_kd_,0)**3
+			+((-0.39526--1.06326)*max((cll_-0.40648)/_kd_,0)**3 
+			-(0.40648--1.06326)*max((cll_--0.39526)/_kd_,0)**3)/(0.40648--0.39526);
 run;
 
 *calibration for predictions of 5-year survival probabilities;
@@ -944,19 +838,23 @@ ods listing sge=on style=printer image_dpi=300 gpath='C:';
 ods graphics on / reset=all noborder outputfmt=tiff 
 	imagename="Calbration plot PGR Ext Harrell with RCS" antialias=off;
 
-proc sgplot data=logiplot2 noautolegend ;
-xaxis       	label="Predicted risk from developed model" 
+proc sgplot data=logiplot2 noautolegend aspect=1;
+	xaxis       	label="Predicted risk from developed model" 
 		values=(0 to 1 by 0.20);
-yaxis        	label="Predicted risk from refitted model" 
+	yaxis        	label="Predicted risk from refitted model" 
 		values=(0 to 1 by 0.20);
-y2axis	values=(0 to 20 by 1) display=none;
-  series x=prob y=obsprob / lineattrs=(color=red thickness=2) ;
-  band x=prob lower=l1 upper=u1 / nofill lineattrs=(color=black 
-		pattern=mediumdash thickness=2) noextend outline;
-  reg x=diag1 y=diag2 / lineattrs=(pattern=shortdash) 
-		markerattrs=(size=1px symbol=circlefilled);
-  series x=_value_ y=_density_ / lineattrs=(color=black thickness=1 
-		pattern=1) y2axis;
+	y2axis		label=" " values=(0 to 20 by 1) display=none;
+	keylegend "ref" "cal" "conf" "dens" / location=inside position=topleft
+		valueattrs=(size=8) down=4 noborder;
+  	series x=prob y=obsprob / lineattrs=(color=red thickness=2) name="cal" 
+		legendlabel="Calibration curve based on secondary Cox model";
+  	band x=prob lower=l1 upper=u1 / nofill lineattrs=(color=black 
+		pattern=mediumdash thickness=2) noextend outline name="conf" 
+		legendlabel="95% confidence interval";
+  	reg x=diag1 y=diag2 / lineattrs=(pattern=shortdash) markerattrs=(size=1px 
+		symbol=circlefilled) name="ref" legendlabel="Ideal calibration";
+  	series x=_value_ y=_density_/lineattrs=(color=black thickness=1 pattern=1)
+		y2axis name="dens" legendlabel="Density function of predicted risk";
 run;
 
 ods graphics off;
@@ -1647,20 +1545,19 @@ ods graphics on / reset=all noborder outputfmt=tiff
 *create graph (decision curve) with treat none, treat all, simple model
 and extended model;
 proc sgplot data=crsort;
-	yaxis values=(-0.05 to 0.55 by 0.05) label="Net Benefit";
+	yaxis values=(-0.05 to 0.50 by 0.05) label="Net Benefit";
 	xaxis values=(0.0 to 1 by 0.1) label="Threshold Probability";
-	keylegend "all" "orig" "new" "none" / down=4 position=bottom;
+	keylegend "all" "orig" "new" "none" / location=inside down=4 position=topright;
 	series y=kmall x=threshold / lineattrs=(color=black thickness=2 
-		pattern=solid) name="all" legendlabel="Treat All";
+		pattern=mediumdash) name="all" legendlabel="Treat All";
 	series y=kmmodel x=threshold / lineattrs=(color=green thickness=2 
 		pattern=solid) name="orig" 
-		legendlabel="Original model: Pr(Rec) at 5 years";
+		legendlabel="Original model";
 	series y=crmodel x=threshold / lineattrs=(color=blue thickness=2 
-		pattern=solid) name="new" 
-		legendlabel="Original model + PGR: Pr(Rec) at 5 years";
+		pattern=longdash) name="new" 
+		legendlabel="Original model + PGR";
 	series y=none x=threshold / lineattrs=(color=red thickness=2 
-		pattern=solid)  name="none" 
-		legendlabel="None";
+		pattern=shortdash)  name="none" legendlabel="Treat None";
 RUN;
 
 ods graphics off;

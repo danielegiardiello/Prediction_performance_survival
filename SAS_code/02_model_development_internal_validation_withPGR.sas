@@ -2,7 +2,7 @@
 * Program:			STRATOS Model development and internal validation 		   ;
 *					with PGR final.sas 	   									   ;
 * Author:			David McLernon        					 				   ;
-* Date: 			10th Nov 2021          					 				   ;
+* Date: 			27th July 2022          					 			   ;
 * Purpose: 			This is SAS code for the STRATOS paper on validation of	   ;
 *					survival risk prediction models. This programme covers     ;
 *					model development internal validation 					   ;
@@ -13,7 +13,7 @@
 *					Readers can skip the sections that create "nice" graphs,   ;
 *					these all have surrounding comments of  "Optional Block"   ;
 *					and "End Optional Block". Though an essential skill for    ;
-*					published papers, such maniuplation is outside the primary ;
+*					published papers, such manipulation is outside the primary ;
 *					scope of this work.										   ;
 * Data:				The Rotterdam and GBSG data sets can be found on the web   ;
 *					in various locations and various formats.  For this 	   ;
@@ -25,7 +25,7 @@
 *			       write.csv(gbsg,      row.names=FALSE, file="gbsg.csv")	   ;
 *				       to create the csv files.								   ;
 *******************************************************************************;	
-** Lines up to 250 are the same as in the STRATOS Model development and internal 
+** Lines up to 260 are the same as in the STRATOS Model development and internal 
 ** validation final.sas programme;
 
 options ls=80 mprint mlogic nonumber nodate source2 spool;
@@ -55,25 +55,25 @@ run;
 /*
 ** Create the categorical variables that we use in the model fit
 ** grade of 1-2 vs 3
-** node categories of 0, 1-3, > 3
 ** size of  <=20, 21-50, >50
-**  The size variable is already categorized in this way, in both data sets
+** The size variable is already categorized in this way, in both data sets
 */
 
+*** descriptive statistics for age and PGR;
+proc univariate data=rotterdam;
+	var age pgr nodes;
+run;
+
 proc format;  * make them print in a nice order;
-    value nodef 0 = "0"
-                1 = "1-3"
-                2 = ">3";
     value sizef 0 = "<=20"
                 1 = "20-50"
                 2 = ">50";
     value gradef 0 = "1-2"
                  1 = "3";
 
-data r1(rename=(pr=pgr)); set rotterdam;
-    format nodescat nodef. sizecat sizef. gradecat gradef.;
+data r1(rename=(pr=pgr nod=nodes)); set rotterdam;
+    format sizecat sizef. gradecat gradef.;
 
-    nodescat = 1* (1 <= nodes <=3) + 2*(nodes > 3);
     sizecat =  1* (size= "20-50")  + 2*(size = ">50");
     gradecat = grade -2;  * rotterdam has only grade 2 and 3 subjects;
 
@@ -87,25 +87,46 @@ data r1(rename=(pr=pgr)); set rotterdam;
         status = death;
     end;
     
-    * Winzorise PGR to the 99th percentile to deal with large influential
-    *  values;
+    * Winzorise PGR and nodes to the 99th percentile to deal with large influential
+    *  values, found from output of univariate procedure above;
     if (pgr > 1360) then pr = 1360; else pr = pgr;
 	drop pgr;
+	if (nodes > 19) then nod = 19; else nod = nodes;
+	drop nodes;
 run;
+
+** Check functional form of nodes;
+* Code nodes as a restricted cubic spline with 3 knots;
+* First calculate the 10th, 50th and 90th percentiles for knots;
+proc univariate data = r1 noprint;
+	var nodes;
+	output out=knots pctlpre=p_node pctlpts= 10 50 90;
+run;
+
+proc print data=knots; run;
+
+/* in output window we find the following values:
+p_node10 p_node50 p_node90 
+ 0 			1 			9 
+*/
+
+*Use Frank Harrell's RCSPLINE macro for calculating the spline terms - found 
+*here: http://biostat.mc.vanderbilt.edu/wiki/Main/SasMacros;
+data r11;
+	set r1;
+	%rcspline(nodes, 0, 1, 9);
+run;
+
 
 * Descriptive statistics at baseline for Table 1;
-proc freq data=r1;
-    table nodescat gradecat sizecat;
+proc freq data=r11;
+    table gradecat sizecat;
 run;
 
-*** descriptive statistics for age and PGR;
-proc univariate data=r1;
-	var age pgr;
-run;
 
 * Plot the ovrall Kaplan-Meier, as motivation for using a 5 year cut-off;
 * - n=1275 events by 5 years;
-proc lifetest data=r1 method=pl plots=(s, ls, lls) outsurv=outkm;
+proc lifetest data=r11 method=pl plots=(s, ls, lls) outsurv=outkm;
         time survtime*status(0);
 		ods exclude ProductLimitEstimates;   * suppress the long table;
 		title "Overall Kaplan-Meier";
@@ -142,25 +163,16 @@ ods graphics off;
 
 
 *get median follow-up using reverse kaplan-meier method;
-proc lifetest data=r1 method=pl atrisk;
+proc lifetest data=r11 method=pl atrisk;
     time survtime*status(1);
     ods exclude ProductLimitEstimates;   * suppress the long table;
     title "Median follow-up time";
 run;
 
-/*
-** The ZPH command option requests diagnostics using scaled Schoenfeld
-**  residuals, to check proportional hazards assumption;
-**  The model shows strong evidence of non-proportional hazards for all.
-*/
-proc phreg data=r1 zph(global transform=log);
-	class sizecat (ref=first) nodescat (ref=first) gradecat (ref=first);
-	model survtime*status(0)=sizecat nodescat gradecat / ties=efron rl;
-run;
 
 *Administrative censor at 5 years since this is our prediction horizon; 
 data rott;
-	set r1;
+	set r11;
 	*administrative censoring at 5 years;
 	if survtime > 5 then status=0;
 	if survtime > 5 then survtime=5;
@@ -260,14 +272,27 @@ run;
 /*Q3PGR Q3PGR1    Q1PGR   Q1PGR1 
  198   14.9704   4       0.000270961 */
 
+* Calculate the 1st and 3rd quartiles for interquartile hazard ratio 
+* estimation below;
+proc univariate data=ffpgr noprint;
+	var nodes nodes1;
+	output out=percentiles q3=q3nod q3nod1 q1=q1nod q1nod1;
+run;
+proc print data=percentiles;
+run;
+/*q3nod q3nod1 	q1nod 	q1nod1 
+	4 	0.41512 0 		0 
+ */
+
+
 *** Estimating Baseline Survival Function under PH;
 * - Take lowest values to calculate baseline survival;
 data inrisks;
 	set FFPGR;
-	where sizecat=0 & nodescat=0 & gradecat=0 & PGR=0 & PGR1=0;
+	where sizecat=0 & nodes=0 & gradecat=0 & PGR=0 & PGR1=0;
 	n+1;
 	if n>1 then delete;
-	keep sizecat nodescat gradecat PGR PGR1;
+	keep sizecat nodes nodes1 gradecat PGR PGR1;
 run;
 
 Title 'Extended model with proportional hazards assessment';
@@ -277,12 +302,13 @@ ods graphics on / reset=all noborder outputfmt=tiff
 	imagename="Extended model with proportional hazards assessment" 
 	antialias=off;
 
-proc phreg data=ffpgr zph(global transform=log) ev;
-	class sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
-	model survtime*status(0)=sizecat nodescat gradecat pgr pgr1/ ties=efron rl;
+proc phreg data=ffpgr /*zph(global transform=log) ev*/;
+	class sizecat (ref='<=20') gradecat (ref=first);
+	model survtime*status(0)=sizecat gradecat nodes nodes1 pgr pgr1/ ties=efron rl;
 	* Interquartile Hazard Ratio - calculate below by subtracting Q3PGR from 
 	* Q1PGR above, and Q3PGR1 from Q1PGR1;
 	contrast 'Test PGR' PGR -194 PGR1 -14.970129039 / estimate=both;
+	contrast 'Test Nodes' nodes -4 nodes1 -0.41512 / estimate=both;
 	* store model for easy validation later;
 	store SimpModelPGR;
 	*assess functional form;
@@ -300,12 +326,13 @@ proc print data=outph1;
 run;
 
 /* 
-nodescat 	sizecat 	gradecat 	pgr 	pgr1 	survtime 	ps 
-0 			<=20 		1-2 		0 		0 		1 			0.96031 
-0 			<=20 		1-2 		0 		0 		2 			0.89533 
-0 			<=20 		1-2 		0 		0 		3 			0.84019 
-0 			<=20 		1-2 		0 		0 		4 			0.79619 
-0 			<=20 		1-2 		0 		0 		5 			0.75852 
+Baseline survival copied from output window..
+sizecat gradecat pgr nodes nodes1 pgr1 survtime ps 
+<=20 	1-2 	0 	0 		0 		0 	1 		0.96123 
+<=20 	1-2 	0 	0 		0 		0 	2 		0.89709 
+<=20 	1-2 	0 	0 		0 		0 	3 		0.84235 
+<=20 	1-2 	0 	0 		0 		0 	4 		0.79835 
+<=20 	1-2 	0 	0 		0 		0 	5 		0.76055 
 */
 
 *Call bootstrap resampled dataset from previous programme (without pgr);
@@ -316,8 +343,8 @@ run;
 proc phreg data=outboot noprint;
 	*where replicate in (1,2) /*useful line to use when testing out*/;
 	by replicate;
-	class sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
-	model survtime*status(0)=sizecat nodescat gradecat pgr pgr1 / ties=efron rl;
+	class sizecat (ref='<=20') gradecat (ref=first);
+	model survtime*status(0)=sizecat nodes nodes1 gradecat pgr pgr1 / ties=efron rl;
 	store simpmodelboot;
 	*baseline statement applies each of the 500 models to the original dataset 
 	external bootstrap validation;
@@ -335,38 +362,38 @@ run;
 *Harrell's C - Need tau to equal event time of interest;
 title 'Apparent Harrells C';
 proc phreg data=ffpgr concordance=harrell(se) tau=5;
-	class sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
-	model survtime*status(0)=sizecat nodescat gradecat pgr pgr1 / ties=efron rl;
+	class sizecat (ref='<=20') gradecat (ref=first);
+	model survtime*status(0)=sizecat nodes nodes1 gradecat pgr pgr1 / ties=efron rl;
 run;
 
 *Uno's C - Need tau to equal event time of interest;
 title 'Apparent Unos C';
 proc phreg data=ffpgr concordance=uno(se seed=8754 iter=50) tau=5;
-	class sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
-	model survtime*status(0)=sizecat nodescat gradecat pgr pgr1 / ties=efron rl;
+	class sizecat (ref='<=20') gradecat (ref=first);
+	model survtime*status(0)=sizecat nodes nodes1 gradecat pgr pgr1 / ties=efron rl;
 run;
 
 *Internal validation: Bootstrap to assess optimism in performance;
 *Only run the below for the C statistic you wish to use;
 
 *get apparent bootstrap performance for Harrell's C in 500 datasets;
-proc phreg data=outboot concordance=harrell(se) tau=5 noprint;
+proc phreg data=outboot concordance=harrell(se) tau=5;
 	*This line is useful to test bootstrap on first 2 resampled datasets only;
 	*where replicate in (1,2);
 	by replicate;
-	class sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
-	model survtime*status(0)=sizecat nodescat gradecat pgr pgr1 / ties=efron rl;
+	class sizecat (ref='<=20') gradecat (ref=first);
+	model survtime*status(0)=sizecat nodes nodes1 gradecat pgr pgr1 / ties=efron rl;
 	ods output concordance=apphar(rename=(estimate=apphar stderr=appseh) 
 		drop=source);
 run;
 
 *Get apparent bootstrap performance for Uno's C in 500 datasets;
-proc phreg data=outboot concordance=uno(se seed=8754 iter=50) tau=5 noprint ;
+proc phreg data=outboot concordance=uno(se seed=8754 iter=50) tau=5;
 	*This line is useful to test bootstrap on first 2 resampled datasets only;
 	*where replicate in (1,2);
 	by replicate;
-	class sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
-	model survtime*status(0)=sizecat nodescat gradecat pgr pgr1 / ties=efron rl;
+	class sizecat (ref='<=20') gradecat (ref=first);
+	model survtime*status(0)=sizecat nodes nodes1 gradecat pgr pgr1 / ties=efron rl;
 	ods output concordance=appuno(rename=(estimate=appuno stderr=appseu) 
 		drop=source);
 run;
@@ -390,11 +417,11 @@ ods listing close;
 
 *Get external bootstrap performance for Harrell's C in 500 copies of Rotterdam 
 *dataset;
-proc phreg data=outrott concordance=harrell(se) tau=5 noprint;
+proc phreg data=outrott concordance=harrell(se) tau=5;
 	*where replicate in (1,2);
 	by replicate;	
-	class ssizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
-	model survtime*status(0)=sizecat nodescat gradecat pgr pgr1 / ties=efron rl 
+	class sizecat (ref='<=20') gradecat (ref=first);
+	model survtime*status(0)=sizecat nodes nodes1 gradecat pgr pgr1 / ties=efron rl 
 			nofit;
 	roc source=simpmodelboot;
 	ods output concordance=boothar(rename=(estimate=boothar stderr=bootseh) 
@@ -403,11 +430,11 @@ run;
 
 *get external bootstrap performance for Uno's c in 500 copies of rotterdam 
 	dataset;
-proc phreg data=outrott concordance=uno(se seed=8754 iter=50) tau=5 noprint;
+proc phreg data=outrott concordance=uno(se seed=8754 iter=50) tau=5;
 	*where replicate in (1,2);
 	by replicate;	
-	class sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
-	model survtime*status(0)=sizecat nodescat gradecat pgr pgr1 / ties=efron rl 
+	class sizecat (ref='<=20') gradecat (ref=first);
+	model survtime*status(0)=sizecat nodes nodes1 gradecat pgr pgr1 / ties=efron rl 
 			nofit;
 	roc source=simpmodelboot;
 	ods output concordance=bootuno(rename=(estimate=bootuno stderr=bootseu) 
@@ -431,32 +458,29 @@ run;
 ****FIXED TIME POINT ASSESSMENT OF DISCRIMINATION;
 title 'Apparent Unos AUC';
 proc phreg data=ffpgr tau=5 rocoptions(auc at=4.98 method=ipcw (cl seed=134));
-	class sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
-	model survtime*status(0)=sizecat nodescat gradecat pgr pgr1 / ties=efron rl 
-			nofit;
-	roc 'npi + pgr' source=simpmodelpgr;
+	class sizecat (ref='<=20') gradecat (ref=first);
+	model survtime*status(0)=sizecat nodes nodes1 gradecat pgr pgr1 / ties=efron rl ;
+	*roc 'npi + pgr' source=simpmodelpgr;
 run;
 
 *Internal validation: Bootstrap performance;
 *Get apparent bootstrap performance for Uno's AUC in 500 datasets;
-proc phreg data=outboot tau=5 rocoptions(auc at=4.98 method=ipcw (cl seed=134)) 
-		noprint;
+proc phreg data=outboot tau=5 rocoptions(auc at=4.98 method=ipcw (cl seed=134));
 	*where replicate in (1,2);
 	by replicate;
-	class sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
-	model survtime*status(0)=sizecat nodescat gradecat pgr pgr1 /ties=efron rl;
+	class sizecat (ref='<=20') gradecat (ref=first);
+	model survtime*status(0)=sizecat nodes nodes1 gradecat pgr pgr1 /ties=efron rl;
 	ods output auc=apptduno(rename=(estimate=apptduno stderr=apptdse) 
 		drop=sourceid upper lower source);
 run;
 
 *Get external bootstrap performance for Uno's AUC in 500 copies of rotterdam 
 	dataset;
-proc phreg data=outrott tau=5 rocoptions(auc at=4.98 method=ipcw (cl seed=134))
-		noprint;
+proc phreg data=outrott tau=5 rocoptions(auc at=4.98 method=ipcw (cl seed=134));
 	*where replicate in (1,2);
 	by replicate;
-	class sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
-	model survtime*status(0)=sizecat nodescat gradecat pgr pgr1 / ties=efron rl 
+	class sizecat (ref='<=20') gradecat (ref=first);
+	model survtime*status(0)=sizecat nodes nodes1 gradecat pgr pgr1 / ties=efron rl 
 		nofit;
 	roc source=simpmodelboot;
 	ods output auc=boottduno(rename=(estimate=boottduno stderr=boottdse) 
@@ -502,8 +526,8 @@ run;
 *Now estimate survival at 5 years in development dataset;
 title 'Basic model output';
 proc phreg data=ffpgr;
-	class sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
-	model survtime*status(0)=sizecat nodescat gradecat pgr pgr1 / ties=efron 
+	class sizecat (ref='<=20') gradecat (ref=first);
+	model survtime*status(0)=sizecat nodes nodes1 gradecat pgr pgr1 / ties=efron 
 		rl;
 	*apparent;
 	baseline covariates=rott_b out=rott_bs timelist=5 survival=fiveyrsurv/ 
@@ -694,8 +718,8 @@ run;
 *Estimate survival at 5 years for apparent bootstrap;
 proc phreg data=fpgrapp noprint;
 	by replicate;
-	class sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
-	model survtime*status(0)=sizecat nodescat gradecat pgr pgr1 / ties=efron 
+	class sizecat (ref='<=20') gradecat (ref=first);
+	model survtime*status(0)=sizecat nodes nodes1 gradecat pgr pgr1 / ties=efron 
 		rl;
 	baseline covariates=rott_ba out=rott_bsa timelist=5 survival=fiveyrsurv/ 
 		method=breslow;
@@ -704,8 +728,8 @@ run;
 *Estimate survival at 5 years for external bootstrap;
 proc phreg data=fpgrapp noprint;
 	by replicate;
-	class sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
-	model survtime*status(0)=sizecat nodescat gradecat pgr pgr1 / ties=efron 
+	class sizecat (ref='<=20') gradecat (ref=first);
+	model survtime*status(0)=sizecat nodes nodes1 gradecat pgr pgr1 / ties=efron 
 		rl;
 	baseline covariates=rott_b_ex out=rottval_bs timelist=5 survival=fiveyrsurv/ 
 		method=breslow;
@@ -1129,7 +1153,7 @@ data resultsdata;
 	infile datalines delimiter=',';
 	input OrigBrier OrigScBr OrigHarC OrigUnoC OrigUnoAUC;
 	datalines;
-	0.209, 0.149, 0.682, 0.682, 0.720
+	0.206, 0.161, 0.689, 0.688, 0.727
 ;
 data resultsdata_new;
 	set resultsdata;
@@ -1162,6 +1186,6 @@ proc print data=correctedperf;
 run;
 
 proc export data=correctedperf
-  	outfile= "C:\Bootstrap_Val_PGR" 
+  	outfile= "C:\Users\sme544\Bootstrap_Val_PGR" 
    	dbms=xlsx replace;
 run;

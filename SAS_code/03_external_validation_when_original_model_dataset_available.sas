@@ -2,13 +2,11 @@
 * Program: 			STRATOS External validation when original model dataset    ;
 *					available.sas  											   ;
 * Author: 			David McLernon											   ;
-* Date: 			24th Jan 2022											   ;
+* Date: 			4th Aug 2022											   ;
 * Purpose: 			This is SAS code for the STRATOS paper on validation of	   ;
-*					survival risk prediction models. This programme covers:    ;
-*					1. external validation when the original dataset used to   ;
+*					survival risk prediction models. This programme covers 	   ;
+*					external validation when the original dataset used to      ;
 *					develop the model is available							   ;
-*					2. what to do if development dataset or baseline hazard are; 
-*					not available (starts LINE 1430)						   ;
 * Note:				This programme is not currently automated. It is coded	   ;
 *					based on the case study in the article. Therefore, 		   ;
 *					adapting this code for your own study will require careful ;
@@ -61,7 +59,6 @@ run;
 /*
 ** Create the categorical variables that we use in the model fit
 ** grade of 1-2 vs 3
-** node categories of 0, 1-3, > 3
 ** size of  <=20, 21-50, >50
 **  The size variable is already categorized in this way, in both data sets
 */
@@ -72,19 +69,15 @@ proc univariate data=rotterdam;
 run;
 
 proc format;  * make them print in a nice order;
-    value nodef 0 = "0"
-                1 = "1-3"
-                2 = ">3";
     value sizef 0 = "<=20"
                 1 = "20-50"
                 2 = ">50";
     value gradef 0 = "1-2"
                  1 = "3";
 
-data r1(rename=(pr=pgr)); set rotterdam;
-    format nodescat nodef. sizecat sizef. gradecat gradef.;
+data r1(rename=(pr=pgr nod=nodes)); set rotterdam;
+    format sizecat sizef. gradecat gradef.;
 
-    nodescat = 1* (1 <= nodes <=3) + 2*(nodes > 3);
     sizecat =  1* (size= "20-50")  + 2*(size = ">50");
     gradecat = grade -2;  * rotterdam has only grade 2 and 3 subjects;
 
@@ -102,11 +95,13 @@ data r1(rename=(pr=pgr)); set rotterdam;
     *  values;
     if (pgr > 1360) then pr = 1360; else pr = pgr;
 	drop pgr;
+	if (nodes > 19) then nod = 19; else nod = nodes;
+	drop nodes;
 run;
 
 * Descriptive statistics at baseline for Table 1;
 proc freq data=r1;
-    table nodescat gradecat sizecat;
+    table gradecat sizecat;
 run;
 
 *Administrative censor at 5 years since this is our prediction horizon; 
@@ -115,20 +110,21 @@ data ffpgr;
 	*administrative censoring at 5 years;
 	if survtime > 5 then status=0;
 	if survtime > 5 then survtime=5;
-	* rcs for pgr - see development program for knot calculations;
+	* rcs for pgr and nodes - see development program for knot calculations;
 	%rcspline(pgr, 0, 41, 486);
+	%rcspline(nodes, 0, 1, 9);
 run;
 
 ************** Import external validation dataset ****************************;
-
 *code up predictors;
 data gbsg_va; set gbsg;
-    format nodescat nodef. sizecat sizef. gradecat gradef.;
+    format sizecat sizef. gradecat gradef.;
 	*Winzorise PGR to 99th percentile to deal with very large influential 
 		values;
 	if pgr>1360 then pgr=1360;
 	%rcspline(pgr, 0, 41, 486);
-    nodescat = 1* (1 <= nodes <=3) + 2*(nodes > 3);
+	if (nodes > 19) then nodes=19;
+	%rcspline(nodes, 0, 1, 9);
 	if size le 20 then sizecat=0;
 	if 21 <= size <= 50 then sizecat=1;
 	if size >50 then sizecat=2;
@@ -136,7 +132,7 @@ data gbsg_va; set gbsg;
 	if grade in (1,2) then gradecat=0;
 	if grade = 3 then gradecat=1;
     survtime = rfstime/365.25;  * days to years;
-	keep pid sizecat nodescat gradecat status age pgr pgr1	survtime;
+	keep pid sizecat nodes nodes1 gradecat status age pgr pgr1 survtime;
 run;
 
 
@@ -160,7 +156,7 @@ run;
 title;
 footnote;
 *- this allows editing of the .sge file;
-ods listing sge=on style=printer image_dpi=300 gpath='c:';
+ods listing sge=on style=printer image_dpi=300 gpath='C:\Users\sme544';
 ods graphics on / reset=all noborder outputfmt=tiff /*width=4in*/ 
 	imagename="val km" antialias=off/*antialiasmax=*/;
 
@@ -178,11 +174,11 @@ ods graphics off;
 
 *** Descriptive statistics;
 proc freq data=gbsg_va;
-	tables sizecat nodescat gradecat;
+	tables sizecat gradecat;
 run;
 
 proc univariate data=gbsg_va;
-	var age pgr;
+	var nodes pgr;
 run;
 
 *use reverse Kaplan-Meier to obtain median follow-up time;
@@ -203,6 +199,29 @@ data gbsg_val;
 run;
 
 
+**First, resample 500 versions of the external dataset with replacement to 
+allow calculation of 95% CI;
+
+sasfile gbsg_val load;/*a way of loading the dataset into ram - speeds it up*/
+
+proc surveyselect data=gbsg_val out=outboot
+seed=4817 /* can enter 0 for it to select a random seed but remember to type 
+			it in here from the output otherwise cannot replicate results */
+method=urs /* unrestricted random sampling - simple random sampling */
+samprate=1 /* can accept proportions or percentages but we want n to be size of 
+			original database so =1 (or 100) */
+outhits /* with replacement */
+rep=500; /* number of bootstrap samples */
+run;
+
+sasfile gbsg_val close; /* closes frees ram buffers when done */
+
+ods listing close; /* turns off ods listing so no printing of all output. 
+					Better than using NOPRINT as it doesn't allow storage of 
+					data in output dataset at end */
+
+
+
 ******************EXTERNAL VALIDATION *********************;
 
 *******************Simple model first (without PGR)***************************;
@@ -211,8 +230,8 @@ run;
 * this existing model for patients in the external dataset;
 
 proc phreg data=ffpgr;
-	class sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
-	model survtime*status(0)=sizecat nodescat gradecat / ties=efron rl;
+	class sizecat (ref='<=20') gradecat (ref=first);
+	model survtime*status(0)=sizecat gradecat nodes nodes1 / ties=efron rl;
 	*Store allows SAS to save the model estimates for applying later on to 
 	*external data;
 	store simpmodel;
@@ -250,8 +269,8 @@ run;
 * Fit the model to the development data, and calculate linear predictor of 
 * this existing model for patients in the external dataset;
 proc phreg data=ffpgr;
-	class sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
-	model survtime*status(0)=sizecat nodescat gradecat pgr pgr1/ ties=efron rl;
+	class sizecat (ref='<=20') gradecat (ref=first);
+	model survtime*status(0)=sizecat nodes nodes1 gradecat pgr pgr1/ ties=efron rl;
 	*Store allows SAS to save the model estimates for applying later on to 
 	*external data;
 	store simpmodelpgr;
@@ -291,8 +310,8 @@ run;
 *Harrell's C - Need tau to equal event time of interest;
 title 'External Harrells C';
 proc phreg data=gbsg_val concordance=harrell(se) tau=5;
-	class sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
-	model survtime*status(0)=sizecat nodescat gradecat pgr pgr1/ ties=efron rl;
+	class sizecat (ref='<=20') gradecat (ref=first);
+	model survtime*status(0)=sizecat nodes nodes1 gradecat pgr pgr1/ ties=efron rl;
 	*the following statements call the stored models from earlier and 
 	calculate the concordance statistics for model with and without pgr;
 	roc 'npi' source=simpmodel;
@@ -301,9 +320,9 @@ run;
 
 *Uno's C - Need tau to equal event time of interest;
 title 'External Unos C';
-PROC PHREG DATA=GBSG_VAL CONCORDANCE=UNO(SE SEED=8754 ITER=50) TAU=5;
-	CLASS sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
-	model survtime*status(0)=sizecat nodescat gradecat pgr pgr1/ ties=efron rl;
+proc phreg data=gbsg_val concordance=uno(se seed=8754 iter=50) tau=5;
+	CLASS sizecat (ref='<=20') gradecat (ref=first);
+	model survtime*status(0)=sizecat nodes nodes1 gradecat pgr pgr1/ ties=efron rl;
 	*the following statements call the stored models from earlier and 
 	calculate the concordance statistics for model with and without PGR;
 	roc 'npi' source=simpmodel;
@@ -318,8 +337,8 @@ RUN;
 *- interest;
 title 'External Unos AUC';
 proc phreg data=gbsg_val rocoptions(auc at=4.96 method=ipcw (cl seed=134));
-	class sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
-	model survtime*status(0)=sizecat nodescat gradecat / ties=efron rl nofit;
+	class sizecat (ref='<=20') gradecat (ref=first);
+	model survtime*status(0)=sizecat nodes nodes1 gradecat pgr pgr1/ ties=efron rl ;
 	roc 'npi' source=simpmodel;
 	roc 'npi + pgr' source=simpmodelpgr;
 run;
@@ -327,8 +346,8 @@ run;
 ******* Optional Block ****** ;
 * Rerun Uno and save dataset to plot the Time-dependent AUC yourself;
 proc phreg data=gbsg_val rocoptions(method=ipcw (cl seed=134) outauc=ipcwauc2);
-	class sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
-	model survtime*status(0)=sizecat nodescat gradecat pgr pgr1/ ties=efron rl 
+	class sizecat (ref='<=20') gradecat (ref=first);
+	model survtime*status(0)=sizecat nodes nodes1 gradecat pgr pgr1/ ties=efron rl 
 		nofit;
 	roc 'npi + pgr' source=simpmodelpgr;
 	roc 'npi' source=simpmodel;
@@ -375,8 +394,8 @@ ods graphics off;
 *- CUMHAZ command provides the expected number of events and XBETA provides 
 	linear predictor for original model applied to external cohort;
 proc phreg data=ffpgr;
-	class sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
-	model survtime*status(0)=sizecat nodescat gradecat/ ties=efron rl;
+	class sizecat (ref='<=20') gradecat (ref=first);
+	model survtime*status(0)=sizecat nodes nodes1 gradecat/ ties=efron rl;
 	baseline out=gbsg_val1 covariates=gbsg_val cumhaz=p xbeta=lp;
 run;
 
@@ -395,7 +414,7 @@ run;
 *calculate log of expected number of events;
 data pred1;
 	set pred1a;
-	by id survtime;
+	by pid survtime;
 	*first get the follow-up time for each patient;
 	if last.pid;
 	*p is the outcome-martingale residual;
@@ -499,7 +518,7 @@ data sumoe2;
 run;
 
 title;
-ods listing sge=on style=printer image_dpi=300 gpath='c:';
+ods listing sge=on style=printer image_dpi=300 gpath='C:\Users\sme544';
 ods graphics on / reset=all noborder outputfmt=tiff 
 	imagename="calbration plot o/e basic" antialias=off;
 
@@ -508,10 +527,14 @@ xaxis       	label="Month of follow-up" values=(0 to 60 by 6);
 yaxis        	label="Number of observed events / Number of expected events" 
 	Values=(0 to 1.6 by 0.1) /*offsetmin=0.19*/;
 y2axis;
-  series x=month y=est / lineattrs=(color=red thickness=2) ;
-  refline r / axis=y  lineattrs=(color=black thickness=1);
+  keylegend "ref" "cal" "conf" / location=inside position=bottomright down=3;
+  series x=month y=est / lineattrs=(color=red thickness=2) name="cal" 
+	legendlabel="O/E based on Poisson approach";
+  refline r / axis=y  lineattrs=(color=black thickness=1)
+	name="ref" legendlabel="Ideal calibration (O/E=1)";
   band x=month lower=low upper=upp / nofill lineattrs=(color=black 
-	pattern=mediumdash thickness=2) noextend outline;
+	pattern=mediumdash thickness=2) noextend outline name="conf" 
+		legendlabel="95% confidence interval";
 run;
 
 ods graphics off;
@@ -537,12 +560,13 @@ run;
 proc print data=knots; run;
 
 /* here we find the following values:
- 0.35998 1.06273 1.82091 
+ 0.53907 1.07346 1.84423 
+ 
 */
 
 data test;
 	set data2;
-	%rcspline(lp, 0.35998, 1.06273, 1.82091);
+	%rcspline(lp, 0.53907, 1.07346, 1.84423);
 run;
 
 *Fit Poisson model with spline terms and save predictions;
@@ -570,27 +594,28 @@ run;
 
 *Plot flexible calibration curve;
 title;
-ods listing sge=on style=printer image_dpi=300 gpath='C:';
+ods listing sge=on style=printer image_dpi=300 gpath='C:\Users\sme544';
 ods graphics on / reset=all noborder outputfmt=tiff 
 	imagename="Calibration plot Poisson" ANTIALIAS=OFF;
 
-proc sgplot data=test3 noautolegend ;
+proc sgplot data=test3 noautolegend aspect=1;
 	xaxis       	label="Cumulative hazard from Cox model" 
 		values=(0 to 2.4 by 0.20);
 	yaxis        	label="Cumulative hazard from Poisson model" 
 		values=(0 to 2.4 by 0.20);
-  	loess x=p y=predobs / nomarkers lineattrs=(color=red thickness=2) ;
+	keylegend "ref" "cal" "conf" / location=inside position=bottomright;
+  	loess x=p y=predobs / nomarkers lineattrs=(color=red thickness=2) name="cal" 
+		legendlabel="Calibration curve based on Poisson approach";
   	loess x=p y=low / nomarkers lineattrs=(color=black 
-		pattern=mediumdash thickness=2);
+		pattern=mediumdash thickness=2) name="conf" 
+		legendlabel="95% confidence interval";
   	loess x=p y=upp / nomarkers lineattrs=(color=black 
 		pattern=mediumdash thickness=2);
 	reg x=diag1 y=diag2 / lineattrs=(pattern=shortdash) markerattrs=(size=1px 
-		symbol=circlefilled);
+		symbol=circlefilled) name="ref" legendlabel="Ideal calibration";
 run;
 
 ods graphics off;
-
-
 
 
 **************** FIXED TIME POINT ASSESSMENT OF CALIBRATION ******************;
@@ -618,8 +643,8 @@ run;
 
 *Output predicted;
 proc phreg data=ffpgr;
-	class sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
-	model survtime*status(0)=sizecat nodescat gradecat/ ties=efron rl;
+	class sizecat (ref='<=20') gradecat (ref=first);
+	model survtime*status(0)=sizecat nodes nodes1 gradecat/ ties=efron rl;
 	baseline out=gbsg_val11 covariates=gbsg_val survival=psurv xbeta=lp 
 		timelist=5;
 run;
@@ -638,6 +663,8 @@ data mean2;
 	merge outkm_ext_c2 mean1;
 	by n;
 	prop = (1-survival)/(1-meanpred);
+	lclprop = prop * exp(-1.96*sqrt(1/285));
+	uclprop = prop * exp(+1.96*sqrt(1/285));
 run;
 
 title 'Calibration-in-large using ratio of Kaplan-Meier & Avg predicted risk';
@@ -648,8 +675,8 @@ run;
 **Weak - Calibration slope;
 
 proc phreg data=ffpgr;
-	class sizecat (ref=first) nodescat (ref=first) gradecat (ref=first);
-	model survtime*status(0)=sizecat nodescat gradecat/ ties=efron rl;
+	class sizecat (ref=first) gradecat (ref=first);
+	model survtime*status(0)=sizecat nodes nodes1 gradecat/ ties=efron rl;
 	baseline out=gbsg_valh covariates=gbsg_val survival=predprob xbeta=xb timelist=5;
 run;
 
@@ -692,8 +719,8 @@ run;
 proc print data=knots; run;
 
 /* here we find the following values:
-Obs P_CLL10 P_CLL50 P_CLL90 
-1 -1.14858 -0.44583 0.31235 
+p_cll10 p_cll50 p_cll90 
+ -0.98264 -0.44824 0.32253 
 */
 
 *Use Frank Harrell's RCSPLINE macro for calculating the spline terms;
@@ -701,7 +728,7 @@ data predhar1;
 	set predhar;
 	* NOTE: you will need to take the spline information from the log 
 	window and edit gridcox2 below;
-	%rcspline(cll, -1.14858, -0.44583, 0.31235);
+	%rcspline(cll, -0.98264, -0.44824, 0.32253);
 run;
 
 proc univariate data = predhar1 noprint;
@@ -713,18 +740,20 @@ proc transpose data=gridcox out=gridcox1;
 	var p_1 - p_99;
 run;
 
+
 data gridcox2(rename=(col1=prob));
 	set gridcox1;
 	cll=log(-log(1-col1));
 	*Warning! - take the below formula from the log window after running above 
 	rcspline - this will be different according to your data!;
-	 _kd_= (0.31235 - -1.14858)**.666666666666 ;
-	cll1=max((cll--1.14858)/_kd_,0)**3
-		+((-0.44583--1.14858)*max((cll-0.31235)/_kd_,0)**3
-		-(0.31235--1.14858)*max((cll--0.44583)/_kd_,0)**3)/(0.31235--0.44583);
+	 _kd_= (0.32253 - -0.98264)**.666666666666 ;
+	cll1=max((cll--0.98264)/_kd_,0)**3
+		+((-0.44824--0.98264)*max((cll-0.32253)/_kd_,0)**3
+		-(0.32253--0.98264)*max((cll--0.44824)/_kd_,0)**3)/(0.32253--0.44824);
 run;
 
 *Calibration for predictions of 5-year survival probabilities;
+ods graphics on;
 proc phreg data=predhar1 zph(global transform=log);
 	model survtime1*status(0)=cll cll1/ ties=efron rl;
 	baseline out=gridcox3 covariates=gridcox2 survival=predprob lower=low 
@@ -740,8 +769,8 @@ data gridcox4;
 	obsupp=1-low;
 	if _name_='p_1' then diag1=0;
 	if _name_='p_1' then diag2=0;
-	if _name_='p_15' then diag1=1;
-	if _name_='p_15' then diag2=1;
+	if _name_='p_9' then diag1=1;
+	if _name_='p_9' then diag2=1;
 run;
 
 proc sort data=gridcox4;
@@ -766,26 +795,31 @@ data LogiPlot2;
 run;
 
 title;
-ods listing sge=on style=printer image_dpi=300 gpath='C:';
+ods listing sge=on style=printer image_dpi=300 gpath='C:\Users\sme544';
 ods graphics on / reset=all noborder outputfmt=tiff 
 	imagename="Calibration plot Ext Harrell with RCS" ANTIALIAS=OFF;
 
-proc sgplot data=logiplot2 noautolegend ;
+proc sgplot data=logiplot2 noautolegend aspect=1;
 	xaxis       	label="Predicted risk from developed model" 
 		values=(0 to 1 by 0.20);
 	yaxis        	label="Predicted risk from refitted model" 
 		values=(0 to 1 by 0.20);
+	keylegend "ref" "cal" "conf" "dens" / location=inside position=topleft
+		valueattrs=(size=8) down=4 noborder;
 	y2axis			label=" " values=(0 to 20 by 20) display=none;
-  	series x=prob y=obsprob / lineattrs=(color=red thickness=2) ;
+  	series x=prob y=obsprob / lineattrs=(color=red thickness=2) name="cal" 
+		legendlabel="Calibration curve based on secondary Cox model";
   	band x=prob lower=obslow upper=obsupp / nofill lineattrs=(color=black 
-		pattern=mediumdash thickness=2) noextend outline;
+		pattern=mediumdash thickness=2) noextend outline name="conf" 
+		legendlabel="95% confidence interval";
 	reg x=diag1 y=diag2 / lineattrs=(pattern=shortdash) markerattrs=(size=1px 
-		symbol=circlefilled);
+		symbol=circlefilled) name="ref" legendlabel="Ideal calibration";
   	series x=_value_ y=_density_ / lineattrs=(color=black thickness=1 pattern=1) 
-		y2axis;
+		y2axis name="dens" legendlabel="Density function of predicted risk";
 run;
 
 ods graphics off;
+
 
 *Calculation of ICI for 5 year probabilities;
 data predharl_rep;
@@ -814,7 +848,110 @@ title 'Calibration metrics: ICI, E50, E90';
 proc print data=icis;
 run;
 
+data icis;
+	set icis;
+	n=1;
+run;
+
 title;
+
+
+
+******** BOOTSTRAP 95% CI FOR THE CALIBRATION METRICS ********;
+
+proc phreg data=ffpgr;
+	class sizecat (ref=first) gradecat (ref=first);
+	model survtime*status(0)=sizecat nodes nodes1 gradecat/ ties=efron rl;
+	baseline out=gbsg_valhbt covariates=outboot survival=predprob xbeta=xb timelist=5;
+run;
+
+data predharbt;
+	set gbsg_valhbt;
+	where survtime1 le survtime; 
+	*probability of event;
+	prob=1-predprob;
+	*Complementary log-log of predicted risk;
+	cll=log(-log(1-prob));
+	proc sort; by replicate pid survtime;
+run;
+
+proc univariate data = predharbt noprint;
+	by replicate;
+	var cll;
+	output out=knots pctlpre=p_cll pctlpts= 10 50 90;
+run;
+
+data predharbt_;
+	merge predharbt knots;
+	by replicate;
+run;
+
+
+*This macro runs the RCS on each replicate and appends all 500 runs to one dataset;
+%MACRO SPL;
+%do i=1 %to 500;
+data predharbt_1;
+	set predharbt_;
+	where replicate=&i;
+	%rcspline(cll, p_cll10, p_cll50, p_cll90);
+run;
+
+*duplicate dataset so baseline statement works;
+data predharbt_rep;
+	set predharbt_1;
+run;
+
+proc phreg data=predharbt_1 noprint;
+	model survtime1*status(0)=cll cll1/ ties=efron rl;
+	baseline out=predharbt_rep1 covariates=predharbt_rep survival=predprob2 
+		timelist=5;
+run;
+
+data ici_;
+	set predharbt_rep1;
+	*observed prob death;
+	prob2=1-predprob2;
+	diff=abs(prob - prob2);
+run;
+
+proc univariate data=ici_ noprint;
+	var diff;
+	output out=icis_ mean=ici median=e50 p90=e90;
+run;
+
+data icis_1;
+	set icis_;
+	replicate=&i;
+run;
+
+proc append base=icis_2 data=icis_1 force;
+run;
+
+
+%end;
+%mend;
+%spl;
+
+proc univariate data=icis_2 noprint;
+	var ici e50 e90;
+	output out = conf_met pctlpts=2.5 97.5 pctlpre= ici_ e50_ e90_ 
+		pctlname=lower95 upper95;
+run;
+
+data conf_met1;
+	set conf_met;
+	n=1;
+run;
+
+data calmetrics;
+ 	retain ici ici_lower95 ici_upper95 e50 e50_lower95 e50_upper95 e90 
+		e90_lower95 e90_upper95;
+	merge icis conf_met1;
+	by n;
+	drop n;
+	title 'External calibration metrics with 95% CI';
+	proc print;
+run;
 
 
 
@@ -826,8 +963,8 @@ title;
 *- CUMHAZ command provides the expected number of events and XBETA provides 
 	linear predictor for original model applied to external cohort;
 proc phreg data=ffpgr;
-	class sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
-	model survtime*status(0)=sizecat nodescat gradecat pgr pgr1/ ties=efron rl;	*store stratos.simpmodel;
+	class sizecat (ref='<=20') gradecat (ref=first);
+	model survtime*status(0)=sizecat nodes nodes1 gradecat pgr pgr1/ ties=efron rl;
 	baseline out=gbsg_val1 covariates=gbsg_val cumhaz=p xbeta=lp;
 run;
 
@@ -947,7 +1084,7 @@ data sumoe4;
 run;
 
 title;
-ods listing sge=on style=printer image_dpi=300 gpath='c:';
+ods listing sge=on style=printer image_dpi=300 gpath='C:\Users\sme544';
 ods graphics on / reset=all noborder outputfmt=tiff 
 	imagename="calbration plot o/e pgr" antialias=off;
 
@@ -956,13 +1093,22 @@ xaxis       	label="Month of follow-up" values=(0 to 60 by 6);
 yaxis        	label="Number of observed events / Number of expected events" 
 	values=(0 to 1.6 by 0.1) /*offsetmin=0.19*/;
 y2axis;
-  series x=month y=est / lineattrs=(color=red thickness=2) ;
-  refline r / axis=y  lineattrs=(color=black thickness=1);
+  keylegend "ref" "cal" "conf" / location=inside position=bottomright down=3;
+  series x=month y=est / lineattrs=(color=red thickness=2) name="cal" 
+	legendlabel="O/E based on Poisson approach";
+  refline r / axis=y  lineattrs=(color=black thickness=1)
+	name="ref" legendlabel="Ideal calibration (O/E=1)";
   band x=month lower=low upper=upp / nofill lineattrs=(color=black 
-	pattern=mediumdash thickness=2) noextend outline;
+	pattern=mediumdash thickness=2) noextend outline name="conf" 
+		legendlabel="95% confidence interval";
 run;
 
 ods graphics off;
+
+
+
+
+
 
 ******  End Optional Block ************;
 
@@ -983,13 +1129,13 @@ run;
 
 proc print data=knots; run;
 
-/* here we find the following values:
- 0.27212 0.90521 1.65965 
+/* here we find the following values which we enter into the rcspline call below:
+ 0.23955 0.90147 1.70181  
 */
 
 data test;
 	set data2;
-	%rcspline(lp, 0.27212, 0.90521, 1.65965);
+	%rcspline(lp, 0.23955, 0.90147, 1.70181);
 run;
 
 *Fit Poisson model with spline terms for PI;
@@ -1015,26 +1161,28 @@ run;
 
 *Flexible calibration plot;
 title;
-ods listing sge=on style=printer image_dpi=300 gpath='C:';
+ods listing sge=on style=printer image_dpi=300 gpath='C:\Users\sme544';
 ods graphics on / reset=all noborder outputfmt=tiff 
 	imagename="Calibration plot Poisson PGR" ANTIALIAS=OFF;
 
-proc sgplot data=test3 noautolegend ;
+proc sgplot data=test3 noautolegend aspect=1;
 	xaxis       	label="Cumulative hazard from Cox model" 
 		values=(0 to 2.4 by 0.20);
 	yaxis        	label="Cumulative hazard from Poisson model" 
 		values=(0 to 2.4 by 0.20);
-  	loess x=p y=predobs / nomarkers lineattrs=(color=red thickness=2) ;
+	keylegend "ref" "cal" "conf" / location=inside position=bottomright;
+  	loess x=p y=predobs / nomarkers lineattrs=(color=red thickness=2) name="cal" 
+		legendlabel="Calibration curve based on Poisson approach";
   	loess x=p y=low / nomarkers lineattrs=(color=black 
-		pattern=mediumdash thickness=2);
+		pattern=mediumdash thickness=2) name="conf" 
+		legendlabel="95% confidence interval";
   	loess x=p y=upp / nomarkers lineattrs=(color=black 
 		pattern=mediumdash thickness=2);
 	reg x=diag1 y=diag2 / lineattrs=(pattern=shortdash) markerattrs=(size=1px 
-		symbol=circlefilled);
+		symbol=circlefilled) name="ref" legendlabel="Ideal calibration";
 run;
 
 ods graphics off;
-
 
 
 
@@ -1064,8 +1212,8 @@ run;
 
 *Output predicted;
 proc phreg data=ffpgr;
-	class sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
-	model survtime*status(0)=sizecat nodescat gradecat pgr pgr1/ ties=efron rl;
+	class sizecat (ref='<=20') gradecat (ref=first);
+	model survtime*status(0)=sizecat nodes nodes1 gradecat pgr pgr1/ ties=efron rl;
 	baseline out=gbsg_val11 covariates=gbsg_val survival=psurv cumhaz=tch 
 		xbeta=lp timelist=5;
 run;
@@ -1084,6 +1232,8 @@ data mean2;
 	merge outkm_ext_c2 mean1;
 	by n;
 	prop = (1-survival)/(1-meanpred);
+	lclprop = prop * exp(-1.96*sqrt(1/285));
+	uclprop = prop * exp(+1.96*sqrt(1/285));
 run;
 
 title 'O/E using ratio of Kaplan-Meier and Avg predicted risk';
@@ -1094,8 +1244,8 @@ run;
 *Weak assessment - Calibration slope;
 
 proc phreg data=ffpgr;
-	class sizecat (ref=first) nodescat (ref=first) gradecat (ref=first);
-	model survtime*status(0)=sizecat nodescat gradecat pgr pgr1/ ties=efron rl;
+	class sizecat (ref=first) gradecat (ref=first);
+	model survtime*status(0)=sizecat nodes nodes1 gradecat pgr pgr1/ ties=efron rl;
 	baseline out=gbsg_valh covariates=gbsg_val survival=predprob xbeta=xb timelist=5;
 run;
 
@@ -1144,9 +1294,9 @@ run;
 
 proc print data=knots; run;
 
-/* here we find the following values:
+/* here we find the following values which you need to enter into rcspline call below:
 P_CLL10 P_CLL50 P_CLL90 
--1.01384 -0.38075 0.37368  
+-1.05612 -0.39421 0.40613   
 */
 
 *Use Frank Harrell's RCSPLINE macro for calculating the spline terms;
@@ -1154,7 +1304,7 @@ data predhar1;
 	set predhar;
 	* NOTE: you will need to take the spline information from the log 
 	window and edit gridcox2 below;
-	%rcspline(cll, -1.01384, -0.38075, 0.37368);
+	%rcspline(cll, -1.05612, -0.39421, 0.40613);
 run;
 
 proc univariate data = predhar1;
@@ -1171,10 +1321,10 @@ data gridcox2(rename=(col1=prob));
 	cll=log(-log(1-col1));
 	*Warning! - take the below formula from the log window after running above 
 	rcspline - this will be different according to your data!;
-	 _kd_= (0.37368 - -1.01384)**.666666666666 ;
-	 cll1=max((cll--1.01384)/_kd_,0)**3
-		+((-0.38075--1.01384)*max((cll-0.37368)/_kd_,0)**3
-		-(0.37368--1.01384)*max((cll--0.38075)/_kd_,0)**3)/(0.37368--0.38075);
+	 _kd_= (0.40613 - -1.05612)**.666666666666 ;
+	 cll1=max((cll--1.05612)/_kd_,0)**3
+		+((-0.39421--1.05612)*max((cll-0.40613)/_kd_,0)**3 
+		-(0.40613--1.05612)*max((cll--0.39421)/_kd_,0)**3)/(0.40613--0.39421);
 run;
 
 *Calibration for predictions of 5-year survival probabilities;
@@ -1219,23 +1369,27 @@ data LogiPlot2;
 run;
 
 title;
-ods listing sge=on style=printer image_dpi=300 gpath='c:';
+ods listing sge=on style=printer image_dpi=300 gpath='C:\Users\sme544';
 ods graphics on / reset=all noborder outputfmt=tiff 
 	imagename="Calbration plot pgr Ext Harrell with RCS" antialias=off;
 
-proc sgplot data=logiplot2 noautolegend ;
+proc sgplot data=logiplot2 noautolegend aspect=1;
 	xaxis       	label="Predicted risk from developed model" 
 		values=(0 to 1 by 0.20);
 	yaxis        	label="Predicted risk from refitted model" 
 		values=(0 to 1 by 0.20);
 	y2axis			label=" " values=(0 to 20 by 20) display=none;
-  	series x=prob y=obsprob / lineattrs=(color=red thickness=2) ;
+	keylegend "ref" "cal" "conf" "dens" / location=inside position=topleft
+		valueattrs=(size=8) down=4 noborder;
+  	series x=prob y=obsprob / lineattrs=(color=red thickness=2) name="cal" 
+		legendlabel="Calibration curve based on secondary Cox model";
   	band x=prob lower=obslow upper=obsupp / nofill lineattrs=(color=black 
-		pattern=mediumdash thickness=2) noextend outline;
+		pattern=mediumdash thickness=2) noextend outline name="conf" 
+		legendlabel="95% confidence interval";
 	reg x=diag1 y=diag2 / lineattrs=(pattern=shortdash) markerattrs=(size=1px 
-		symbol=circlefilled);
+		symbol=circlefilled) name="ref" legendlabel="Ideal calibration";
   	series x=_value_ y=_density_ / lineattrs=(color=black thickness=1 pattern=1) 
-		y2axis;
+		y2axis name="dens" legendlabel="Density function of predicted risk";
 run;
 
 ods graphics off;
@@ -1264,6 +1418,11 @@ proc univariate data=ici noprint;
 	output out=icis mean=ici median=e50 p90=e90;
 run;
 
+data icis;
+	set icis;
+	n=1;
+run;
+
 title 'Calibration metrics: ICI, E50, E90';
 proc print data=icis;
 run;
@@ -1271,6 +1430,103 @@ run;
 title;
 
 
+
+
+******** BOOTSTRAP 95% CI FOR THE CALIBRATION METRICS ********;
+
+proc phreg data=ffpgr;
+	class sizecat (ref=first) gradecat (ref=first);
+	model survtime*status(0)=sizecat nodes nodes1 gradecat pgr pgr1 / ties=efron rl;
+	baseline out=gbsg_valhbt covariates=outboot survival=predprob xbeta=xb timelist=5;
+run;
+
+data predharbt;
+	set gbsg_valhbt;
+	where survtime1 le survtime; 
+	*probability of event;
+	prob=1-predprob;
+	*Complementary log-log of predicted risk;
+	cll=log(-log(1-prob));
+	proc sort; by replicate pid survtime;
+run;
+
+proc univariate data = predharbt noprint;
+	by replicate;
+	var cll;
+	output out=knots pctlpre=p_cll pctlpts= 10 50 90;
+run;
+
+data predharbt_;
+	merge predharbt knots;
+	by replicate;
+run;
+
+
+*This macro runs the RCS on each replicate and appends all 500 runs to one dataset;
+%MACRO SPL;
+%do i=1 %to 500;
+data predharbt_1;
+	set predharbt_;
+	where replicate=&i;
+	%rcspline(cll, p_cll10, p_cll50, p_cll90);
+run;
+
+*duplicate dataset so baseline statement works;
+data predharbt_rep;
+	set predharbt_1;
+run;
+
+proc phreg data=predharbt_1 noprint;
+	model survtime1*status(0)=cll cll1/ ties=efron rl;
+	baseline out=predharbt_rep1 covariates=predharbt_rep survival=predprob2 
+		timelist=5;
+run;
+
+data ici_;
+	set predharbt_rep1;
+	*observed prob death;
+	prob2=1-predprob2;
+	diff=abs(prob - prob2);
+run;
+
+proc univariate data=ici_ noprint;
+	var diff;
+	output out=icis_ mean=ici median=e50 p90=e90;
+run;
+
+data icis_1;
+	set icis_;
+	replicate=&i;
+run;
+
+proc append base=icis_4 data=icis_1 force;
+run;
+
+
+%end;
+%mend;
+%spl;
+
+proc univariate data=icis_4 noprint;
+	var ici e50 e90;
+	output out = conf_met pctlpts=2.5 97.5 pctlpre= ici_ e50_ e90_ 
+		pctlname=lower95 upper95;
+run;
+
+data conf_met1;
+	set conf_met;
+	n=1;
+run;
+
+data calmetrics;
+ 	retain ici ici_lower95 ici_upper95 e50 e50_lower95 e50_upper95 e90 
+		e90_lower95 e90_upper95;
+	merge icis conf_met1;
+	by n;
+	drop n;
+	title 'External calibration metrics with 95% CI';
+	proc print;
+run;
 
 
 *********************** Overall performance;
@@ -1305,8 +1561,8 @@ run;
 
 *Now estimate survival at 5 years in validation dataset;
 proc phreg data=rottx;
-	class sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
-	model survtime*status(0)=sizecat nodescat gradecat  / ties=efron rl;
+	class sizecat (ref='<=20') gradecat (ref=first);
+	model survtime*status(0)=sizecat nodes nodes1 gradecat  / ties=efron rl;
 	*external;
 	baseline covariates=rott_b_ex out=rottval_bs timelist=5 
 		survival=fiveyrsurv xbeta=xb;
@@ -1458,8 +1714,8 @@ data rott_b_exa;
 run;
 
 proc phreg data=rottxa;
-	class sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
-	model survtime*status(0)=sizecat nodescat gradecat pgr pgr1/ ties=efron rl;
+	class sizecat (ref='<=20') gradecat (ref=first);
+	model survtime*status(0)=sizecat nodes nodes1 gradecat pgr pgr1/ ties=efron rl;
 	*external;
 	baseline covariates=rott_b_exa out=rottval_bsa timelist=5 
 		survival=fiveyrsurv;
@@ -1571,182 +1827,6 @@ run;
 ********* End of overall performance for added marker;
 
 
-*****Appendix 5 - what to do if development dataset or baseline hazard are not 
-available;
-
-*Assume original model development paper has kaplan-meier plots for risk groups;
-*Define Risk Groups for K-M - Creates plot in appendix 5, fig s3;
-
-*** Define Risk Groups for K-M;
-* Mean of XB in dev data is 0.65232758;
-proc univariate data=rottxa;
-	var xb;
-run;
-*Centre PI on average risk by subtracting mean;
-data rottriska;
-	set rottxa;
-	xbc = xb - 0.65232758;
-run;
-
-proc univariate data=rottriska;
-	var xbc;
-run;
-
-* generate risk groups;
-%macro generate_percentiles(ptile1,ptile2,ptile3,mean); 
-/* Output desired percentile values */                         
-proc univariate data=rottxa noprint;                                               
-   var xb;                                                       
-   output out=test1a mean=&mean pctlpts= &ptile1 &ptile2 &ptile3 pctlpre=xb_;                               
-run;                                                                 
- 
-data test1a;
-	set test1a;
-	z=1;
-run;
-
-data rottxa_;
-	set rottxa;
-	z=1;
-run;
-
-data GBSG_VALRD2a_;
-	set GBSG_VALRD2a;
-	z=1;
-run;
-
-data rottxa_1;                                                             
-   merge rottxa_ test1a;        
-	by z; 
-	xbc=xb-&mean;
-	riskgp=0;
-    if (xb_&ptile1 < xb <= xb_&ptile2) then riskgp=1;
-    if (xb_&ptile2 < xb <= xb_&ptile3) then riskgp=2;
-	if (xb > xb_&ptile3) then riskgp=3;
-	drop z;
-run;  
-
-data gbsg_valrd2a_1;                                                             
-   merge gbsg_valrd2a_ test1a;        
-	by z; 
-	xbc=xb-&mean;
-	riskgp=0;
-    if (xb_&ptile1 < xb <= xb_&ptile2) then riskgp=1;
-    if (xb_&ptile2 < xb <= xb_&ptile3) then riskgp=2;
-	if (xb > xb_&ptile3) then riskgp=3;
-	drop z;
-run; 
-  
-%mend;
- 
-options mprint mlogic symbolgen;
-%generate_percentiles(25,50,75,xbmean);
-
-*Plot kaplan-meier of risk groups in development dataset and validation dataset;
-*mean (SD) of xb centered is 0 (0.64);
-proc univariate data=rottxa_1;
-	var xbc;
-run;
-
-proc lifetest data=rottxa_1 method=pl plots=(s, ls, lls) outsurv=outkma noprint;
-        time survtime*status(0);
-        strata riskgp/test=(logrank);	
-run;
-
-data outkm1a; 
-	set outkma; 
-	if _censor_=1 then delete; 
-	num+1;
-	keep riskgp survival survtime num;
-run;
-
-*- plot kaplan-meier in validation dataset;
-*mean (SD) of xb centered is 0.23620 (0.5046);
-proc univariate data=gbsg_valrd2a_1;
-	var xbc;
-run;
-
-*what is the percentage in each risk group - pasted output below;
-proc freq data=gbsg_valrd2a_1;
-	table riskgp;
-run;
-/*
-riskgp Frequency Percent Cumulative
-Frequency Cumulative
-Percent 
-0 60 8.75 60 8.75 
-1 144 20.99 204 29.74 
-2 249 36.30 453 66.03 
-3 233 33.97 686 100.00 
-*/
-
-*Validation dataset survival by risk group;
-proc lifetest data=gbsg_valrd2a_1 method=pl plots=(s, ls, lls) outsurv=outkmva;
-        time survtime*status(0);
-        strata riskgp/test=(logrank);	
-run;
-
-data outkmv1a(rename=(riskgp=riskgpv survival=survivalv survtime=survtimev)); 
-	set outkmva; 
-	if _censor_=1 then delete; 
-	num+1;
-	keep riskgp survival survtime num;
-run;
-
-proc format;
-	value dev 1='Development dataset';
-	value val 1='Validation dataset';
-run;
-
-data overlaykma;
-	merge outkm1a outkmv1a;
-	by num;
-	format gp1 dev.;
-	format gpv1 val.;
-	*trick to fix legend in plot;
-	if riskgp=0 then gp1=1;
-	if riskgp=1 then gp2=1;
-	if riskgp=2 then gp3=1;
-	if riskgp=3 then gp4=1;
-
-	if riskgpv=0 then gpv1=1;
-	if riskgpv=1 then gpv2=1;
-	if riskgpv=2 then gpv3=1;
-	if riskgpv=3 then gpv4=1;
-run;
-
-*CREATE KAPLAN MEIER PLOT OF RISK GROUPS FOR DEVELOPMENT AND VALIDATION DATASETS;
-title;
-footnote;
-*- this allows editing of the .sge file!;
-ods listing sge=on style=printer image_dpi=300 gpath='C:';
-ods graphics on / reset=all noborder outputfmt=tiff imagename="Overlay KM PGR"  
-	antialias=off;
-
-proc sgplot data=overlaykma;
-	yaxis values=(0 to 1 by 0.2) label="Recurrence-free survival probability";
-	xaxis values=(0 to 5 by 1) label="Years";
-	keylegend "all" "orig" / across=1 location=inside position=topright;
-	step y=survival x=survtime / lineattrs=(color=black thickness=2 
-		pattern=solid) name="all" group=gp1 nomissinggroup;
-	step y=survival x=survtime / lineattrs=(color=black thickness=2 
-		pattern=solid) group=gp2 nomissinggroup;
-	step y=survival x=survtime / lineattrs=(color=black thickness=2 
-		pattern=solid) group=gp3 nomissinggroup;
-	step y=survival x=survtime / lineattrs=(color=black thickness=2 
-		pattern=solid) group=gp4 nomissinggroup;
-	step y=survivalv x=survtimev / lineattrs=(color=black thickness=2 
-		pattern=dash) name="orig" group=gpv1 nomissinggroup;
-	step y=survivalv x=survtimev / lineattrs=(color=black thickness=2 
-		pattern=dash) group=gpv2 nomissinggroup;
-	step y=survivalv x=survtimev / lineattrs=(color=black thickness=2 
-		pattern=dash) group=gpv3 nomissinggroup;
-	step y=survivalv x=survtimev / lineattrs=(color=black thickness=2 
-		pattern=dash) group=gpv4 nomissinggroup;
-run;
-
-ods graphics off;
-
 
 ************** Conduct DCA analysis;
 *- see %stdca macro - get from https://www.mskcc.org/departments/epidemiology-
@@ -1755,14 +1835,14 @@ ods graphics off;
 *let's add PGR as a new marker and calculate for basic and extended models in 
 external dataset;
 proc phreg data=ffpgr;
-	class sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
-	model survtime*status(0)=sizecat nodescat gradecat / ties=efron rl;
+	class sizecat (ref='<=20') gradecat (ref=first);
+	model survtime*status(0)=sizecat nodes nodes1 gradecat / ties=efron rl;
 	baseline out=origext covariates=gbsg_val survival=fiveyr timelist=5;
 run;
 
 proc phreg data=ffpgr;
-	class sizecat (ref='<=20') nodescat (ref=first) gradecat (ref=first);
-	model survtime*status(0)=sizecat nodescat gradecat pgr pgr1 / ties=efron rl;
+	class sizecat (ref='<=20') gradecat (ref=first);
+	model survtime*status(0)=sizecat nodes nodes1 gradecat pgr pgr1 / ties=efron rl;
 	baseline out=newext covariates=origext survival=fiveyr_pgr timelist=5;
 run;
 
@@ -1825,7 +1905,7 @@ run;
 
 title;
 footnote;
-ods listing sge=on style=printer image_dpi=300 gpath='C:';
+ods listing sge=on style=printer image_dpi=300 gpath='C:\Users\sme544';
 ods graphics on / reset=all noborder outputfmt=tiff 
 	imagename="dca with spline PGR ext" antialias=off;
 
@@ -1833,17 +1913,17 @@ ods graphics on / reset=all noborder outputfmt=tiff
 proc sgplot data=crsort;
 	yaxis values=(-0.05 to 0.50 by 0.05) label="Net Benefit";
 	xaxis values=(0.0 to 1 by 0.1) label="Threshold Probability";
-	keylegend "all" "orig" "new" "none" / down=4 position=bottom;
+	keylegend "all" "orig" "new" "none" / location=inside down=4 position=topright;
 	series y=kmall x=threshold / lineattrs=(color=black thickness=2 
-		pattern=solid) name="all" legendlabel="Treat All";
+		pattern=mediumdash) name="all" legendlabel="Treat All";
 	series y=kmmodel x=threshold / lineattrs=(color=green thickness=2 
 		pattern=solid) name="orig" 
-		legendlabel="Original model: Pr(Recurrence/death) at 5 years";
+		legendlabel="Original model";
 	series y=crmodel x=threshold / lineattrs=(color=blue thickness=2 
-		pattern=solid) name="new" 
-		legendlabel="Original model + PGR: Pr(Recurrence/death) at 5 years";
+		pattern=longdash) name="new" 
+		legendlabel="Original model + PGR";
 	series y=none x=threshold / lineattrs=(color=red thickness=2 
-		pattern=solid)  name="none" legendlabel="Treat None";
+		pattern=shortdash)  name="none" legendlabel="Treat None";
 RUN;
 
 ods graphics off;
