@@ -1,47 +1,75 @@
 Performance assessment of survival prediction models - extended code
 ================
 
--   [Goals](#goals)
-    -   [Load packages and import data](#load-packages-and-import-data)
-    -   [Data preparation and descriptive
-        statistics](#data-preparation-and-descriptive-statistics)
--   [Goal 1 - Develop a risk prediction model with a time-to-event
-    outcome](#goal-1---develop-a-risk-prediction-model-with-a-time-to-event-outcome)
-    -   [1.1 Preliminary investigation - survival and censoring curves
-        in the development and validation
-        data](#11-preliminary-investigation---survival-and-censoring-curves-in-the-development-and-validation-data)
-    -   [1.2 Secondary investigation - check non-linearity of continuous
-        predictors](#12-secondary-investigation---check-non-linearity-of-continuous-predictors)
-    -   [1.3 Model development - first check - the proportional hazard
-        (PH)
-        assumption](#13-model-development---first-check---the-proportional-hazard-ph-assumption)
-    -   [1.4 Model development - fit the risk prediction
-        models](#14-model-development---fit-the-risk-prediction-models)
-    -   [1.5 Histograms of predictions with and without the additional
-        marker](#15-histograms-of-predictions-with-and-without-the-additional-marker)
--   [Goal 2 - Assessing performance in survival prediction
-    models](#goal-2---assessing-performance-in-survival-prediction-models)
-    -   [2.1 Discrimination measures](#21-discrimination-measures)
-    -   [2.2 Calibration](#22-calibration)
-        -   [2.2.1 Mean calibration](#221-mean-calibration)
-            -   [2.2.1.1 Mean calibration - fixed time
-                point](#2211-mean-calibration---fixed-time-point)
-            -   [2.2.1.2 Mean calibration - time range
-                assessment](#2212-mean-calibration---time-range-assessment)
-        -   [2.2.2 Weak calibration](#222-weak-calibration)
-            -   [2.2.2.1 Weak calibration - fixed time
-                point](#2221-weak-calibration---fixed-time-point)
-            -   [2.2.2.2 Weak calibration - time range
-                assessment](#2222-weak-calibration---time-range-assessment)
-        -   [2.2.3 Moderate calibration](#223-moderate-calibration)
-            -   [2.2.3.1 Moderate calibration - fixed time
-                point](#2231-moderate-calibration---fixed-time-point)
-            -   [2.2.3.2 Moderate calibration - time range
-                assessment](#2232-moderate-calibration---time-range-assessment)
-    -   [2.3 Overall performance
-        measures](#23-overall-performance-measures)
--   [Goal 3 - Clinical utility](#goal-3---clinical-utility)
--   [Reproducibility ticket](#reproducibility-ticket)
+-   <a href="#goals" id="toc-goals">Goals</a>
+    -   <a href="#load-packages-and-import-data"
+        id="toc-load-packages-and-import-data">Load packages and import data</a>
+    -   <a href="#data-preparation-and-descriptive-statistics"
+        id="toc-data-preparation-and-descriptive-statistics">Data preparation
+        and descriptive statistics</a>
+-   <a
+    href="#goal-1---develop-a-risk-prediction-model-with-a-time-to-event-outcome"
+    id="toc-goal-1---develop-a-risk-prediction-model-with-a-time-to-event-outcome">Goal
+    1 - Develop a risk prediction model with a time-to-event outcome</a>
+    -   <a
+        href="#11-preliminary-investigation---survival-and-censoring-curves-in-the-development-and-validation-data"
+        id="toc-11-preliminary-investigation---survival-and-censoring-curves-in-the-development-and-validation-data">1.1
+        Preliminary investigation - survival and censoring curves in the
+        development and validation data</a>
+    -   <a
+        href="#12-secondary-investigation---check-non-linearity-of-continuous-predictors"
+        id="toc-12-secondary-investigation---check-non-linearity-of-continuous-predictors">1.2
+        Secondary investigation - check non-linearity of continuous
+        predictors</a>
+    -   <a
+        href="#13-model-development---first-check---the-proportional-hazard-ph-assumption"
+        id="toc-13-model-development---first-check---the-proportional-hazard-ph-assumption">1.3
+        Model development - first check - the proportional hazard (PH)
+        assumption</a>
+    -   <a href="#14-model-development---fit-the-risk-prediction-models"
+        id="toc-14-model-development---fit-the-risk-prediction-models">1.4 Model
+        development - fit the risk prediction models</a>
+    -   <a
+        href="#15-histograms-of-predictions-with-and-without-the-additional-marker"
+        id="toc-15-histograms-of-predictions-with-and-without-the-additional-marker">1.5
+        Histograms of predictions with and without the additional marker</a>
+-   <a href="#goal-2---assessing-performance-in-survival-prediction-models"
+    id="toc-goal-2---assessing-performance-in-survival-prediction-models">Goal
+    2 - Assessing performance in survival prediction models</a>
+    -   <a href="#21-discrimination-measures"
+        id="toc-21-discrimination-measures">2.1 Discrimination measures</a>
+    -   <a href="#22-calibration" id="toc-22-calibration">2.2 Calibration</a>
+        -   <a href="#221-mean-calibration" id="toc-221-mean-calibration">2.2.1 Mean
+            calibration</a>
+            -   <a href="#2211-mean-calibration---fixed-time-point"
+                id="toc-2211-mean-calibration---fixed-time-point">2.2.1.1 Mean
+                calibration - fixed time point</a>
+            -   <a href="#2212-mean-calibration---time-range-assessment"
+                id="toc-2212-mean-calibration---time-range-assessment">2.2.1.2 Mean
+                calibration - time range assessment</a>
+        -   <a href="#222-weak-calibration" id="toc-222-weak-calibration">2.2.2 Weak
+            calibration</a>
+            -   <a href="#2221-weak-calibration---fixed-time-point"
+                id="toc-2221-weak-calibration---fixed-time-point">2.2.2.1 Weak
+                calibration - fixed time point</a>
+            -   <a href="#2222-weak-calibration---time-range-assessment"
+                id="toc-2222-weak-calibration---time-range-assessment">2.2.2.2 Weak
+                calibration - time range assessment</a>
+        -   <a href="#223-moderate-calibration"
+            id="toc-223-moderate-calibration">2.2.3 Moderate calibration</a>
+            -   <a href="#2231-moderate-calibration---fixed-time-point"
+                id="toc-2231-moderate-calibration---fixed-time-point">2.2.3.1 Moderate
+                calibration - fixed time point</a>
+            -   <a href="#2232-moderate-calibration---time-range-assessment"
+                id="toc-2232-moderate-calibration---time-range-assessment">2.2.3.2
+                Moderate calibration - time range assessment</a>
+    -   <a href="#23-overall-performance-measures"
+        id="toc-23-overall-performance-measures">2.3 Overall performance
+        measures</a>
+-   <a href="#goal-3---clinical-utility"
+    id="toc-goal-3---clinical-utility">Goal 3 - Clinical utility</a>
+-   <a href="#reproducibility-ticket"
+    id="toc-reproducibility-ticket">Reproducibility ticket</a>
 
 ## Goals
 
@@ -204,16 +232,16 @@ gbsg5$cnode <- relevel(gbsg$cnode, "0")
 ```
 
 </details>
-<table class="table table-striped" style="margin-left: auto; margin-right: auto;">
+<table style="NAborder-bottom: 0; margin-left: auto; margin-right: auto;" class="table table-striped">
 <thead>
 <tr>
 <th style="text-align:left;">
 Characteristic
 </th>
-<th style="text-align:left;">
+<th style="text-align:center;">
 Development dataset, N = 2,982
 </th>
-<th style="text-align:left;">
+<th style="text-align:center;">
 Validation dataset, N = 686
 </th>
 </tr>
@@ -223,19 +251,19 @@ Validation dataset, N = 686
 <td style="text-align:left;">
 Size (cm)
 </td>
-<td style="text-align:left;">
+<td style="text-align:center;">
 </td>
-<td style="text-align:left;">
+<td style="text-align:center;">
 </td>
 </tr>
 <tr>
 <td style="text-align:left;padding-left: 2em;" indentlevel="1">
 \<=20
 </td>
-<td style="text-align:left;">
+<td style="text-align:center;">
 1,387 (47%)
 </td>
-<td style="text-align:left;">
+<td style="text-align:center;">
 180 (26%)
 </td>
 </tr>
@@ -243,10 +271,10 @@ Size (cm)
 <td style="text-align:left;padding-left: 2em;" indentlevel="1">
 20-50
 </td>
-<td style="text-align:left;">
+<td style="text-align:center;">
 1,291 (43%)
 </td>
-<td style="text-align:left;">
+<td style="text-align:center;">
 453 (66%)
 </td>
 </tr>
@@ -254,10 +282,10 @@ Size (cm)
 <td style="text-align:left;padding-left: 2em;" indentlevel="1">
 \>50
 </td>
-<td style="text-align:left;">
+<td style="text-align:center;">
 304 (10%)
 </td>
-<td style="text-align:left;">
+<td style="text-align:center;">
 53 (7.7%)
 </td>
 </tr>
@@ -265,19 +293,19 @@ Size (cm)
 <td style="text-align:left;">
 Number of nodes
 </td>
-<td style="text-align:left;">
+<td style="text-align:center;">
 </td>
-<td style="text-align:left;">
+<td style="text-align:center;">
 </td>
 </tr>
 <tr>
 <td style="text-align:left;padding-left: 2em;" indentlevel="1">
 Mean (SD)
 </td>
-<td style="text-align:left;">
+<td style="text-align:center;">
 3 (4)
 </td>
-<td style="text-align:left;">
+<td style="text-align:center;">
 5 (5)
 </td>
 </tr>
@@ -285,10 +313,10 @@ Mean (SD)
 <td style="text-align:left;padding-left: 2em;" indentlevel="1">
 Median (Range)
 </td>
-<td style="text-align:left;">
+<td style="text-align:center;">
 1 (0, 34)
 </td>
-<td style="text-align:left;">
+<td style="text-align:center;">
 3 (1, 51)
 </td>
 </tr>
@@ -296,19 +324,19 @@ Median (Range)
 <td style="text-align:left;">
 Grade
 </td>
-<td style="text-align:left;">
+<td style="text-align:center;">
 </td>
-<td style="text-align:left;">
+<td style="text-align:center;">
 </td>
 </tr>
 <tr>
 <td style="text-align:left;padding-left: 2em;" indentlevel="1">
 1-2
 </td>
-<td style="text-align:left;">
+<td style="text-align:center;">
 794 (27%)
 </td>
-<td style="text-align:left;">
+<td style="text-align:center;">
 525 (77%)
 </td>
 </tr>
@@ -316,10 +344,10 @@ Grade
 <td style="text-align:left;padding-left: 2em;" indentlevel="1">
 3
 </td>
-<td style="text-align:left;">
+<td style="text-align:center;">
 2,188 (73%)
 </td>
-<td style="text-align:left;">
+<td style="text-align:center;">
 161 (23%)
 </td>
 </tr>
@@ -327,19 +355,19 @@ Grade
 <td style="text-align:left;">
 Age (years)
 </td>
-<td style="text-align:left;">
+<td style="text-align:center;">
 </td>
-<td style="text-align:left;">
+<td style="text-align:center;">
 </td>
 </tr>
 <tr>
 <td style="text-align:left;padding-left: 2em;" indentlevel="1">
 Mean (SD)
 </td>
-<td style="text-align:left;">
+<td style="text-align:center;">
 55 (13)
 </td>
-<td style="text-align:left;">
+<td style="text-align:center;">
 53 (10)
 </td>
 </tr>
@@ -347,10 +375,10 @@ Mean (SD)
 <td style="text-align:left;padding-left: 2em;" indentlevel="1">
 Median (Range)
 </td>
-<td style="text-align:left;">
+<td style="text-align:center;">
 54 (24, 90)
 </td>
-<td style="text-align:left;">
+<td style="text-align:center;">
 53 (21, 80)
 </td>
 </tr>
@@ -358,19 +386,19 @@ Median (Range)
 <td style="text-align:left;">
 PGR (ng/mL)
 </td>
-<td style="text-align:left;">
+<td style="text-align:center;">
 </td>
-<td style="text-align:left;">
+<td style="text-align:center;">
 </td>
 </tr>
 <tr>
 <td style="text-align:left;padding-left: 2em;" indentlevel="1">
 Mean (SD)
 </td>
-<td style="text-align:left;">
+<td style="text-align:center;">
 162 (291)
 </td>
-<td style="text-align:left;">
+<td style="text-align:center;">
 110 (202)
 </td>
 </tr>
@@ -378,14 +406,21 @@ Mean (SD)
 <td style="text-align:left;padding-left: 2em;" indentlevel="1">
 Median (Range)
 </td>
-<td style="text-align:left;">
+<td style="text-align:center;">
 41 (0, 5,004)
 </td>
-<td style="text-align:left;">
+<td style="text-align:center;">
 32 (0, 2,380)
 </td>
 </tr>
 </tbody>
+<tfoot>
+<tr>
+<td style="padding: 0; " colspan="100%">
+<sup>1</sup> n (%)
+</td>
+</tr>
+</tfoot>
 </table>
 
 ## Goal 1 - Develop a risk prediction model with a time-to-event outcome
@@ -627,7 +662,7 @@ p
 csize
 </td>
 <td style="text-align:right;">
-19.423
+19.422
 </td>
 <td style="text-align:right;">
 2
@@ -923,17 +958,17 @@ Below the results of the models:
 <tr>
 <td style='min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'>Events 1275</td>
 <td style='min-width: 9em; border-right: 1px solid black; text-align: center;'>d.f. 5</td>
-<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>D</i><sub>xy</sub> 0.364</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>R</i><sup><span style='font-size: 70%;'>2</span></sup><sub style='position: relative; left: -.47em; bottom: -.4em;'><span style='font-size: 70%;'>5,2982</span></sub> 0.162</td>
 </tr>
 <tr>
 <td style='min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'>Center 0.8896</td>
 <td style='min-width: 9em; border-right: 1px solid black; text-align: center;'>Pr(>χ<sup>2</sup>) 0.0000</td>
-<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>g</i> 0.720</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>R</i><sup><span style='font-size: 70%;'>2</span></sup><sub style='position: relative; left: -.47em; bottom: -.4em;'><span style='font-size: 70%;'>5,1275</span></sub> 0.338</td>
 </tr>
 <tr>
 <td style='min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'></td>
 <td style='min-width: 9em; border-right: 1px solid black; text-align: center;'>Score χ<sup>2</sup> 635.29</td>
-<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>g</i><sub>r</sub> 2.055</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>D</i><sub>xy</sub> 0.364</td>
 </tr>
 <tr>
 <td style='min-width: 9em; border-bottom: 2px solid grey; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'></td>
@@ -1019,17 +1054,17 @@ Below the results of the models:
 <tr>
 <td style='min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'>Events 1275</td>
 <td style='min-width: 9em; border-right: 1px solid black; text-align: center;'>d.f. 7</td>
-<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>D</i><sub>xy</sub> 0.377</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>R</i><sup><span style='font-size: 70%;'>2</span></sup><sub style='position: relative; left: -.47em; bottom: -.4em;'><span style='font-size: 70%;'>7,2982</span></sub> 0.170</td>
 </tr>
 <tr>
 <td style='min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'>Center 0.6592</td>
 <td style='min-width: 9em; border-right: 1px solid black; text-align: center;'>Pr(>χ<sup>2</sup>) 0.0000</td>
-<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>g</i> 0.756</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>R</i><sup><span style='font-size: 70%;'>2</span></sup><sub style='position: relative; left: -.47em; bottom: -.4em;'><span style='font-size: 70%;'>7,1275</span></sub> 0.354</td>
 </tr>
 <tr>
 <td style='min-width: 9em; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'></td>
 <td style='min-width: 9em; border-right: 1px solid black; text-align: center;'>Score χ<sup>2</sup> 664.84</td>
-<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>g</i><sub>r</sub> 2.130</td>
+<td style='min-width: 9em; border-right: 1px solid black; text-align: center;'><i>D</i><sub>xy</sub> 0.377</td>
 </tr>
 <tr>
 <td style='min-width: 9em; border-bottom: 2px solid grey; border-left: 1px solid black; border-right: 1px solid black; text-align: center;'></td>
@@ -1124,13 +1159,13 @@ efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
 
 # Development data
 t_horizon <- 5
-rott5$pred <- 1 - predictSurvProb(efit1, 
-                                  newdata = rott5,
-                                  times = t_horizon)
+rott5$pred <- predictRisk(efit1, 
+                              newdata = rott5,
+                              times = t_horizon)
 
-rott5$pred_pgr <- 1 - predictSurvProb(efit1_pgr, 
-                                  newdata = rott5,
-                                  times = t_horizon)
+rott5$pred_pgr <- predictRisk(efit1_pgr, 
+                              newdata = rott5,
+                              times = t_horizon)
 
 # par(mgp=c(4,1,0), mar=c(6,5,2,2))
 # oldpar <- par(mfrow = c(1, 2), las = 1)
@@ -1148,14 +1183,14 @@ title("Development data")
 
 
 # Validation data
-gbsg5$pred <- 1 - predictSurvProb(efit1, 
-                                  newdata = gbsg5,
-                                  times = t_horizon)
+gbsg5$pred <- predictRisk(efit1, 
+                          newdata = gbsg5,
+                          times = t_horizon)
 
 
-gbsg5$pred_pgr <- 1 - predictSurvProb(efit1_pgr, 
-                                  newdata = gbsg5,
-                                  times = t_horizon)
+gbsg5$pred_pgr <- predictRisk(efit1_pgr, 
+                              newdata = gbsg5,
+                              times = t_horizon)
 
 par(las = 1)
 xlab <- c(paste0('Basic model\nvariance = ', 
@@ -1224,9 +1259,9 @@ can be assessed over several different time intervals:
 
 There is some uncertainty in the literature about the original Harrell
 formulation versus Uno’s suggestion to re-weight the time scale by the
-factor 1/*G*<sup>2</sup>(*t*) where *G* is the censoring distribution.
-There is more detailed information in the concordance vignette found in
-the survival package.
+factor $1/G^2(t)$ where $G$ is the censoring distribution. There is more
+detailed information in the concordance vignette found in the survival
+package.
 
 For all three measures, values close to 1 indicate good discrimination
 ability, while values close to 0.5 indicated poor discrimination
@@ -2343,13 +2378,13 @@ obj <- summary(survfit(Surv(ryear, rfs) ~ 1,
                        data = gbsg5), 
                times = horizon)
 
-pred <- 1 - predictSurvProb(efit1, 
-                            newdata = gbsg5, 
-                            times = horizon)
+pred <- predictRisk(efit1, 
+                    newdata = gbsg5, 
+                    times = horizon)
 
-pred_pgr <- 1 - predictSurvProb(efit1_pgr, 
-                            newdata = gbsg5, 
-                            times = horizon)
+pred_pgr <- predictRisk(efit1_pgr, 
+                        newdata = gbsg5, 
+                        times = horizon)
 
 OE <- (1 - obj$surv) / mean(pred)
 OE_pgr <- (1 - obj$surv) / mean(pred_pgr)
@@ -2782,7 +2817,7 @@ Calibration slope
 1.03
 </td>
 <td style="text-align:right;">
-0.8
+0.79
 </td>
 <td style="text-align:right;">
 1.27
@@ -2860,15 +2895,15 @@ efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
 
 # Calibration plot --------
 # Basic model
-gbsg5$pred <- 1 - predictSurvProb(efit1, 
-                                  newdata = gbsg5, 
-                                  times = 5)
+gbsg5$pred <- predictRisk(efit1, 
+                          newdata = gbsg5, 
+                          times = 5)
 gbsg5$pred.cll <- log(-log(1 - gbsg5$pred))
 
 # Extended model
-gbsg5$pred_pgr <- 1 - predictSurvProb(efit1_pgr, 
-                                      newdata = gbsg5, 
-                                      times = 5)
+gbsg5$pred_pgr <- predictRisk(efit1_pgr, 
+                              newdata = gbsg5, 
+                              times = 5)
 gbsg5$pred.cll_pgr <- log(-log(1 - gbsg5$pred_pgr))
 
 
@@ -3021,13 +3056,13 @@ gbsg5_boot <- bootstraps(gbsg5, times = B)
 # Bootstrap calibration measures
 numsum_boot <- function(split) {
   
-  pred <- 1 - predictSurvProb(efit1, 
-                                  newdata = analysis(split), 
-                                  times = 5)
+  pred <- predictRisk(efit1, 
+                      newdata = analysis(split), 
+                      times = 5)
   
-  pred_pgr <- 1 - predictSurvProb(efit1_pgr, 
-                                  newdata = analysis(split), 
-                                  times = 5)
+  pred_pgr <- predictRisk(efit1_pgr, 
+                          newdata = analysis(split), 
+                          times = 5)
   
   pred.cll <- log(-log(1 - pred))
   pred.cll_pgr <- log(-log(1 - pred_pgr))
@@ -3168,28 +3203,28 @@ External data
 0.03
 </td>
 <td style="text-align:right;">
-0.01
+0.02
 </td>
 <td style="text-align:right;">
-0.07
-</td>
-<td style="text-align:right;">
-0.03
-</td>
-<td style="text-align:right;">
-0.01
-</td>
-<td style="text-align:right;">
-0.07
-</td>
-<td style="text-align:right;">
-0.07
+0.06
 </td>
 <td style="text-align:right;">
 0.03
 </td>
 <td style="text-align:right;">
-0.12
+0.01
+</td>
+<td style="text-align:right;">
+0.06
+</td>
+<td style="text-align:right;">
+0.07
+</td>
+<td style="text-align:right;">
+0.04
+</td>
+<td style="text-align:right;">
+0.11
 </td>
 </tr>
 <tr>
@@ -3200,10 +3235,10 @@ External data + PGR
 0.02
 </td>
 <td style="text-align:right;">
-0.02
+0.01
 </td>
 <td style="text-align:right;">
-0.06
+0.05
 </td>
 <td style="text-align:right;">
 0.02
@@ -3212,16 +3247,16 @@ External data + PGR
 0.01
 </td>
 <td style="text-align:right;">
-0.06
+0.05
 </td>
 <td style="text-align:right;">
 0.05
 </td>
 <td style="text-align:right;">
-0.04
+0.02
 </td>
 <td style="text-align:right;">
-0.11
+0.10
 </td>
 </tr>
 </tbody>
@@ -3767,15 +3802,15 @@ efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
 
 # Development data ----
 # Predicted probability calculation
-rott5$pred5 <- 1 - predictSurvProb(efit1, 
-                                   newdata = rott5, 
-                                   times = 5)
+rott5$pred5 <- predictRisk(efit1, 
+                          newdata = rott5, 
+                          times = 5)
 
 # Extended model with PGR
 # Predicted probability calculation
-rott5$pred5_pgr <- 1 - predictSurvProb(efit1_pgr, 
-                                       newdata = rott5, 
-                                       times = 5)
+rott5$pred5_pgr <- predictRisk(efit1_pgr, 
+                               newdata = rott5, 
+                               times = 5)
 
 # Run decision curve analysis
 
@@ -3856,15 +3891,15 @@ title("Development data", cex = 1.5)
 # External data
 # Validation data
 # Predicted probability calculation
-gbsg5$pred5 <- 1 - predictSurvProb(efit1, 
-                                   newdata = gbsg5, 
-                                   times = 5)
+gbsg5$pred5 <- predictRisk(efit1, 
+                           newdata = gbsg5, 
+                           times = 5)
 
 # Extended model with PGR
 # Predicted probability calculation
-gbsg5$pred5_pgr <- 1 - predictSurvProb(efit1_pgr, 
-                                       newdata = gbsg5, 
-                                       times = 5)
+gbsg5$pred5_pgr <- predictRisk(efit1_pgr, 
+                               newdata = gbsg5, 
+                               times = 5)
 
 # Run decision curve analysis
 
@@ -4026,7 +4061,7 @@ avoidable interventions (e.g adjuvant chemotherapy per 100 patients) by:
 
 where *NB*<sub>model</sub> is the net benefit of the prediction model,
 *NB*<sub>all</sub> is the net benefit of the strategy treat all and
-*p*<sub>*t*</sub> is the risk threshold.
+$p_{t}$ is the risk threshold.
 
 ## Reproducibility ticket
 
@@ -4044,165 +4079,158 @@ sessioninfo::session_info()
     ##  collate  English_United States.1252
     ##  ctype    English_United States.1252
     ##  tz       Europe/Berlin
-    ##  date     2022-08-12
-    ##  pandoc   2.17.1.1 @ C:/Program Files/RStudio/bin/quarto/bin/ (via rmarkdown)
+    ##  date     2022-09-29
+    ##  pandoc   2.18 @ C:/Program Files/RStudio/bin/quarto/bin/tools/ (via rmarkdown)
     ## 
     ## - Packages -------------------------------------------------------------------
     ##  package        * version    date (UTC) lib source
     ##  abind            1.4-5      2016-07-21 [1] CRAN (R 4.1.1)
     ##  assertthat       0.2.1      2019-03-21 [1] CRAN (R 4.1.2)
-    ##  backports        1.3.0      2021-10-27 [1] CRAN (R 4.1.1)
+    ##  backports        1.4.1      2021-12-13 [1] CRAN (R 4.1.2)
     ##  base64enc        0.1-3      2015-07-28 [1] CRAN (R 4.1.1)
     ##  boot           * 1.3-28     2021-05-03 [2] CRAN (R 4.1.2)
-    ##  broom            0.7.10     2021-10-31 [1] CRAN (R 4.1.2)
-    ##  broom.helpers    1.5.0      2021-12-07 [1] CRAN (R 4.1.2)
-    ##  car              3.0-12     2021-11-06 [1] CRAN (R 4.1.2)
-    ##  carData          3.0-4      2020-05-22 [1] CRAN (R 4.1.1)
-    ##  caret            6.0-90     2021-10-09 [1] CRAN (R 4.1.2)
+    ##  broom            1.0.0      2022-07-01 [1] CRAN (R 4.1.3)
+    ##  broom.helpers    1.8.0      2022-07-05 [1] CRAN (R 4.1.3)
+    ##  car              3.1-0      2022-06-15 [1] CRAN (R 4.1.3)
+    ##  carData          3.0-5      2022-01-06 [1] CRAN (R 4.1.3)
     ##  cellranger       1.1.0      2016-07-27 [1] CRAN (R 4.1.2)
-    ##  checkmate        2.0.0      2020-02-06 [1] CRAN (R 4.1.2)
-    ##  class            7.3-19     2021-05-03 [2] CRAN (R 4.1.2)
-    ##  cli              3.1.0      2021-10-27 [1] CRAN (R 4.1.2)
+    ##  checkmate        2.1.0      2022-04-21 [1] CRAN (R 4.1.3)
+    ##  cli              3.3.0      2022-04-25 [1] CRAN (R 4.1.3)
     ##  cluster          2.1.2      2021-04-17 [2] CRAN (R 4.1.2)
-    ##  cmprsk           2.2-10     2020-06-09 [1] CRAN (R 4.1.2)
+    ##  cmprsk           2.2-11     2022-01-06 [1] CRAN (R 4.1.3)
     ##  codetools        0.2-18     2020-11-04 [2] CRAN (R 4.1.2)
-    ##  colorspace       2.0-2      2021-06-24 [1] CRAN (R 4.1.2)
-    ##  conquer          1.2.1      2021-11-01 [1] CRAN (R 4.1.2)
-    ##  crayon           1.4.2      2021-10-29 [1] CRAN (R 4.1.2)
+    ##  colorspace       2.0-3      2022-02-21 [1] CRAN (R 4.1.3)
+    ##  crayon           1.5.1      2022-03-26 [1] CRAN (R 4.1.3)
     ##  curl             4.3.2      2021-06-23 [1] CRAN (R 4.1.2)
     ##  data.table       1.14.2     2021-09-27 [1] CRAN (R 4.1.2)
-    ##  DBI              1.1.1      2021-01-15 [1] CRAN (R 4.1.2)
-    ##  dbplyr           2.1.1      2021-04-06 [1] CRAN (R 4.1.2)
+    ##  DBI              1.1.3      2022-06-18 [1] CRAN (R 4.1.3)
+    ##  dbplyr           2.2.1      2022-06-27 [1] CRAN (R 4.1.3)
+    ##  deldir           1.0-6      2021-10-23 [1] CRAN (R 4.1.1)
     ##  digest           0.6.29     2021-12-01 [1] CRAN (R 4.1.2)
-    ##  dplyr          * 1.0.7      2021-06-18 [1] CRAN (R 4.1.2)
+    ##  dplyr          * 1.0.9      2022-04-28 [1] CRAN (R 4.1.3)
     ##  ellipsis         0.3.2      2021-04-29 [1] CRAN (R 4.1.2)
-    ##  evaluate         0.14       2019-05-28 [1] CRAN (R 4.1.2)
-    ##  fansi            0.5.0      2021-05-25 [1] CRAN (R 4.1.2)
-    ##  farver           2.1.0      2021-02-28 [1] CRAN (R 4.1.2)
+    ##  evaluate         0.16       2022-08-09 [1] CRAN (R 4.1.3)
+    ##  fansi            1.0.3      2022-03-24 [1] CRAN (R 4.1.3)
+    ##  farver           2.1.1      2022-07-06 [1] CRAN (R 4.1.3)
     ##  fastmap          1.1.0      2021-01-25 [1] CRAN (R 4.1.2)
-    ##  forcats        * 0.5.1      2021-01-27 [1] CRAN (R 4.1.2)
-    ##  foreach          1.5.1      2020-10-15 [1] CRAN (R 4.1.2)
+    ##  forcats        * 0.5.2      2022-08-19 [1] CRAN (R 4.1.3)
+    ##  foreach          1.5.2      2022-02-02 [1] CRAN (R 4.1.3)
     ##  foreign          0.8-81     2020-12-22 [2] CRAN (R 4.1.2)
     ##  Formula        * 1.2-4      2020-10-16 [1] CRAN (R 4.1.1)
-    ##  fs               1.5.1      2021-11-30 [1] CRAN (R 4.1.2)
-    ##  furrr            0.2.3      2021-06-25 [1] CRAN (R 4.1.2)
-    ##  future           1.23.0     2021-10-31 [1] CRAN (R 4.1.2)
-    ##  future.apply     1.8.1      2021-08-10 [1] CRAN (R 4.1.2)
-    ##  generics         0.1.1      2021-10-25 [1] CRAN (R 4.1.2)
-    ##  ggplot2        * 3.3.5      2021-06-25 [1] CRAN (R 4.1.2)
+    ##  fs               1.5.2      2021-12-08 [1] CRAN (R 4.1.3)
+    ##  furrr            0.3.1      2022-08-15 [1] CRAN (R 4.1.3)
+    ##  future           1.27.0     2022-07-22 [1] CRAN (R 4.1.3)
+    ##  future.apply     1.9.0      2022-04-25 [1] CRAN (R 4.1.3)
+    ##  gargle           1.2.0      2021-07-02 [1] CRAN (R 4.1.2)
+    ##  generics         0.1.3      2022-07-05 [1] CRAN (R 4.1.3)
+    ##  ggplot2        * 3.3.6      2022-05-03 [1] CRAN (R 4.1.3)
     ##  ggpubr         * 0.4.0      2020-06-27 [1] CRAN (R 4.1.2)
     ##  ggsignif         0.6.3      2021-09-09 [1] CRAN (R 4.1.2)
     ##  ggtext           0.1.1      2020-12-17 [1] CRAN (R 4.1.3)
-    ##  globals          0.14.0     2020-11-22 [1] CRAN (R 4.1.1)
-    ##  glue             1.5.1      2021-11-30 [1] CRAN (R 4.1.2)
-    ##  gower            0.2.2      2020-06-23 [1] CRAN (R 4.1.1)
+    ##  globals          0.16.0     2022-08-05 [1] CRAN (R 4.1.3)
+    ##  glue             1.6.2      2022-02-24 [1] CRAN (R 4.1.3)
+    ##  googledrive      2.0.0      2021-07-08 [1] CRAN (R 4.1.2)
+    ##  googlesheets4    1.0.1      2022-08-13 [1] CRAN (R 4.1.3)
     ##  gridExtra      * 2.3        2017-09-09 [1] CRAN (R 4.1.2)
     ##  gridtext         0.1.4      2020-12-10 [1] CRAN (R 4.1.3)
-    ##  gt               0.3.1      2021-08-07 [1] CRAN (R 4.1.2)
+    ##  gt               0.6.0      2022-05-24 [1] CRAN (R 4.1.3)
     ##  gtable           0.3.0      2019-03-25 [1] CRAN (R 4.1.2)
-    ##  gtsummary      * 1.5.0      2021-10-16 [1] CRAN (R 4.1.2)
-    ##  haven            2.4.3      2021-08-04 [1] CRAN (R 4.1.2)
+    ##  gtsummary      * 1.6.1      2022-06-22 [1] CRAN (R 4.1.3)
+    ##  haven            2.5.0      2022-04-15 [1] CRAN (R 4.1.3)
     ##  here             1.0.1      2020-12-13 [1] CRAN (R 4.1.2)
     ##  highr            0.9        2021-04-16 [1] CRAN (R 4.1.2)
-    ##  Hmisc          * 4.6-0      2021-10-07 [1] CRAN (R 4.1.2)
-    ##  hms              1.1.1      2021-09-26 [1] CRAN (R 4.1.2)
-    ##  htmlTable        2.3.0      2021-10-12 [1] CRAN (R 4.1.2)
-    ##  htmltools        0.5.2      2021-08-25 [1] CRAN (R 4.1.2)
+    ##  Hmisc          * 4.7-1      2022-08-15 [1] CRAN (R 4.1.3)
+    ##  hms              1.1.2      2022-08-19 [1] CRAN (R 4.1.3)
+    ##  htmlTable        2.4.1      2022-07-07 [1] CRAN (R 4.1.3)
+    ##  htmltools        0.5.3      2022-07-18 [1] CRAN (R 4.1.3)
     ##  htmlwidgets      1.5.4      2021-09-08 [1] CRAN (R 4.1.2)
-    ##  httr             1.4.2      2020-07-20 [1] CRAN (R 4.1.2)
-    ##  ipred            0.9-12     2021-09-15 [1] CRAN (R 4.1.2)
-    ##  iterators        1.0.13     2020-10-15 [1] CRAN (R 4.1.2)
+    ##  httr             1.4.4      2022-08-17 [1] CRAN (R 4.1.3)
+    ##  interp           1.1-3      2022-07-13 [1] CRAN (R 4.1.3)
+    ##  iterators        1.0.14     2022-02-05 [1] CRAN (R 4.1.3)
     ##  jpeg             0.1-9      2021-07-24 [1] CRAN (R 4.1.1)
-    ##  jsonlite         1.7.2      2020-12-09 [1] CRAN (R 4.1.2)
+    ##  jsonlite         1.8.0      2022-02-22 [1] CRAN (R 4.1.3)
     ##  kableExtra     * 1.3.4      2021-02-20 [1] CRAN (R 4.1.2)
     ##  km.ci            0.5-6      2022-04-06 [1] CRAN (R 4.1.3)
     ##  KMsurv           0.1-5      2012-12-03 [1] CRAN (R 4.1.1)
-    ##  knitr          * 1.36       2021-09-29 [1] CRAN (R 4.1.2)
+    ##  knitr          * 1.39       2022-04-26 [1] CRAN (R 4.1.3)
     ##  labeling         0.4.2      2020-10-20 [1] CRAN (R 4.1.1)
     ##  lattice        * 0.20-45    2021-09-22 [2] CRAN (R 4.1.2)
-    ##  latticeExtra     0.6-29     2019-12-19 [1] CRAN (R 4.1.2)
+    ##  latticeExtra     0.6-30     2022-07-04 [1] CRAN (R 4.1.3)
     ##  lava             1.6.10     2021-09-02 [1] CRAN (R 4.1.2)
     ##  lifecycle        1.0.1      2021-09-24 [1] CRAN (R 4.1.2)
     ##  listenv          0.8.0      2019-12-05 [1] CRAN (R 4.1.2)
     ##  lubridate        1.8.0      2021-10-07 [1] CRAN (R 4.1.2)
-    ##  magrittr         2.0.1      2020-11-17 [1] CRAN (R 4.1.2)
+    ##  magrittr         2.0.3      2022-03-30 [1] CRAN (R 4.1.3)
     ##  MASS             7.3-54     2021-05-03 [2] CRAN (R 4.1.2)
     ##  Matrix           1.3-4      2021-06-01 [2] CRAN (R 4.1.2)
     ##  MatrixModels     0.5-0      2021-03-02 [1] CRAN (R 4.1.2)
-    ##  matrixStats      0.61.0     2021-09-17 [1] CRAN (R 4.1.2)
     ##  mets             1.2.9      2021-09-06 [1] CRAN (R 4.1.2)
-    ##  ModelMetrics     1.2.2.2    2020-03-17 [1] CRAN (R 4.1.2)
-    ##  modelr           0.1.8      2020-05-19 [1] CRAN (R 4.1.2)
-    ##  multcomp         1.4-17     2021-04-29 [1] CRAN (R 4.1.2)
+    ##  modelr           0.1.9      2022-08-19 [1] CRAN (R 4.1.3)
+    ##  multcomp         1.4-20     2022-08-07 [1] CRAN (R 4.1.3)
     ##  munsell          0.5.0      2018-06-12 [1] CRAN (R 4.1.2)
     ##  mvtnorm          1.1-3      2021-10-08 [1] CRAN (R 4.1.1)
     ##  nlme             3.1-153    2021-09-07 [2] CRAN (R 4.1.2)
     ##  nnet             7.3-16     2021-05-03 [2] CRAN (R 4.1.2)
     ##  numDeriv         2016.8-1.1 2019-06-06 [1] CRAN (R 4.1.1)
-    ##  openxlsx         4.2.4      2021-06-16 [1] CRAN (R 4.1.2)
+    ##  openxlsx         4.2.5      2021-12-14 [1] CRAN (R 4.1.3)
     ##  pacman         * 0.5.1      2019-03-11 [1] CRAN (R 4.1.2)
-    ##  parallelly       1.29.0     2021-11-21 [1] CRAN (R 4.1.2)
-    ##  pec            * 2021.10.11 2021-10-11 [1] CRAN (R 4.1.2)
-    ##  pillar           1.6.4      2021-10-18 [1] CRAN (R 4.1.2)
+    ##  parallelly       1.32.1     2022-07-21 [1] CRAN (R 4.1.3)
+    ##  pec            * 2022.05.04 2022-05-04 [1] CRAN (R 4.1.3)
+    ##  pillar           1.8.1      2022-08-19 [1] CRAN (R 4.1.3)
     ##  pkgconfig        2.0.3      2019-09-22 [1] CRAN (R 4.1.2)
     ##  plotrix        * 3.8-2      2021-09-08 [1] CRAN (R 4.1.1)
-    ##  plyr             1.8.6      2020-03-03 [1] CRAN (R 4.1.2)
     ##  png              0.1-7      2013-12-03 [1] CRAN (R 4.1.1)
-    ##  polspline        1.1.19     2020-05-15 [1] CRAN (R 4.1.1)
-    ##  pROC             1.18.0     2021-09-03 [1] CRAN (R 4.1.2)
+    ##  polspline        1.1.20     2022-04-25 [1] CRAN (R 4.1.3)
     ##  prodlim        * 2019.11.13 2019-11-17 [1] CRAN (R 4.1.2)
     ##  purrr          * 0.3.4      2020-04-17 [1] CRAN (R 4.1.2)
-    ##  quantreg         5.86       2021-06-06 [1] CRAN (R 4.1.2)
+    ##  quantreg         5.94       2022-07-20 [1] CRAN (R 4.1.3)
     ##  R6               2.5.1      2021-08-19 [1] CRAN (R 4.1.2)
-    ##  RColorBrewer     1.1-2      2014-12-07 [1] CRAN (R 4.1.1)
-    ##  Rcpp             1.0.7      2021-07-07 [1] CRAN (R 4.1.2)
-    ##  readr          * 2.1.1      2021-11-30 [1] CRAN (R 4.1.2)
-    ##  readxl           1.3.1      2019-03-13 [1] CRAN (R 4.1.2)
-    ##  recipes          0.1.17     2021-09-27 [1] CRAN (R 4.1.2)
-    ##  reprex           2.0.1      2021-08-05 [1] CRAN (R 4.1.2)
-    ##  reshape2         1.4.4      2020-04-09 [1] CRAN (R 4.1.2)
+    ##  RColorBrewer     1.1-3      2022-04-03 [1] CRAN (R 4.1.3)
+    ##  Rcpp             1.0.9      2022-07-08 [1] CRAN (R 4.1.3)
+    ##  readr          * 2.1.2      2022-01-30 [1] CRAN (R 4.1.3)
+    ##  readxl           1.4.1      2022-08-17 [1] CRAN (R 4.1.3)
+    ##  reprex           2.0.2      2022-08-17 [1] CRAN (R 4.1.3)
     ##  rio            * 0.5.29     2021-11-22 [1] CRAN (R 4.1.2)
-    ##  riskRegression * 2021.10.10 2021-10-11 [1] CRAN (R 4.1.2)
-    ##  rlang            0.4.12     2021-10-18 [1] CRAN (R 4.1.2)
-    ##  rmarkdown        2.11       2021-09-14 [1] CRAN (R 4.1.2)
-    ##  rms            * 6.2-0      2021-03-18 [1] CRAN (R 4.1.2)
+    ##  riskRegression * 2022.03.22 2022-03-23 [1] CRAN (R 4.1.3)
+    ##  rlang            1.0.4      2022-07-12 [1] CRAN (R 4.1.3)
+    ##  rmarkdown        2.15       2022-08-16 [1] CRAN (R 4.1.3)
+    ##  rms            * 6.3-0      2022-04-22 [1] CRAN (R 4.1.3)
     ##  rpart            4.1-15     2019-04-12 [2] CRAN (R 4.1.2)
-    ##  rprojroot        2.0.2      2020-11-15 [1] CRAN (R 4.1.2)
-    ##  rsample        * 0.1.1      2021-11-08 [1] CRAN (R 4.1.2)
+    ##  rprojroot        2.0.3      2022-04-02 [1] CRAN (R 4.1.3)
+    ##  rsample        * 1.1.0      2022-08-08 [1] CRAN (R 4.1.3)
     ##  rstatix          0.7.0      2021-02-13 [1] CRAN (R 4.1.2)
-    ##  rstudioapi       0.13       2020-11-12 [1] CRAN (R 4.1.2)
-    ##  rvest            1.0.2      2021-10-16 [1] CRAN (R 4.1.2)
-    ##  sandwich         3.0-1      2021-05-18 [1] CRAN (R 4.1.2)
-    ##  scales           1.1.1      2020-05-11 [1] CRAN (R 4.1.2)
+    ##  rstudioapi       0.14       2022-08-22 [1] CRAN (R 4.1.2)
+    ##  rvest            1.0.3      2022-08-19 [1] CRAN (R 4.1.3)
+    ##  sandwich         3.0-2      2022-06-15 [1] CRAN (R 4.1.3)
+    ##  scales           1.2.1      2022-08-20 [1] CRAN (R 4.1.3)
     ##  sessioninfo      1.2.2      2021-12-06 [1] CRAN (R 4.1.2)
     ##  SparseM        * 1.81       2021-02-18 [1] CRAN (R 4.1.1)
     ##  stringi          1.7.6      2021-11-29 [1] CRAN (R 4.1.2)
-    ##  stringr        * 1.4.0      2019-02-10 [1] CRAN (R 4.1.2)
-    ##  survival       * 3.2-13     2021-08-24 [1] CRAN (R 4.1.2)
+    ##  stringr        * 1.4.1      2022-08-20 [1] CRAN (R 4.1.3)
+    ##  survival       * 3.4-0      2022-08-09 [1] CRAN (R 4.1.3)
     ##  survminer      * 0.4.9      2021-03-09 [1] CRAN (R 4.1.3)
     ##  survMisc         0.5.6      2022-04-07 [1] CRAN (R 4.1.3)
-    ##  svglite          2.0.0      2021-02-20 [1] CRAN (R 4.1.2)
-    ##  systemfonts      1.0.3      2021-10-13 [1] CRAN (R 4.1.2)
-    ##  TH.data          1.1-0      2021-09-27 [1] CRAN (R 4.1.2)
-    ##  tibble         * 3.1.6      2021-11-07 [1] CRAN (R 4.1.2)
-    ##  tidyr          * 1.1.4      2021-09-27 [1] CRAN (R 4.1.2)
-    ##  tidyselect       1.1.1      2021-04-30 [1] CRAN (R 4.1.2)
-    ##  tidyverse      * 1.3.1      2021-04-15 [1] CRAN (R 4.1.2)
-    ##  timeDate         3043.102   2018-02-21 [1] CRAN (R 4.1.1)
-    ##  timereg          2.0.1      2021-10-13 [1] CRAN (R 4.1.2)
+    ##  svglite          2.1.0      2022-02-03 [1] CRAN (R 4.1.3)
+    ##  systemfonts      1.0.4      2022-02-11 [1] CRAN (R 4.1.3)
+    ##  TH.data          1.1-1      2022-04-26 [1] CRAN (R 4.1.3)
+    ##  tibble         * 3.1.8      2022-07-22 [1] CRAN (R 4.1.3)
+    ##  tidyr          * 1.2.0      2022-02-01 [1] CRAN (R 4.1.3)
+    ##  tidyselect       1.1.2      2022-02-21 [1] CRAN (R 4.1.3)
+    ##  tidyverse      * 1.3.2      2022-07-18 [1] CRAN (R 4.1.3)
+    ##  timereg          2.0.2      2022-04-11 [1] CRAN (R 4.1.3)
     ##  timeROC        * 0.4        2019-12-18 [1] CRAN (R 4.1.2)
-    ##  tzdb             0.2.0      2021-10-27 [1] CRAN (R 4.1.2)
+    ##  tzdb             0.3.0      2022-03-28 [1] CRAN (R 4.1.3)
     ##  utf8             1.2.2      2021-07-24 [1] CRAN (R 4.1.2)
-    ##  vctrs            0.3.8      2021-04-29 [1] CRAN (R 4.1.2)
-    ##  viridisLite      0.4.0      2021-04-13 [1] CRAN (R 4.1.2)
-    ##  webshot        * 0.5.2      2019-11-22 [1] CRAN (R 4.1.2)
-    ##  withr            2.4.3      2021-11-30 [1] CRAN (R 4.1.2)
-    ##  xfun             0.28       2021-11-04 [1] CRAN (R 4.1.2)
+    ##  vctrs            0.4.1      2022-04-13 [1] CRAN (R 4.1.3)
+    ##  viridisLite      0.4.1      2022-08-22 [1] CRAN (R 4.1.2)
+    ##  webshot        * 0.5.3      2022-04-14 [1] CRAN (R 4.1.3)
+    ##  withr            2.5.0      2022-03-03 [1] CRAN (R 4.1.3)
+    ##  xfun             0.32       2022-08-10 [1] CRAN (R 4.1.3)
     ##  xml2             1.3.3      2021-11-30 [1] CRAN (R 4.1.2)
     ##  xtable           1.8-4      2019-04-21 [1] CRAN (R 4.1.2)
-    ##  yaml             2.2.1      2020-02-01 [1] CRAN (R 4.1.1)
+    ##  yaml             2.3.5      2022-02-21 [1] CRAN (R 4.1.3)
     ##  zip              2.2.0      2021-05-31 [1] CRAN (R 4.1.2)
-    ##  zoo              1.8-9      2021-03-09 [1] CRAN (R 4.1.2)
+    ##  zoo              1.8-10     2022-04-15 [1] CRAN (R 4.1.3)
     ## 
     ##  [1] C:/Users/dgiardiello/Documents/R/win-library/4.1
     ##  [2] C:/Program Files/R/R-4.1.2/library

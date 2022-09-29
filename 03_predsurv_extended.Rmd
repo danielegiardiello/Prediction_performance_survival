@@ -515,13 +515,13 @@ efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
 
 # Development data
 t_horizon <- 5
-rott5$pred <- 1 - predictSurvProb(efit1, 
-                                  newdata = rott5,
-                                  times = t_horizon)
+rott5$pred <- predictRisk(efit1, 
+                              newdata = rott5,
+                              times = t_horizon)
 
-rott5$pred_pgr <- 1 - predictSurvProb(efit1_pgr, 
-                                  newdata = rott5,
-                                  times = t_horizon)
+rott5$pred_pgr <- predictRisk(efit1_pgr, 
+                              newdata = rott5,
+                              times = t_horizon)
 
 # par(mgp=c(4,1,0), mar=c(6,5,2,2))
 # oldpar <- par(mfrow = c(1, 2), las = 1)
@@ -539,14 +539,14 @@ title("Development data")
 
 
 # Validation data
-gbsg5$pred <- 1 - predictSurvProb(efit1, 
-                                  newdata = gbsg5,
-                                  times = t_horizon)
+gbsg5$pred <- predictRisk(efit1, 
+                          newdata = gbsg5,
+                          times = t_horizon)
 
 
-gbsg5$pred_pgr <- 1 - predictSurvProb(efit1_pgr, 
-                                  newdata = gbsg5,
-                                  times = t_horizon)
+gbsg5$pred_pgr <- predictRisk(efit1_pgr, 
+                              newdata = gbsg5,
+                              times = t_horizon)
 
 par(las = 1)
 xlab <- c(paste0('Basic model\nvariance = ', 
@@ -1406,13 +1406,13 @@ obj <- summary(survfit(Surv(ryear, rfs) ~ 1,
                        data = gbsg5), 
                times = horizon)
 
-pred <- 1 - predictSurvProb(efit1, 
-                            newdata = gbsg5, 
-                            times = horizon)
+pred <- predictRisk(efit1, 
+                    newdata = gbsg5, 
+                    times = horizon)
 
-pred_pgr <- 1 - predictSurvProb(efit1_pgr, 
-                            newdata = gbsg5, 
-                            times = horizon)
+pred_pgr <- predictRisk(efit1_pgr, 
+                        newdata = gbsg5, 
+                        times = horizon)
 
 OE <- (1 - obj$surv) / mean(pred)
 OE_pgr <- (1 - obj$surv) / mean(pred_pgr)
@@ -1715,15 +1715,15 @@ efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
 
 # Calibration plot --------
 # Basic model
-gbsg5$pred <- 1 - predictSurvProb(efit1, 
-                                  newdata = gbsg5, 
-                                  times = 5)
+gbsg5$pred <- predictRisk(efit1, 
+                          newdata = gbsg5, 
+                          times = 5)
 gbsg5$pred.cll <- log(-log(1 - gbsg5$pred))
 
 # Extended model
-gbsg5$pred_pgr <- 1 - predictSurvProb(efit1_pgr, 
-                                      newdata = gbsg5, 
-                                      times = 5)
+gbsg5$pred_pgr <- predictRisk(efit1_pgr, 
+                              newdata = gbsg5, 
+                              times = 5)
 gbsg5$pred.cll_pgr <- log(-log(1 - gbsg5$pred_pgr))
 
 
@@ -1876,13 +1876,13 @@ gbsg5_boot <- bootstraps(gbsg5, times = B)
 # Bootstrap calibration measures
 numsum_boot <- function(split) {
   
-  pred <- 1 - predictSurvProb(efit1, 
-                                  newdata = analysis(split), 
-                                  times = 5)
+  pred <- predictRisk(efit1, 
+                      newdata = analysis(split), 
+                      times = 5)
   
-  pred_pgr <- 1 - predictSurvProb(efit1_pgr, 
-                                  newdata = analysis(split), 
-                                  times = 5)
+  pred_pgr <- predictRisk(efit1_pgr, 
+                          newdata = analysis(split), 
+                          times = 5)
   
   pred.cll <- log(-log(1 - pred))
   pred.cll_pgr <- log(-log(1 - pred_pgr))
@@ -2471,15 +2471,15 @@ efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
 
 # Development data ----
 # Predicted probability calculation
-rott5$pred5 <- 1 - predictSurvProb(efit1, 
-                                   newdata = rott5, 
-                                   times = 5)
+rott5$pred5 <- predictRisk(efit1, 
+                          newdata = rott5, 
+                          times = 5)
 
 # Extended model with PGR
 # Predicted probability calculation
-rott5$pred5_pgr <- 1 - predictSurvProb(efit1_pgr, 
-                                       newdata = rott5, 
-                                       times = 5)
+rott5$pred5_pgr <- predictRisk(efit1_pgr, 
+                               newdata = rott5, 
+                               times = 5)
 
 # Run decision curve analysis
 
@@ -2560,15 +2560,15 @@ title("Development data", cex = 1.5)
 # External data
 # Validation data
 # Predicted probability calculation
-gbsg5$pred5 <- 1 - predictSurvProb(efit1, 
-                                   newdata = gbsg5, 
-                                   times = 5)
+gbsg5$pred5 <- predictRisk(efit1, 
+                           newdata = gbsg5, 
+                           times = 5)
 
 # Extended model with PGR
 # Predicted probability calculation
-gbsg5$pred5_pgr <- 1 - predictSurvProb(efit1_pgr, 
-                                       newdata = gbsg5, 
-                                       times = 5)
+gbsg5$pred5_pgr <- predictRisk(efit1_pgr, 
+                               newdata = gbsg5, 
+                               times = 5)
 
 # Run decision curve analysis
 
