@@ -201,7 +201,7 @@ dat_cal <- cbind.data.frame(
 
 dat_cal <- dat_cal[order(dat_cal$pred), ]
 
-win.graph() # If you use windows
+dev.new() 
 par(xaxs = "i", yaxs = "i", las = 1)
 plot(
   dat_cal$pred, 
@@ -327,7 +327,7 @@ df_nb[df_nb$threshold == 0.23,]
 # Make basic decision curve plot
 
 # Decision curves plot
-win.graph() # if you use Windows, not usable for Unix/Apple
+dev.new() 
 par(xaxs = "i", yaxs = "i", las = 1)
 plot(df_nb$threshold,
      df_nb$NB,
