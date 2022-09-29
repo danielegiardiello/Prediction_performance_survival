@@ -1,29 +1,43 @@
 Performance assessment of survival prediction models - simplified code
 ================
 
--   [Goals](#goals)
-    -   [Set up - load packages and import
-        data](#set-up---load-packages-and-import-data)
-    -   [Data and recoding](#data-and-recoding)
--   [Goal 1 - Develop a risk prediction model with a time to event
-    outcome](#goal-1---develop-a-risk-prediction-model-with-a-time-to-event-outcome)
-    -   [1.1 Model development - fit the risk prediction
-        models](#11-model-development---fit-the-risk-prediction-models)
--   [Goal 2 - Assessing performance in survival prediction
-    models](#goal-2---assessing-performance-in-survival-prediction-models)
-    -   [2.1 Discrimination measures](#21-discrimination-measures)
-    -   [2.2 Calibration](#22-calibration)
-        -   [2.2.1 Mean calibration - fixed time
-            point](#221-mean-calibration---fixed-time-point)
-        -   [2.2.2 Weak calibration - calibration slope for fixed time
-            point](#222-weak-calibration---calibration-slope-for-fixed-time-point)
-        -   [2.2.3 Moderate calibration - fixed time
-            point](#223-moderate-calibration---fixed-time-point)
-    -   [2.3 Overall performance
-        measures](#23-overall-performance-measures)
--   [Goal 3 - Clinical utility](#goal-3---clinical-utility)
--   [Additional notes](#additional-notes)
--   [Reproducibility ticket](#reproducibility-ticket)
+-   <a href="#goals" id="toc-goals">Goals</a>
+    -   <a href="#set-up---load-packages-and-import-data"
+        id="toc-set-up---load-packages-and-import-data">Set up - load packages
+        and import data</a>
+    -   <a href="#data-and-recoding" id="toc-data-and-recoding">Data and
+        recoding</a>
+-   <a
+    href="#goal-1---develop-a-risk-prediction-model-with-a-time-to-event-outcome"
+    id="toc-goal-1---develop-a-risk-prediction-model-with-a-time-to-event-outcome">Goal
+    1 - Develop a risk prediction model with a time to event outcome</a>
+    -   <a href="#11-model-development---fit-the-risk-prediction-models"
+        id="toc-11-model-development---fit-the-risk-prediction-models">1.1 Model
+        development - fit the risk prediction models</a>
+-   <a href="#goal-2---assessing-performance-in-survival-prediction-models"
+    id="toc-goal-2---assessing-performance-in-survival-prediction-models">Goal
+    2 - Assessing performance in survival prediction models</a>
+    -   <a href="#21-discrimination-measures"
+        id="toc-21-discrimination-measures">2.1 Discrimination measures</a>
+    -   <a href="#22-calibration" id="toc-22-calibration">2.2 Calibration</a>
+        -   <a href="#221-mean-calibration---fixed-time-point"
+            id="toc-221-mean-calibration---fixed-time-point">2.2.1 Mean calibration
+            - fixed time point</a>
+        -   <a href="#222-weak-calibration---calibration-slope-for-fixed-time-point"
+            id="toc-222-weak-calibration---calibration-slope-for-fixed-time-point">2.2.2
+            Weak calibration - calibration slope for fixed time point</a>
+        -   <a href="#223-moderate-calibration---fixed-time-point"
+            id="toc-223-moderate-calibration---fixed-time-point">2.2.3 Moderate
+            calibration - fixed time point</a>
+    -   <a href="#23-overall-performance-measures"
+        id="toc-23-overall-performance-measures">2.3 Overall performance
+        measures</a>
+-   <a href="#goal-3---clinical-utility"
+    id="toc-goal-3---clinical-utility">Goal 3 - Clinical utility</a>
+-   <a href="#additional-notes" id="toc-additional-notes">Additional
+    notes</a>
+-   <a href="#reproducibility-ticket"
+    id="toc-reproducibility-ticket">Reproducibility ticket</a>
 
 ## Goals
 
@@ -321,9 +335,9 @@ can be assessed over several different time intervals:
 
 There is some uncertainty in the literature about the original Harrell
 formulation versus Uno’s suggestion to re-weight the time scale by the
-factor 1/*G*<sup>2</sup>(*t*) where *G* is the censoring distribution.
-There is more detailed information in the concordance vignette found in
-the survival package.
+factor $1/G^2(t)$ where $G$ is the censoring distribution. There is more
+detailed information in the concordance vignette found in the survival
+package.
 
 For all three measures, values close to 1 indicate good discrimination
 ability, while values close to 0.5 indicated poor discrimination
@@ -472,9 +486,9 @@ obj <- summary(survfit(
 obs_t <- 1 - obj$surv
 
 # Predicted risk 
-gbsg5$pred <- 1 - predictSurvProb(efit1, 
-                                  newdata = gbsg5,
-                                  times = t_horizon)
+gbsg5$pred <-predictRisk(efit1, 
+                         newdata = gbsg5,
+                         times = t_horizon)
 # Expected
 exp_t <- mean(gbsg5$pred)
 
@@ -588,9 +602,10 @@ efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
 # The model with additional PGR marker
 efit1_pgr  <- update(efit1, . ~ . + pgr2 + pgr3)
 
-gbsg5$pred <- 1 - predictSurvProb(efit1, 
-                                  newdata = gbsg5, 
-                                  times = 5)
+gbsg5$pred <-predictRisk(efit1, 
+                         newdata = gbsg5, 
+                         times = 5)
+
 gbsg5$pred.cll <- log(-log(1 - gbsg5$pred))
 
 
@@ -755,7 +770,7 @@ df_boots <- do.call(rbind.data.frame, boots_ls)
 
     ##                                Estimate Lower .95  Upper .95
     ## Brier - Validation data            0.22       0.21      0.24
-    ## Scaled Brier - Validation data     0.10       0.02      0.15
+    ## Scaled Brier - Validation data     0.10       0.04      0.17
 
 Brier and scaled Brier score were 0.22 and 0.10, respectively.
 
@@ -839,7 +854,7 @@ efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
 efit1_pgr  <- update(efit1, . ~ . + pgr2 + pgr3)
 
 # Predicted risk 
-gbsg5$pred <- 1 - predictSurvProb(efit1, 
+gbsg5$pred <-predictRisk(efit1, 
                                   newdata = gbsg5,
                                   times = t_horizon)
 
@@ -925,7 +940,7 @@ avoidable interventions (e.g adjuvant chemotherapy per 100 patients) by:
 
 where *NB*<sub>model</sub> is the net benefit of the prediction model,
 *NB*<sub>all</sub> is the net benefit of the strategy treat all and
-*p*<sub>*t*</sub> is the risk threshold.
+$p_{t}$ is the risk threshold.
 
 ## Additional notes
 
@@ -962,43 +977,39 @@ sessionInfo()
     ## 
     ## other attached packages:
     ##  [1] here_1.0.1                timeROC_0.4              
-    ##  [3] riskRegression_2021.10.10 pec_2021.10.11           
-    ##  [5] prodlim_2019.11.13        rms_6.2-0                
-    ##  [7] SparseM_1.81              Hmisc_4.6-0              
-    ##  [9] ggplot2_3.3.5             Formula_1.2-4            
-    ## [11] lattice_0.20-45           survival_3.2-13          
+    ##  [3] riskRegression_2022.03.22 pec_2022.05.04           
+    ##  [5] prodlim_2019.11.13        rms_6.3-0                
+    ##  [7] SparseM_1.81              Hmisc_4.7-1              
+    ##  [9] ggplot2_3.3.6             Formula_1.2-4            
+    ## [11] lattice_0.20-45           survival_3.4-0           
     ## [13] pacman_0.5.1             
     ## 
     ## loaded via a namespace (and not attached):
-    ##  [1] nlme_3.1-153         cmprsk_2.2-10        matrixStats_0.61.0  
-    ##  [4] lubridate_1.8.0      RColorBrewer_1.1-2   rprojroot_2.0.2     
-    ##  [7] numDeriv_2016.8-1.1  tools_4.1.2          backports_1.3.0     
-    ## [10] utf8_1.2.2           R6_2.5.1             rpart_4.1-15        
-    ## [13] DBI_1.1.1            colorspace_2.0-2     nnet_7.3-16         
-    ## [16] withr_2.4.3          tidyselect_1.1.1     gridExtra_2.3       
-    ## [19] compiler_4.1.2       quantreg_5.86        htmlTable_2.3.0     
-    ## [22] sandwich_3.0-1       scales_1.1.1         checkmate_2.0.0     
-    ## [25] polspline_1.1.19     mvtnorm_1.1-3        stringr_1.4.0       
-    ## [28] digest_0.6.29        foreign_0.8-81       rmarkdown_2.11      
-    ## [31] base64enc_0.1-3      jpeg_0.1-9           pkgconfig_2.0.3     
-    ## [34] htmltools_0.5.2      parallelly_1.29.0    highr_0.9           
-    ## [37] fastmap_1.1.0        htmlwidgets_1.5.4    rlang_0.4.12        
-    ## [40] rstudioapi_0.13      generics_0.1.1       zoo_1.8-9           
-    ## [43] dplyr_1.0.7          ModelMetrics_1.2.2.2 magrittr_2.0.1      
-    ## [46] Matrix_1.3-4         Rcpp_1.0.7           munsell_0.5.0       
-    ## [49] fansi_0.5.0          lifecycle_1.0.1      stringi_1.7.6       
-    ## [52] multcomp_1.4-17      pROC_1.18.0          yaml_2.2.1          
-    ## [55] MASS_7.3-54          plyr_1.8.6           recipes_0.1.17      
-    ## [58] grid_4.1.2           parallel_4.1.2       listenv_0.8.0       
-    ## [61] mets_1.2.9           crayon_1.4.2         splines_4.1.2       
-    ## [64] timereg_2.0.1        knitr_1.36           pillar_1.6.4        
-    ## [67] future.apply_1.8.1   reshape2_1.4.4       codetools_0.2-18    
-    ## [70] stats4_4.1.2         glue_1.5.1           evaluate_0.14       
-    ## [73] latticeExtra_0.6-29  data.table_1.14.2    png_0.1-7           
-    ## [76] vctrs_0.3.8          foreach_1.5.1        MatrixModels_0.5-0  
-    ## [79] gtable_0.3.0         purrr_0.3.4          future_1.23.0       
-    ## [82] assertthat_0.2.1     xfun_0.28            gower_0.2.2         
-    ## [85] class_7.3-19         timeDate_3043.102    tibble_3.1.6        
-    ## [88] conquer_1.2.1        iterators_1.0.13     cluster_2.1.2       
-    ## [91] lava_1.6.10          globals_0.14.0       TH.data_1.1-0       
-    ## [94] ellipsis_0.3.2       caret_6.0-90         ipred_0.9-12
+    ##  [1] foreach_1.5.2       splines_4.1.2       assertthat_0.2.1   
+    ##  [4] highr_0.9           latticeExtra_0.6-30 yaml_2.3.5         
+    ##  [7] globals_0.16.0      numDeriv_2016.8-1.1 timereg_2.0.2      
+    ## [10] pillar_1.8.1        backports_1.4.1     quantreg_5.94      
+    ## [13] glue_1.6.2          digest_0.6.29       RColorBrewer_1.1-3 
+    ## [16] checkmate_2.1.0     colorspace_2.0-3    sandwich_3.0-2     
+    ## [19] cmprsk_2.2-11       htmltools_0.5.3     Matrix_1.3-4       
+    ## [22] pkgconfig_2.0.3     listenv_0.8.0       purrr_0.3.4        
+    ## [25] mvtnorm_1.1-3       scales_1.2.1        jpeg_0.1-9         
+    ## [28] lava_1.6.10         MatrixModels_0.5-0  htmlTable_2.4.1    
+    ## [31] tibble_3.1.8        mets_1.2.9          generics_0.1.3     
+    ## [34] TH.data_1.1-1       withr_2.5.0         nnet_7.3-16        
+    ## [37] cli_3.3.0           magrittr_2.0.3      deldir_1.0-6       
+    ## [40] polspline_1.1.20    evaluate_0.16       parallelly_1.32.1  
+    ## [43] fansi_1.0.3         future_1.27.0       nlme_3.1-153       
+    ## [46] MASS_7.3-54         foreign_0.8-81      tools_4.1.2        
+    ## [49] data.table_1.14.2   lifecycle_1.0.1     multcomp_1.4-20    
+    ## [52] stringr_1.4.1       interp_1.1-3        munsell_0.5.0      
+    ## [55] cluster_2.1.2       compiler_4.1.2      rlang_1.0.4        
+    ## [58] grid_4.1.2          iterators_1.0.14    rstudioapi_0.14    
+    ## [61] htmlwidgets_1.5.4   base64enc_0.1-3     rmarkdown_2.15     
+    ## [64] gtable_0.3.0        codetools_0.2-18    DBI_1.1.3          
+    ## [67] R6_2.5.1            gridExtra_2.3       zoo_1.8-10         
+    ## [70] knitr_1.39          dplyr_1.0.9         fastmap_1.1.0      
+    ## [73] future.apply_1.9.0  utf8_1.2.2          rprojroot_2.0.3    
+    ## [76] stringi_1.7.6       parallel_4.1.2      Rcpp_1.0.9         
+    ## [79] vctrs_0.4.1         rpart_4.1-15        png_0.1-7          
+    ## [82] tidyselect_1.1.2    xfun_0.32

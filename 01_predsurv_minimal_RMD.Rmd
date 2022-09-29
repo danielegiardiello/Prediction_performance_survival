@@ -395,9 +395,9 @@ obj <- summary(survfit(
 obs_t <- 1 - obj$surv
 
 # Predicted risk 
-gbsg5$pred <- 1 - predictSurvProb(efit1, 
-                                  newdata = gbsg5,
-                                  times = t_horizon)
+gbsg5$pred <-predictRisk(efit1, 
+                         newdata = gbsg5,
+                         times = t_horizon)
 # Expected
 exp_t <- mean(gbsg5$pred)
 
@@ -487,9 +487,10 @@ efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
 # The model with additional PGR marker
 efit1_pgr  <- update(efit1, . ~ . + pgr2 + pgr3)
 
-gbsg5$pred <- 1 - predictSurvProb(efit1, 
-                                  newdata = gbsg5, 
-                                  times = 5)
+gbsg5$pred <-predictRisk(efit1, 
+                         newdata = gbsg5, 
+                         times = 5)
+
 gbsg5$pred.cll <- log(-log(1 - gbsg5$pred))
 
 
@@ -747,7 +748,7 @@ efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
 efit1_pgr  <- update(efit1, . ~ . + pgr2 + pgr3)
 
 # Predicted risk 
-gbsg5$pred <- 1 - predictSurvProb(efit1, 
+gbsg5$pred <-predictRisk(efit1, 
                                   newdata = gbsg5,
                                   times = t_horizon)
 
