@@ -1,7 +1,7 @@
 # Libraries and options ----------------------------------
 
 # General packages
-pkgs <- c("survival", "pec", "rms", "timeROC", "riskRegression")
+pkgs <- c("survival", "rms", "timeROC", "riskRegression")
 vapply(pkgs, function(pkg) {
   if (!require(pkg, character.only = TRUE)) install.packages(pkg)
   require(pkg, character.only = TRUE, quietly = TRUE)
@@ -47,14 +47,14 @@ levels(rotterdam$grade3) <- c("1-2", "3")
 # Save in the data the restricted cubic spline term using Hmisc::rcspline.eval() package
 
 # Continuous nodes variable
-rcs3_nodes <- rcspline.eval(rotterdam$nodes2, 
-                            knots = c(0, 1, 9))
+rcs3_nodes <- Hmisc::rcspline.eval(rotterdam$nodes2, 
+                            knots = c(0, 1, 9)) 
 attr(rcs3_nodes, "dim") <- NULL
 attr(rcs3_nodes, "knots") <- NULL
 rotterdam$nodes3 <- rcs3_nodes
 
 # PGR
-rcs3_pgr <- rcspline.eval(rotterdam$pgr2, 
+rcs3_pgr <- Hmisc::rcspline.eval(rotterdam$pgr2, 
                           knots = c(0, 41, 486)) # using knots of the original variable (not winsorized)
 attr(rcs3_pgr, "dim") <- NULL
 attr(rcs3_pgr, "knots") <- NULL
@@ -76,13 +76,13 @@ levels(gbsg$grade3) <- c("1-2", "1-2", "3")
 
 # Restricted cubic spline 
 # Continuous nodes
-rcs3_nodes <- rcspline.eval(gbsg$nodes2, knots = c(0, 1, 9))
+rcs3_nodes <- Hmisc::rcspline.eval(gbsg$nodes2, knots = c(0, 1, 9))
 attr(rcs3_nodes, "dim") <- NULL
 attr(rcs3_nodes, "knots") <- NULL
 gbsg$nodes3 <- rcs3_nodes
 
 # PGR
-rcs3_pgr <- rcspline.eval(gbsg$pgr2, knots = c(0, 41, 486))
+rcs3_pgr <- Hmisc::rcspline.eval(gbsg$pgr2, knots = c(0, 41, 486))
 attr(rcs3_pgr, "dim") <- NULL
 attr(rcs3_pgr, "knots") <- NULL
 gbsg$pgr3 <- rcs3_pgr
@@ -157,7 +157,7 @@ res_C
 # Uno's time dependent AUC
 
 Uno_gbsg5 <-
-  timeROC(
+  timeROC::timeROC(
     T = gbsg5$ryear, 
     delta = gbsg5$rfs,
     marker = gbsg5$lp,
@@ -193,9 +193,9 @@ obj <- summary(survfit(
 obs_t <- 1 - obj$surv
 
 # Predicted risk 
-gbsg5$pred <- predictRisk(efit1, 
-                          newdata = gbsg5,
-                          times = t_horizon)
+gbsg5$pred <- riskRegression::predictRisk(efit1, 
+                                          newdata = gbsg5,
+                                          times = t_horizon)
 # Expected
 exp_t <- mean(gbsg5$pred)
 
@@ -217,25 +217,25 @@ gbsg5$pred.cll <- log(-log(1 - gbsg5$pred))
 
 
 # Estimate actual risk
-vcal <- cph(Surv(ryear, rfs) ~ rcs(pred.cll, 3),
-            x = T,
-            y = T,
-            surv = T,
-            data = gbsg5
+vcal <- rms::cph(Surv(ryear, rfs) ~ rcs(pred.cll, 3),
+                 x = T,
+                 y = T,
+                 surv = T,
+                 data = gbsg5
 ) 
 
 dat_cal <- cbind.data.frame(
-  "obs" = 1 - survest(vcal, 
-                      times = 5, 
-                      newdata = gbsg5)$surv,
+  "obs" = 1 - rms::survest(vcal, 
+                           times = 5, 
+                           newdata = gbsg5)$surv,
   
-  "lower" = 1 - survest(vcal, 
-                        times = 5, 
-                        newdata = gbsg5)$upper,
+  "lower" = 1 - rms::survest(vcal, 
+                             times = 5, 
+                             newdata = gbsg5)$upper,
   
-  "upper" = 1 - survest(vcal, 
-                        times = 5, 
-                        newdata = gbsg5)$lower,
+  "upper" = 1 - rms::survest(vcal, 
+                             times = 5, 
+                             newdata = gbsg5)$lower,
   "pred" = gbsg5$pred
 )
 
@@ -300,15 +300,15 @@ calslope_summary
 
 # Overall performance ---------------------------------------
 score_gbsg5 <-
-  Score(list("cox" = efit1),
-        formula = Surv(ryear, rfs) ~ 1, 
-        data = gbsg5, 
-        conf.int = TRUE, 
-        times = 4.99,
-        cens.model = "km", 
-        metrics = "brier",
-        summary = "ipa"
-  )
+  riskRegression::Score(list("cox" = efit1),
+                        formula = Surv(ryear, rfs) ~ 1, 
+                        data = gbsg5, 
+                        conf.int = TRUE, 
+                        times = 4.99,
+                        cens.model = "km", 
+                        metrics = "brier",
+                        summary = "ipa"
+)
 
 score_gbsg5$Brier$score 
 
@@ -454,7 +454,7 @@ res_C
 # Uno's time dependent AUC
 
 Uno_gbsg5 <-
-  timeROC(
+  timeROC::timeROC(
     T = gbsg5$ryear, 
     delta = gbsg5$rfs,
     marker = gbsg5$lp,
@@ -490,9 +490,9 @@ obj <- summary(survfit(
 obs_t <- 1 - obj$surv
 
 # Predicted risk 
-gbsg5$pred <- predictRisk(efit1_pgr, 
-                          newdata = gbsg5,
-                          times = t_horizon)
+gbsg5$pred <- riskRegression::predictRisk(efit1_pgr, 
+                                          newdata = gbsg5,
+                                          times = t_horizon)
 # Expected
 exp_t <- mean(gbsg5$pred)
 
@@ -514,25 +514,25 @@ gbsg5$pred.cll <- log(-log(1 - gbsg5$pred))
 
 
 # Estimate actual risk
-vcal <- cph(Surv(ryear, rfs) ~ rcs(pred.cll, 3),
-            x = T,
-            y = T,
-            surv = T,
-            data = gbsg5
+vcal <- rms::cph(Surv(ryear, rfs) ~ rcs(pred.cll, 3),
+                 x = T,
+                 y = T,
+                 surv = T,
+                 data = gbsg5
 ) 
 
 dat_cal <- cbind.data.frame(
-  "obs" = 1 - survest(vcal, 
-                      times = 5, 
-                      newdata = gbsg5)$surv,
+  "obs" = 1 - rms::survest(vcal,
+                           times = 5, 
+                           newdata = gbsg5)$surv,
   
-  "lower" = 1 - survest(vcal, 
-                        times = 5, 
-                        newdata = gbsg5)$upper,
+  "lower" = 1 - rms::survest(vcal, 
+                            times = 5, 
+                            newdata = gbsg5)$upper,
   
-  "upper" = 1 - survest(vcal, 
-                        times = 5, 
-                        newdata = gbsg5)$lower,
+  "upper" = 1 - rms::survest(vcal, 
+                             times = 5, 
+                             newdata = gbsg5)$lower,
   "pred" = gbsg5$pred
 )
 
@@ -597,15 +597,15 @@ calslope_summary
 
 # Overall performance ---------------------------------------
 score_gbsg5 <-
-  Score(list("cox" = efit1_pgr),
-        formula = Surv(ryear, rfs) ~ 1, 
-        data = gbsg5, 
-        conf.int = TRUE, 
-        times = 4.99,
-        cens.model = "km", 
-        metrics = "brier",
-        summary = "ipa"
-  )
+  riskRegression::Score(list("cox" = efit1_pgr),
+                        formula = Surv(ryear, rfs) ~ 1, 
+                        data = gbsg5, 
+                        conf.int = TRUE, 
+                        times = 4.99,
+                        cens.model = "km", 
+                        metrics = "brier",
+                        summary = "ipa"
+)
 
 score_gbsg5$Brier$score 
 
