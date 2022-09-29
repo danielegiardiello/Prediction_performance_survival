@@ -192,9 +192,9 @@ obj <- summary(survfit(
 obs_t <- 1 - obj$surv
 
 # Predicted risk 
-gbsg5$pred <- 1 - predictSurvProb(efit1, 
-                                  newdata = gbsg5,
-                                  times = t_horizon)
+gbsg5$pred <- predictRisk(efit1, 
+                          newdata = gbsg5,
+                          times = t_horizon)
 # Expected
 exp_t <- mean(gbsg5$pred)
 
@@ -240,7 +240,7 @@ dat_cal <- cbind.data.frame(
 
 dat_cal <- dat_cal[order(dat_cal$pred), ]
 
-win.graph()
+dev.new()
 par(xaxs = "i", yaxs = "i", las = 1)
 plot(
   dat_cal$pred, 
@@ -364,7 +364,7 @@ df_nb[df_nb$threshold == 0.23,]
 
 # Decision curves plot
 # Make basic decision curve plot
-win.graph()
+dev.new()
 par(
   xaxs = "i", 
   yaxs = "i", 
