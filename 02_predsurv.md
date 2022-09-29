@@ -2,30 +2,44 @@ Performance assessment of survival prediction models - only validation
 individual data available
 ================
 
--   [Goals](#goals)
--   [Install/load packages and import
-    data](#installload-packages-and-import-data)
-    -   [Data preparation](#data-preparation)
--   [Goal 1: Assessing performance of a developed survival model in a
-    new
-    data](#goal-1-assessing-performance-of-a-developed-survival-model-in-a-new-data)
-    -   [1.1 Calculate the absolute risk prediction at 5 years in the
-        validation
-        data](#11-calculate-the-absolute-risk-prediction-at-5-years-in-the-validation-data)
-    -   [1.2 Histograms of predictions with and without the additional
-        marker](#12-histograms-of-predictions-with-and-without-the-additional-marker)
-    -   [1.3 Discrimination measures](#13-discrimination-measures)
-    -   [1.4 Calibration](#14-calibration)
-        -   [1.4.1 Mean calibration - fixed time
-            point](#141-mean-calibration---fixed-time-point)
-        -   [1.4.2 Weak calibration - calibration slope for fixed time
-            point](#142-weak-calibration---calibration-slope-for-fixed-time-point)
-        -   [1.4.3 Moderate calibration - fixed time
-            point](#143-moderate-calibration---fixed-time-point)
-    -   [1.5 Overall performance
-        measures](#15-overall-performance-measures)
--   [Goal 2. Clinical utility](#goal-2-clinical-utility)
--   [Reproducibility ticket](#reproducibility-ticket)
+-   <a href="#goals" id="toc-goals">Goals</a>
+-   <a href="#installload-packages-and-import-data"
+    id="toc-installload-packages-and-import-data">Install/load packages and
+    import data</a>
+    -   <a href="#data-preparation" id="toc-data-preparation">Data
+        preparation</a>
+-   <a
+    href="#goal-1-assessing-performance-of-a-developed-survival-model-in-a-new-data"
+    id="toc-goal-1-assessing-performance-of-a-developed-survival-model-in-a-new-data">Goal
+    1: Assessing performance of a developed survival model in a new data</a>
+    -   <a
+        href="#11-calculate-the-absolute-risk-prediction-at-5-years-in-the-validation-data"
+        id="toc-11-calculate-the-absolute-risk-prediction-at-5-years-in-the-validation-data">1.1
+        Calculate the absolute risk prediction at 5 years in the validation
+        data</a>
+    -   <a
+        href="#12-histograms-of-predictions-with-and-without-the-additional-marker"
+        id="toc-12-histograms-of-predictions-with-and-without-the-additional-marker">1.2
+        Histograms of predictions with and without the additional marker</a>
+    -   <a href="#13-discrimination-measures"
+        id="toc-13-discrimination-measures">1.3 Discrimination measures</a>
+    -   <a href="#14-calibration" id="toc-14-calibration">1.4 Calibration</a>
+        -   <a href="#141-mean-calibration---fixed-time-point"
+            id="toc-141-mean-calibration---fixed-time-point">1.4.1 Mean calibration
+            - fixed time point</a>
+        -   <a href="#142-weak-calibration---calibration-slope-for-fixed-time-point"
+            id="toc-142-weak-calibration---calibration-slope-for-fixed-time-point">1.4.2
+            Weak calibration - calibration slope for fixed time point</a>
+        -   <a href="#143-moderate-calibration---fixed-time-point"
+            id="toc-143-moderate-calibration---fixed-time-point">1.4.3 Moderate
+            calibration - fixed time point</a>
+    -   <a href="#15-overall-performance-measures"
+        id="toc-15-overall-performance-measures">1.5 Overall performance
+        measures</a>
+-   <a href="#goal-2-clinical-utility" id="toc-goal-2-clinical-utility">Goal
+    2. Clinical utility</a>
+-   <a href="#reproducibility-ticket"
+    id="toc-reproducibility-ticket">Reproducibility ticket</a>
 
 ## Goals
 
@@ -106,13 +120,13 @@ levels(gbsg$grade3) <- c("1-2", "1-2", "3")
 
 # Restricted cubic spline 
 # Continuous nodes
-rcs3_nodes <- rcspline.eval(gbsg$nodes2, knots = c(0, 1, 9))
+rcs3_nodes <- Hmisc::rcspline.eval(gbsg$nodes2, knots = c(0, 1, 9))
 attr(rcs3_nodes, "dim") <- NULL
 attr(rcs3_nodes, "knots") <- NULL
 gbsg$nodes3 <- rcs3_nodes
 
 # PGR
-rcs3_pgr <- rcspline.eval(gbsg$pgr2, knots = c(0, 41, 486))
+rcs3_pgr <- Hmisc::rcspline.eval(gbsg$pgr2, knots = c(0, 41, 486))
 attr(rcs3_pgr, "dim") <- NULL
 attr(rcs3_pgr, "knots") <- NULL
 gbsg$pgr3 <- rcs3_pgr
@@ -244,11 +258,11 @@ xlab <- c(paste0('Basic model\nvariance = ',
                  round(var(gbsg5$pred5), 3)),
           paste0('Extended model with PGR\nvariance = ',
                 round(var(gbsg5$pred5_pgr), 3)))
-histbackback(gbsg5$pred5, 
-             gbsg5$pred5_pgr, 
-             brks = seq(0.01, 0.99, by = 0.02), 
-             xlab = xlab, 
-             ylab = 'Predicted probability')
+Hmisc::histbackback(gbsg5$pred5,
+                    gbsg5$pred5_pgr, 
+                    brks = seq(0.01, 0.99, by = 0.02), 
+                    xlab = xlab, 
+                    ylab = 'Predicted probability')
 title("Validation data")
 ```
 
@@ -284,9 +298,9 @@ can be assessed over several different time intervals:
 
 There is some uncertainty in the literature about the original Harrell
 formulation versus Uno’s suggestion to re-weight the time scale by the
-factor 1/*G*<sup>2</sup>(*t*) where *G* is the censoring distribution.
-There is more detailed information in the concordance vignette found in
-the survival package.
+factor $1/G^2(t)$ where $G$ is the censoring distribution. There is more
+detailed information in the concordance vignette found in the survival
+package.
 
 For all three measures, values close to 1 indicate good discrimination
 ability, while values close to 0.5 indicated poor discrimination
@@ -441,7 +455,7 @@ pacman::p_load(survival,
 
 # External validation
 Uno_gbsg5 <-
-  timeROC(
+  timeROC::timeROC(
     T = gbsg5$ryear, delta = gbsg5$rfs,
     marker = gbsg5$PI,
     cause = 1, weighting = "marginal", times = 4.99,
@@ -450,7 +464,7 @@ Uno_gbsg5 <-
 
 # External validation with pgr
 Uno_gbsg5_pgr <-
-  timeROC(
+  timeROC::timeROC(
     T = gbsg5$ryear, delta = gbsg5$rfs,
     marker = gbsg5$PI_pgr,
     cause = 1, weighting = "marginal", times = 4.99,
@@ -847,49 +861,49 @@ gbsg5$pred.cll_pgr <- log(-log(1 - gbsg5$pred5_pgr))
 
 
 # Estimate actual risk - basic model
-vcal <- cph(Surv(ryear, rfs) ~ rcs(pred.cll, 3),
-            x = T,
-            y = T,
-            surv = T,
-            data = gbsg5
+vcal <- rms::cph(Surv(ryear, rfs) ~ rcs(pred.cll, 3),
+                 x = T,
+                 y = T,
+                 surv = T,
+                 data = gbsg5
 ) 
 
 # Estimate actual risk - extended model
-vcal_pgr <- cph(Surv(ryear, rfs) ~ rcs(pred.cll_pgr, 3),
-            x = T,
-            y = T,
-            surv = T,
-            data = gbsg5
+vcal_pgr <- rms::cph(Surv(ryear, rfs) ~ rcs(pred.cll_pgr, 3),
+                     x = T,
+                     y = T,
+                     surv = T,
+                     data = gbsg5
 ) 
 
 
 dat_cal <- cbind.data.frame(
-  "obs" = 1 - survest(vcal, 
-                      times = 5, 
-                      newdata = gbsg5)$surv,
+  "obs" = 1 - rms::survest(vcal,
+                           times = 5,
+                           newdata = gbsg5)$surv,
   
-  "lower" = 1 - survest(vcal, 
-                        times = 5, 
-                        newdata = gbsg5)$upper,
+  "lower" = 1 - rms::survest(vcal,
+                             times = 5,
+                             newdata = gbsg5)$upper,
   
-  "upper" = 1 - survest(vcal, 
-                        times = 5, 
-                        newdata = gbsg5)$lower,
+  "upper" = 1 - rms::survest(vcal,
+                             times = 5,
+                             newdata = gbsg5)$lower,
   
   "pred" = as.vector(gbsg5$pred5),
   
   
-   "obs_pgr" = 1 - survest(vcal_pgr, 
-                      times = 5, 
-                      newdata = gbsg5)$surv,
+   "obs_pgr" = 1 - rms::survest(vcal_pgr,
+                                times = 5,
+                                newdata = gbsg5)$surv,
   
-  "lower_pgr" = 1 - survest(vcal_pgr, 
-                        times = 5, 
-                        newdata = gbsg5)$upper,
+  "lower_pgr" = 1 - rms::survest(vcal_pgr,
+                                 times = 5,
+                                 newdata = gbsg5)$upper,
   
-  "upper_pgr" = 1 - survest(vcal_pgr, 
-                        times = 5, 
-                        newdata = gbsg5)$lower,
+  "upper_pgr" = 1 - rms::survest(vcal_pgr,
+                                 times = 5,
+                                 newdata = gbsg5)$lower,
   
   "pred_pgr" = as.vector(gbsg5$pred5_pgr)
   
@@ -1069,25 +1083,25 @@ pacman::p_load(riskRegression)
 
 # For basic model
 score_gbsg5 <-
-  Score(list("Validation" = gbsg5$pred5),
-        formula = Surv(ryear, rfs) ~ 1, 
-        data = gbsg5, 
-        conf.int = TRUE, 
-        times = 4.99,
-        cens.model = "km", 
-        metrics = "brier",
-        summary = "ipa")
+  riskRegression::Score(list("Validation" = gbsg5$pred5),
+                        formula = Surv(ryear, rfs) ~ 1, 
+                        data = gbsg5, 
+                        conf.int = TRUE, 
+                        times = 4.99,
+                        cens.model = "km", 
+                        metrics = "brier",
+                        summary = "ipa")
 
 # For extended code including PGR
 score_gbsg5_pgr <-
-  Score(list("Validation with PGR" = gbsg5$pred5_pgr),
-        formula = Surv(ryear, rfs) ~ 1, 
-        data = gbsg5, 
-        conf.int = TRUE, 
-        times = 4.99,
-        cens.model = "km", 
-        metrics = "brier",
-        summary = "ipa")
+  riskRegression::Score(list("Validation with PGR" = gbsg5$pred5_pgr),
+                        formula = Surv(ryear, rfs) ~ 1, 
+                        data = gbsg5, 
+                        conf.int = TRUE, 
+                        times = 4.99,
+                        cens.model = "km", 
+                        metrics = "brier",
+                        summary = "ipa")
 
 # Extra: bootstrap confidence intervals for IPA ------
 B <- 100
@@ -1101,7 +1115,7 @@ ipa_boot_pgr <- c()
 for (j in 1:B) {
   data_boot[[j]] <- gbsg5[sample(nrow(gbsg5), replace = TRUE), ]
   
-  b_score[[j]] <- Score(
+  b_score[[j]] <- riskRegression::Score(
     list("Validation" =  data_boot[[j]]$pred5),
     formula = Surv(ryear, rfs) ~ 1,
     cens.model = "km", 
@@ -1112,7 +1126,7 @@ for (j in 1:B) {
     summary = c("ipa")
   )
 
-   b_score_pgr[[j]] <- Score(
+   b_score_pgr[[j]] <- riskRegression::Score(
     list("Validation with PGR" =  data_boot[[j]]$pred5_pgr),
     formula = Surv(ryear, rfs) ~ 1,
     cens.model = "km", 
@@ -1208,10 +1222,10 @@ Scaled Brier
 0.10
 </td>
 <td style="text-align:right;">
-0.03
+0.04
 </td>
 <td style="text-align:right;">
-0.15
+0.16
 </td>
 <td style="text-align:right;">
 0.13
@@ -1220,7 +1234,7 @@ Scaled Brier
 0.07
 </td>
 <td style="text-align:right;">
-0.18
+0.19
 </td>
 </tr>
 </tbody>
@@ -1391,139 +1405,132 @@ sessioninfo::session_info()
     ##  collate  English_United States.1252
     ##  ctype    English_United States.1252
     ##  tz       Europe/Berlin
-    ##  date     2022-08-05
-    ##  pandoc   2.17.1.1 @ C:/Program Files/RStudio/bin/quarto/bin/ (via rmarkdown)
+    ##  date     2022-09-29
+    ##  pandoc   2.18 @ C:/Program Files/RStudio/bin/quarto/bin/tools/ (via rmarkdown)
     ## 
     ## - Packages -------------------------------------------------------------------
     ##  package        * version    date (UTC) lib source
     ##  assertthat       0.2.1      2019-03-21 [1] CRAN (R 4.1.2)
-    ##  backports        1.3.0      2021-10-27 [1] CRAN (R 4.1.1)
+    ##  backports        1.4.1      2021-12-13 [1] CRAN (R 4.1.2)
     ##  base64enc        0.1-3      2015-07-28 [1] CRAN (R 4.1.1)
-    ##  broom            0.7.10     2021-10-31 [1] CRAN (R 4.1.2)
-    ##  caret            6.0-90     2021-10-09 [1] CRAN (R 4.1.2)
+    ##  broom            1.0.0      2022-07-01 [1] CRAN (R 4.1.3)
     ##  cellranger       1.1.0      2016-07-27 [1] CRAN (R 4.1.2)
-    ##  checkmate        2.0.0      2020-02-06 [1] CRAN (R 4.1.2)
-    ##  class            7.3-19     2021-05-03 [2] CRAN (R 4.1.2)
-    ##  cli              3.1.0      2021-10-27 [1] CRAN (R 4.1.2)
+    ##  checkmate        2.1.0      2022-04-21 [1] CRAN (R 4.1.3)
+    ##  cli              3.3.0      2022-04-25 [1] CRAN (R 4.1.3)
     ##  cluster          2.1.2      2021-04-17 [2] CRAN (R 4.1.2)
-    ##  cmprsk           2.2-10     2020-06-09 [1] CRAN (R 4.1.2)
+    ##  cmprsk           2.2-11     2022-01-06 [1] CRAN (R 4.1.3)
     ##  codetools        0.2-18     2020-11-04 [2] CRAN (R 4.1.2)
-    ##  colorspace       2.0-2      2021-06-24 [1] CRAN (R 4.1.2)
-    ##  conquer          1.2.1      2021-11-01 [1] CRAN (R 4.1.2)
-    ##  crayon           1.4.2      2021-10-29 [1] CRAN (R 4.1.2)
+    ##  colorspace       2.0-3      2022-02-21 [1] CRAN (R 4.1.3)
+    ##  crayon           1.5.1      2022-03-26 [1] CRAN (R 4.1.3)
     ##  data.table       1.14.2     2021-09-27 [1] CRAN (R 4.1.2)
-    ##  DBI              1.1.1      2021-01-15 [1] CRAN (R 4.1.2)
-    ##  dbplyr           2.1.1      2021-04-06 [1] CRAN (R 4.1.2)
+    ##  DBI              1.1.3      2022-06-18 [1] CRAN (R 4.1.3)
+    ##  dbplyr           2.2.1      2022-06-27 [1] CRAN (R 4.1.3)
+    ##  deldir           1.0-6      2021-10-23 [1] CRAN (R 4.1.1)
     ##  digest           0.6.29     2021-12-01 [1] CRAN (R 4.1.2)
-    ##  dplyr          * 1.0.7      2021-06-18 [1] CRAN (R 4.1.2)
+    ##  dplyr          * 1.0.9      2022-04-28 [1] CRAN (R 4.1.3)
     ##  ellipsis         0.3.2      2021-04-29 [1] CRAN (R 4.1.2)
-    ##  evaluate         0.14       2019-05-28 [1] CRAN (R 4.1.2)
-    ##  fansi            0.5.0      2021-05-25 [1] CRAN (R 4.1.2)
+    ##  evaluate         0.16       2022-08-09 [1] CRAN (R 4.1.3)
+    ##  fansi            1.0.3      2022-03-24 [1] CRAN (R 4.1.3)
     ##  fastmap          1.1.0      2021-01-25 [1] CRAN (R 4.1.2)
-    ##  forcats        * 0.5.1      2021-01-27 [1] CRAN (R 4.1.2)
-    ##  foreach          1.5.1      2020-10-15 [1] CRAN (R 4.1.2)
+    ##  forcats        * 0.5.2      2022-08-19 [1] CRAN (R 4.1.3)
+    ##  foreach          1.5.2      2022-02-02 [1] CRAN (R 4.1.3)
     ##  foreign          0.8-81     2020-12-22 [2] CRAN (R 4.1.2)
     ##  Formula        * 1.2-4      2020-10-16 [1] CRAN (R 4.1.1)
-    ##  fs               1.5.1      2021-11-30 [1] CRAN (R 4.1.2)
-    ##  future           1.23.0     2021-10-31 [1] CRAN (R 4.1.2)
-    ##  future.apply     1.8.1      2021-08-10 [1] CRAN (R 4.1.2)
-    ##  generics         0.1.1      2021-10-25 [1] CRAN (R 4.1.2)
-    ##  ggplot2        * 3.3.5      2021-06-25 [1] CRAN (R 4.1.2)
-    ##  globals          0.14.0     2020-11-22 [1] CRAN (R 4.1.1)
-    ##  glue             1.5.1      2021-11-30 [1] CRAN (R 4.1.2)
-    ##  gower            0.2.2      2020-06-23 [1] CRAN (R 4.1.1)
+    ##  fs               1.5.2      2021-12-08 [1] CRAN (R 4.1.3)
+    ##  future           1.27.0     2022-07-22 [1] CRAN (R 4.1.3)
+    ##  future.apply     1.9.0      2022-04-25 [1] CRAN (R 4.1.3)
+    ##  gargle           1.2.0      2021-07-02 [1] CRAN (R 4.1.2)
+    ##  generics         0.1.3      2022-07-05 [1] CRAN (R 4.1.3)
+    ##  ggplot2        * 3.3.6      2022-05-03 [1] CRAN (R 4.1.3)
+    ##  globals          0.16.0     2022-08-05 [1] CRAN (R 4.1.3)
+    ##  glue             1.6.2      2022-02-24 [1] CRAN (R 4.1.3)
+    ##  googledrive      2.0.0      2021-07-08 [1] CRAN (R 4.1.2)
+    ##  googlesheets4    1.0.1      2022-08-13 [1] CRAN (R 4.1.3)
     ##  gridExtra        2.3        2017-09-09 [1] CRAN (R 4.1.2)
     ##  gtable           0.3.0      2019-03-25 [1] CRAN (R 4.1.2)
-    ##  haven            2.4.3      2021-08-04 [1] CRAN (R 4.1.2)
+    ##  haven            2.5.0      2022-04-15 [1] CRAN (R 4.1.3)
     ##  here             1.0.1      2020-12-13 [1] CRAN (R 4.1.2)
     ##  highr            0.9        2021-04-16 [1] CRAN (R 4.1.2)
-    ##  Hmisc          * 4.6-0      2021-10-07 [1] CRAN (R 4.1.2)
-    ##  hms              1.1.1      2021-09-26 [1] CRAN (R 4.1.2)
-    ##  htmlTable        2.3.0      2021-10-12 [1] CRAN (R 4.1.2)
-    ##  htmltools        0.5.2      2021-08-25 [1] CRAN (R 4.1.2)
+    ##  Hmisc          * 4.7-1      2022-08-15 [1] CRAN (R 4.1.3)
+    ##  hms              1.1.2      2022-08-19 [1] CRAN (R 4.1.3)
+    ##  htmlTable        2.4.1      2022-07-07 [1] CRAN (R 4.1.3)
+    ##  htmltools        0.5.3      2022-07-18 [1] CRAN (R 4.1.3)
     ##  htmlwidgets      1.5.4      2021-09-08 [1] CRAN (R 4.1.2)
-    ##  httr             1.4.2      2020-07-20 [1] CRAN (R 4.1.2)
-    ##  ipred            0.9-12     2021-09-15 [1] CRAN (R 4.1.2)
-    ##  iterators        1.0.13     2020-10-15 [1] CRAN (R 4.1.2)
+    ##  httr             1.4.4      2022-08-17 [1] CRAN (R 4.1.3)
+    ##  interp           1.1-3      2022-07-13 [1] CRAN (R 4.1.3)
+    ##  iterators        1.0.14     2022-02-05 [1] CRAN (R 4.1.3)
     ##  jpeg             0.1-9      2021-07-24 [1] CRAN (R 4.1.1)
-    ##  jsonlite         1.7.2      2020-12-09 [1] CRAN (R 4.1.2)
+    ##  jsonlite         1.8.0      2022-02-22 [1] CRAN (R 4.1.3)
     ##  kableExtra     * 1.3.4      2021-02-20 [1] CRAN (R 4.1.2)
-    ##  knitr          * 1.36       2021-09-29 [1] CRAN (R 4.1.2)
+    ##  knitr          * 1.39       2022-04-26 [1] CRAN (R 4.1.3)
     ##  lattice        * 0.20-45    2021-09-22 [2] CRAN (R 4.1.2)
-    ##  latticeExtra     0.6-29     2019-12-19 [1] CRAN (R 4.1.2)
+    ##  latticeExtra     0.6-30     2022-07-04 [1] CRAN (R 4.1.3)
     ##  lava             1.6.10     2021-09-02 [1] CRAN (R 4.1.2)
     ##  lifecycle        1.0.1      2021-09-24 [1] CRAN (R 4.1.2)
     ##  listenv          0.8.0      2019-12-05 [1] CRAN (R 4.1.2)
     ##  lubridate        1.8.0      2021-10-07 [1] CRAN (R 4.1.2)
-    ##  magrittr         2.0.1      2020-11-17 [1] CRAN (R 4.1.2)
+    ##  magrittr         2.0.3      2022-03-30 [1] CRAN (R 4.1.3)
     ##  MASS             7.3-54     2021-05-03 [2] CRAN (R 4.1.2)
     ##  Matrix           1.3-4      2021-06-01 [2] CRAN (R 4.1.2)
     ##  MatrixModels     0.5-0      2021-03-02 [1] CRAN (R 4.1.2)
-    ##  matrixStats      0.61.0     2021-09-17 [1] CRAN (R 4.1.2)
     ##  mets             1.2.9      2021-09-06 [1] CRAN (R 4.1.2)
-    ##  ModelMetrics     1.2.2.2    2020-03-17 [1] CRAN (R 4.1.2)
-    ##  modelr           0.1.8      2020-05-19 [1] CRAN (R 4.1.2)
-    ##  multcomp         1.4-17     2021-04-29 [1] CRAN (R 4.1.2)
+    ##  modelr           0.1.9      2022-08-19 [1] CRAN (R 4.1.3)
+    ##  multcomp         1.4-20     2022-08-07 [1] CRAN (R 4.1.3)
     ##  munsell          0.5.0      2018-06-12 [1] CRAN (R 4.1.2)
     ##  mvtnorm          1.1-3      2021-10-08 [1] CRAN (R 4.1.1)
     ##  nlme             3.1-153    2021-09-07 [2] CRAN (R 4.1.2)
     ##  nnet             7.3-16     2021-05-03 [2] CRAN (R 4.1.2)
     ##  numDeriv         2016.8-1.1 2019-06-06 [1] CRAN (R 4.1.1)
     ##  pacman         * 0.5.1      2019-03-11 [1] CRAN (R 4.1.2)
-    ##  parallelly       1.29.0     2021-11-21 [1] CRAN (R 4.1.2)
-    ##  pec            * 2021.10.11 2021-10-11 [1] CRAN (R 4.1.2)
-    ##  pillar           1.6.4      2021-10-18 [1] CRAN (R 4.1.2)
+    ##  parallelly       1.32.1     2022-07-21 [1] CRAN (R 4.1.3)
+    ##  pec            * 2022.05.04 2022-05-04 [1] CRAN (R 4.1.3)
+    ##  pillar           1.8.1      2022-08-19 [1] CRAN (R 4.1.3)
     ##  pkgconfig        2.0.3      2019-09-22 [1] CRAN (R 4.1.2)
-    ##  plyr             1.8.6      2020-03-03 [1] CRAN (R 4.1.2)
     ##  png              0.1-7      2013-12-03 [1] CRAN (R 4.1.1)
-    ##  polspline        1.1.19     2020-05-15 [1] CRAN (R 4.1.1)
-    ##  pROC             1.18.0     2021-09-03 [1] CRAN (R 4.1.2)
+    ##  polspline        1.1.20     2022-04-25 [1] CRAN (R 4.1.3)
     ##  prodlim        * 2019.11.13 2019-11-17 [1] CRAN (R 4.1.2)
     ##  purrr          * 0.3.4      2020-04-17 [1] CRAN (R 4.1.2)
-    ##  quantreg         5.86       2021-06-06 [1] CRAN (R 4.1.2)
+    ##  quantreg         5.94       2022-07-20 [1] CRAN (R 4.1.3)
     ##  R6               2.5.1      2021-08-19 [1] CRAN (R 4.1.2)
-    ##  RColorBrewer     1.1-2      2014-12-07 [1] CRAN (R 4.1.1)
-    ##  Rcpp             1.0.7      2021-07-07 [1] CRAN (R 4.1.2)
-    ##  readr          * 2.1.1      2021-11-30 [1] CRAN (R 4.1.2)
-    ##  readxl           1.3.1      2019-03-13 [1] CRAN (R 4.1.2)
-    ##  recipes          0.1.17     2021-09-27 [1] CRAN (R 4.1.2)
-    ##  reprex           2.0.1      2021-08-05 [1] CRAN (R 4.1.2)
-    ##  reshape2         1.4.4      2020-04-09 [1] CRAN (R 4.1.2)
-    ##  riskRegression * 2021.10.10 2021-10-11 [1] CRAN (R 4.1.2)
-    ##  rlang            0.4.12     2021-10-18 [1] CRAN (R 4.1.2)
-    ##  rmarkdown        2.11       2021-09-14 [1] CRAN (R 4.1.2)
-    ##  rms            * 6.2-0      2021-03-18 [1] CRAN (R 4.1.2)
+    ##  RColorBrewer     1.1-3      2022-04-03 [1] CRAN (R 4.1.3)
+    ##  Rcpp             1.0.9      2022-07-08 [1] CRAN (R 4.1.3)
+    ##  readr          * 2.1.2      2022-01-30 [1] CRAN (R 4.1.3)
+    ##  readxl           1.4.1      2022-08-17 [1] CRAN (R 4.1.3)
+    ##  reprex           2.0.2      2022-08-17 [1] CRAN (R 4.1.3)
+    ##  riskRegression * 2022.03.22 2022-03-23 [1] CRAN (R 4.1.3)
+    ##  rlang            1.0.4      2022-07-12 [1] CRAN (R 4.1.3)
+    ##  rmarkdown        2.15       2022-08-16 [1] CRAN (R 4.1.3)
+    ##  rms            * 6.3-0      2022-04-22 [1] CRAN (R 4.1.3)
     ##  rpart            4.1-15     2019-04-12 [2] CRAN (R 4.1.2)
-    ##  rprojroot        2.0.2      2020-11-15 [1] CRAN (R 4.1.2)
-    ##  rstudioapi       0.13       2020-11-12 [1] CRAN (R 4.1.2)
-    ##  rvest            1.0.2      2021-10-16 [1] CRAN (R 4.1.2)
-    ##  sandwich         3.0-1      2021-05-18 [1] CRAN (R 4.1.2)
-    ##  scales           1.1.1      2020-05-11 [1] CRAN (R 4.1.2)
+    ##  rprojroot        2.0.3      2022-04-02 [1] CRAN (R 4.1.3)
+    ##  rstudioapi       0.14       2022-08-22 [1] CRAN (R 4.1.2)
+    ##  rvest            1.0.3      2022-08-19 [1] CRAN (R 4.1.3)
+    ##  sandwich         3.0-2      2022-06-15 [1] CRAN (R 4.1.3)
+    ##  scales           1.2.1      2022-08-20 [1] CRAN (R 4.1.3)
     ##  sessioninfo      1.2.2      2021-12-06 [1] CRAN (R 4.1.2)
     ##  SparseM        * 1.81       2021-02-18 [1] CRAN (R 4.1.1)
     ##  stringi          1.7.6      2021-11-29 [1] CRAN (R 4.1.2)
-    ##  stringr        * 1.4.0      2019-02-10 [1] CRAN (R 4.1.2)
-    ##  survival       * 3.2-13     2021-08-24 [1] CRAN (R 4.1.2)
-    ##  svglite          2.0.0      2021-02-20 [1] CRAN (R 4.1.2)
-    ##  systemfonts      1.0.3      2021-10-13 [1] CRAN (R 4.1.2)
-    ##  TH.data          1.1-0      2021-09-27 [1] CRAN (R 4.1.2)
-    ##  tibble         * 3.1.6      2021-11-07 [1] CRAN (R 4.1.2)
-    ##  tidyr          * 1.1.4      2021-09-27 [1] CRAN (R 4.1.2)
-    ##  tidyselect       1.1.1      2021-04-30 [1] CRAN (R 4.1.2)
-    ##  tidyverse      * 1.3.1      2021-04-15 [1] CRAN (R 4.1.2)
-    ##  timeDate         3043.102   2018-02-21 [1] CRAN (R 4.1.1)
-    ##  timereg          2.0.1      2021-10-13 [1] CRAN (R 4.1.2)
+    ##  stringr        * 1.4.1      2022-08-20 [1] CRAN (R 4.1.3)
+    ##  survival       * 3.4-0      2022-08-09 [1] CRAN (R 4.1.3)
+    ##  svglite          2.1.0      2022-02-03 [1] CRAN (R 4.1.3)
+    ##  systemfonts      1.0.4      2022-02-11 [1] CRAN (R 4.1.3)
+    ##  TH.data          1.1-1      2022-04-26 [1] CRAN (R 4.1.3)
+    ##  tibble         * 3.1.8      2022-07-22 [1] CRAN (R 4.1.3)
+    ##  tidyr          * 1.2.0      2022-02-01 [1] CRAN (R 4.1.3)
+    ##  tidyselect       1.1.2      2022-02-21 [1] CRAN (R 4.1.3)
+    ##  tidyverse      * 1.3.2      2022-07-18 [1] CRAN (R 4.1.3)
+    ##  timereg          2.0.2      2022-04-11 [1] CRAN (R 4.1.3)
     ##  timeROC        * 0.4        2019-12-18 [1] CRAN (R 4.1.2)
-    ##  tzdb             0.2.0      2021-10-27 [1] CRAN (R 4.1.2)
+    ##  tzdb             0.3.0      2022-03-28 [1] CRAN (R 4.1.3)
     ##  utf8             1.2.2      2021-07-24 [1] CRAN (R 4.1.2)
-    ##  vctrs            0.3.8      2021-04-29 [1] CRAN (R 4.1.2)
-    ##  viridisLite      0.4.0      2021-04-13 [1] CRAN (R 4.1.2)
-    ##  webshot          0.5.2      2019-11-22 [1] CRAN (R 4.1.2)
-    ##  withr            2.4.3      2021-11-30 [1] CRAN (R 4.1.2)
-    ##  xfun             0.28       2021-11-04 [1] CRAN (R 4.1.2)
+    ##  vctrs            0.4.1      2022-04-13 [1] CRAN (R 4.1.3)
+    ##  viridisLite      0.4.1      2022-08-22 [1] CRAN (R 4.1.2)
+    ##  webshot          0.5.3      2022-04-14 [1] CRAN (R 4.1.3)
+    ##  withr            2.5.0      2022-03-03 [1] CRAN (R 4.1.3)
+    ##  xfun             0.32       2022-08-10 [1] CRAN (R 4.1.3)
     ##  xml2             1.3.3      2021-11-30 [1] CRAN (R 4.1.2)
-    ##  yaml             2.2.1      2020-02-01 [1] CRAN (R 4.1.1)
-    ##  zoo              1.8-9      2021-03-09 [1] CRAN (R 4.1.2)
+    ##  yaml             2.3.5      2022-02-21 [1] CRAN (R 4.1.3)
+    ##  zoo              1.8-10     2022-04-15 [1] CRAN (R 4.1.3)
     ## 
     ##  [1] C:/Users/dgiardiello/Documents/R/win-library/4.1
     ##  [2] C:/Program Files/R/R-4.1.2/library

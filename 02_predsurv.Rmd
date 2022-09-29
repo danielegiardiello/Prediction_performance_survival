@@ -75,13 +75,13 @@ levels(gbsg$grade3) <- c("1-2", "1-2", "3")
 
 # Restricted cubic spline 
 # Continuous nodes
-rcs3_nodes <- rcspline.eval(gbsg$nodes2, knots = c(0, 1, 9))
+rcs3_nodes <- Hmisc::rcspline.eval(gbsg$nodes2, knots = c(0, 1, 9))
 attr(rcs3_nodes, "dim") <- NULL
 attr(rcs3_nodes, "knots") <- NULL
 gbsg$nodes3 <- rcs3_nodes
 
 # PGR
-rcs3_pgr <- rcspline.eval(gbsg$pgr2, knots = c(0, 41, 486))
+rcs3_pgr <- Hmisc::rcspline.eval(gbsg$pgr2, knots = c(0, 41, 486))
 attr(rcs3_pgr, "dim") <- NULL
 attr(rcs3_pgr, "knots") <- NULL
 gbsg$pgr3 <- rcs3_pgr
@@ -184,11 +184,11 @@ xlab <- c(paste0('Basic model\nvariance = ',
                  round(var(gbsg5$pred5), 3)),
           paste0('Extended model with PGR\nvariance = ',
                 round(var(gbsg5$pred5_pgr), 3)))
-histbackback(gbsg5$pred5, 
-             gbsg5$pred5_pgr, 
-             brks = seq(0.01, 0.99, by = 0.02), 
-             xlab = xlab, 
-             ylab = 'Predicted probability')
+Hmisc::histbackback(gbsg5$pred5,
+                    gbsg5$pred5_pgr, 
+                    brks = seq(0.01, 0.99, by = 0.02), 
+                    xlab = xlab, 
+                    ylab = 'Predicted probability')
 title("Validation data")
 ```
 </details>
@@ -307,7 +307,7 @@ pacman::p_load(survival,
 
 # External validation
 Uno_gbsg5 <-
-  timeROC(
+  timeROC::timeROC(
     T = gbsg5$ryear, delta = gbsg5$rfs,
     marker = gbsg5$PI,
     cause = 1, weighting = "marginal", times = 4.99,
@@ -316,7 +316,7 @@ Uno_gbsg5 <-
 
 # External validation with pgr
 Uno_gbsg5_pgr <-
-  timeROC(
+  timeROC::timeROC(
     T = gbsg5$ryear, delta = gbsg5$rfs,
     marker = gbsg5$PI_pgr,
     cause = 1, weighting = "marginal", times = 4.99,
@@ -540,49 +540,49 @@ gbsg5$pred.cll_pgr <- log(-log(1 - gbsg5$pred5_pgr))
 
 
 # Estimate actual risk - basic model
-vcal <- cph(Surv(ryear, rfs) ~ rcs(pred.cll, 3),
-            x = T,
-            y = T,
-            surv = T,
-            data = gbsg5
+vcal <- rms::cph(Surv(ryear, rfs) ~ rcs(pred.cll, 3),
+                 x = T,
+                 y = T,
+                 surv = T,
+                 data = gbsg5
 ) 
 
 # Estimate actual risk - extended model
-vcal_pgr <- cph(Surv(ryear, rfs) ~ rcs(pred.cll_pgr, 3),
-            x = T,
-            y = T,
-            surv = T,
-            data = gbsg5
+vcal_pgr <- rms::cph(Surv(ryear, rfs) ~ rcs(pred.cll_pgr, 3),
+                     x = T,
+                     y = T,
+                     surv = T,
+                     data = gbsg5
 ) 
 
 
 dat_cal <- cbind.data.frame(
-  "obs" = 1 - survest(vcal, 
-                      times = 5, 
-                      newdata = gbsg5)$surv,
+  "obs" = 1 - rms::survest(vcal,
+                           times = 5,
+                           newdata = gbsg5)$surv,
   
-  "lower" = 1 - survest(vcal, 
-                        times = 5, 
-                        newdata = gbsg5)$upper,
+  "lower" = 1 - rms::survest(vcal,
+                             times = 5,
+                             newdata = gbsg5)$upper,
   
-  "upper" = 1 - survest(vcal, 
-                        times = 5, 
-                        newdata = gbsg5)$lower,
+  "upper" = 1 - rms::survest(vcal,
+                             times = 5,
+                             newdata = gbsg5)$lower,
   
   "pred" = as.vector(gbsg5$pred5),
   
   
-   "obs_pgr" = 1 - survest(vcal_pgr, 
-                      times = 5, 
-                      newdata = gbsg5)$surv,
+   "obs_pgr" = 1 - rms::survest(vcal_pgr,
+                                times = 5,
+                                newdata = gbsg5)$surv,
   
-  "lower_pgr" = 1 - survest(vcal_pgr, 
-                        times = 5, 
-                        newdata = gbsg5)$upper,
+  "lower_pgr" = 1 - rms::survest(vcal_pgr,
+                                 times = 5,
+                                 newdata = gbsg5)$upper,
   
-  "upper_pgr" = 1 - survest(vcal_pgr, 
-                        times = 5, 
-                        newdata = gbsg5)$lower,
+  "upper_pgr" = 1 - rms::survest(vcal_pgr,
+                                 times = 5,
+                                 newdata = gbsg5)$lower,
   
   "pred_pgr" = as.vector(gbsg5$pred5_pgr)
   
@@ -727,25 +727,25 @@ pacman::p_load(riskRegression)
 
 # For basic model
 score_gbsg5 <-
-  Score(list("Validation" = gbsg5$pred5),
-        formula = Surv(ryear, rfs) ~ 1, 
-        data = gbsg5, 
-        conf.int = TRUE, 
-        times = 4.99,
-        cens.model = "km", 
-        metrics = "brier",
-        summary = "ipa")
+  riskRegression::Score(list("Validation" = gbsg5$pred5),
+                        formula = Surv(ryear, rfs) ~ 1, 
+                        data = gbsg5, 
+                        conf.int = TRUE, 
+                        times = 4.99,
+                        cens.model = "km", 
+                        metrics = "brier",
+                        summary = "ipa")
 
 # For extended code including PGR
 score_gbsg5_pgr <-
-  Score(list("Validation with PGR" = gbsg5$pred5_pgr),
-        formula = Surv(ryear, rfs) ~ 1, 
-        data = gbsg5, 
-        conf.int = TRUE, 
-        times = 4.99,
-        cens.model = "km", 
-        metrics = "brier",
-        summary = "ipa")
+  riskRegression::Score(list("Validation with PGR" = gbsg5$pred5_pgr),
+                        formula = Surv(ryear, rfs) ~ 1, 
+                        data = gbsg5, 
+                        conf.int = TRUE, 
+                        times = 4.99,
+                        cens.model = "km", 
+                        metrics = "brier",
+                        summary = "ipa")
 
 # Extra: bootstrap confidence intervals for IPA ------
 B <- 100
@@ -759,7 +759,7 @@ ipa_boot_pgr <- c()
 for (j in 1:B) {
   data_boot[[j]] <- gbsg5[sample(nrow(gbsg5), replace = TRUE), ]
   
-  b_score[[j]] <- Score(
+  b_score[[j]] <- riskRegression::Score(
     list("Validation" =  data_boot[[j]]$pred5),
     formula = Surv(ryear, rfs) ~ 1,
     cens.model = "km", 
@@ -770,7 +770,7 @@ for (j in 1:B) {
     summary = c("ipa")
   )
 
-   b_score_pgr[[j]] <- Score(
+   b_score_pgr[[j]] <- riskRegression::Score(
     list("Validation with PGR" =  data_boot[[j]]$pred5_pgr),
     formula = Surv(ryear, rfs) ~ 1,
     cens.model = "km", 
