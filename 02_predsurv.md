@@ -24,9 +24,10 @@ individual data available
     -   <a href="#13-discrimination-measures"
         id="toc-13-discrimination-measures">1.3 Discrimination measures</a>
     -   <a href="#14-calibration" id="toc-14-calibration">1.4 Calibration</a>
-        -   <a href="#141-mean-calibration---fixed-time-point"
-            id="toc-141-mean-calibration---fixed-time-point">1.4.1 Mean calibration
-            - fixed time point</a>
+        -   <a
+            href="#141-mean-calibration---observedexpected-ratio-for-fixed-time-point"
+            id="toc-141-mean-calibration---observedexpected-ratio-for-fixed-time-point">1.4.1
+            Mean calibration - observed/expected ratio for fixed time point</a>
         -   <a href="#142-weak-calibration---calibration-slope-for-fixed-time-point"
             id="toc-142-weak-calibration---calibration-slope-for-fixed-time-point">1.4.2
             Weak calibration - calibration slope for fixed time point</a>
@@ -582,7 +583,7 @@ at time *t* (5 years) and coefficients of the model.
 
 More detailed explanations are available in the paper.
 
-#### 1.4.1 Mean calibration - fixed time point
+#### 1.4.1 Mean calibration - observed/expected ratio for fixed time point
 
 The mean calibration at fixed time point (e.g. at 5 years) can be
 estimated using the Observed versus Expected ratio. The observed is

@@ -379,7 +379,7 @@ In the scenario we consider here, we can evaluate calibration only at fixed time
 
 More detailed explanations are available in the paper.
 
-#### 1.4.1  Mean calibration - fixed time point
+#### 1.4.1  Mean calibration - observed/expected ratio for fixed time point
 The mean calibration at fixed time point (e.g. at 5 years) can be estimated using the Observed versus Expected ratio. The observed is estimated using the complementary of the Kaplan-Meier curve at the fixed time point. The expected is estimated using the average predicted risk of the event at the fixed time point.
 
 <details>
