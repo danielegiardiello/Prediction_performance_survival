@@ -113,6 +113,7 @@ efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
 efit1_pgr  <- update(efit1, . ~ . + pgr2 + pgr3)
 
 
+### Validation of the original model -----------------------
 # Discrimination ---------------------------------------
 
 # Add linear predictor in the validation set
@@ -409,7 +410,7 @@ legend("topright",
 title("Validation data")
 
 
-### Validation of the extended model ---------------------------
+### Validation of the extended model including PGR ---------------------------
 # Discrimination ---------------------------------------
 
 # Add linear predictor in the validation set
