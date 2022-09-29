@@ -78,7 +78,6 @@ library(pacman)
 pacman::p_load(
   survival,
   rms,
-  pec,
   riskRegression,
   timeROC
 )
@@ -150,15 +149,15 @@ levels(rotterdam$grade3) <- c("1-2", "3")
 # Save in the data the restricted cubic spline term using Hmisc::rcspline.eval() package
 
 # Continuous nodes variable
-rcs3_nodes <- rcspline.eval(rotterdam$nodes2, 
-                            knots = c(0, 1, 9))
+rcs3_nodes <- Hmisc::rcspline.eval(rotterdam$nodes2,
+                                   knots = c(0, 1, 9))
 attr(rcs3_nodes, "dim") <- NULL
 attr(rcs3_nodes, "knots") <- NULL
 rotterdam$nodes3 <- rcs3_nodes
 
 # PGR
-rcs3_pgr <- rcspline.eval(rotterdam$pgr2, 
-                          knots = c(0, 41, 486)) # using knots of the original variable (not winsorized)
+rcs3_pgr <- Hmisc::rcspline.eval(rotterdam$pgr2,
+                                 knots = c(0, 41, 486)) # using knots of the original variable (not winsorized)
 attr(rcs3_pgr, "dim") <- NULL
 attr(rcs3_pgr, "knots") <- NULL
 rotterdam$pgr3 <- rcs3_pgr
@@ -179,13 +178,13 @@ levels(gbsg$grade3) <- c("1-2", "1-2", "3")
 
 # Restricted cubic spline 
 # Continuous nodes
-rcs3_nodes <- rcspline.eval(gbsg$nodes2, knots = c(0, 1, 9))
+rcs3_nodes <- Hmisc::rcspline.eval(gbsg$nodes2, knots = c(0, 1, 9))
 attr(rcs3_nodes, "dim") <- NULL
 attr(rcs3_nodes, "knots") <- NULL
 gbsg$nodes3 <- rcs3_nodes
 
 # PGR
-rcs3_pgr <- rcspline.eval(gbsg$pgr2, knots = c(0, 41, 486))
+rcs3_pgr <- Hmisc::rcspline.eval(gbsg$pgr2, knots = c(0, 41, 486))
 attr(rcs3_pgr, "dim") <- NULL
 attr(rcs3_pgr, "knots") <- NULL
 gbsg$pgr3 <- rcs3_pgr
@@ -236,7 +235,7 @@ Click to expand code
 if (!require("pacman")) install.packages("pacman")
 pacman::p_load(survival,
               Hmisc,
-              pec)
+              riskRegression)
 
 # Fit the model without PGR
 efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
@@ -354,7 +353,7 @@ if (!require("pacman")) install.packages("pacman")
 library(pacman)
 pacman::p_load(survival,
                Hmisc,
-               pec,
+               riskRegression,
                timeROC)
 
 # Fit the model without PGR
@@ -403,7 +402,7 @@ Click to expand code
 
 # External validation
 Uno_gbsg5 <-
-  timeROC(
+  timeROC::timeROC(
     T = gbsg5$ryear, 
     delta = gbsg5$rfs,
     marker = gbsg5$lp,
@@ -486,9 +485,9 @@ obj <- summary(survfit(
 obs_t <- 1 - obj$surv
 
 # Predicted risk 
-gbsg5$pred <-predictRisk(efit1, 
-                         newdata = gbsg5,
-                         times = t_horizon)
+gbsg5$pred <- riskRegression::predictRisk(efit1,
+                                          newdata = gbsg5,
+                                          times = t_horizon)
 # Expected
 exp_t <- mean(gbsg5$pred)
 
@@ -602,7 +601,7 @@ efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
 # The model with additional PGR marker
 efit1_pgr  <- update(efit1, . ~ . + pgr2 + pgr3)
 
-gbsg5$pred <-predictRisk(efit1, 
+gbsg5$pred <- riskRegression::predictRisk(efit1, 
                          newdata = gbsg5, 
                          times = 5)
 
@@ -610,25 +609,25 @@ gbsg5$pred.cll <- log(-log(1 - gbsg5$pred))
 
 
 # Estimate actual risk
-vcal <- cph(Surv(ryear, rfs) ~ rcs(pred.cll, 3),
-            x = T,
-            y = T,
-            surv = T,
-            data = gbsg5
+vcal <- rms::cph(Surv(ryear, rfs) ~ rcs(pred.cll, 3),
+                 x = T,
+                 y = T,
+                 surv = T,
+                 data = gbsg5
 ) 
 
 dat_cal <- cbind.data.frame(
-  "obs" = 1 - survest(vcal, 
-                      times = 5, 
-                      newdata = gbsg5)$surv,
+  "obs" = 1 - rms::survest(vcal,
+                           times = 5,
+                           newdata = gbsg5)$surv,
   
-  "lower" = 1 - survest(vcal, 
-                        times = 5, 
-                        newdata = gbsg5)$upper,
+  "lower" = 1 - rms::survest(vcal,
+                             times = 5,
+                             newdata = gbsg5)$upper,
   
-  "upper" = 1 - survest(vcal, 
-                        times = 5, 
-                        newdata = gbsg5)$lower,
+  "upper" = 1 - rms::survest(vcal,
+                             times = 5,
+                             newdata = gbsg5)$lower,
   "pred" = gbsg5$pred
 )
 
@@ -713,7 +712,7 @@ if (!require("pacman")) install.packages("pacman")
 library(pacman)
 pacman::p_load(survival,
                Hmisc,
-               pec)
+               riskRegression)
 
 # Fit the model without PGR
 efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
@@ -726,14 +725,14 @@ efit1_pgr  <- update(efit1, . ~ . + pgr2 + pgr3)
 
 # Brier Score and IPA in the validation set (model without PGR)
 score_gbsg5 <-
-  Score(list("cox_validation" = efit1),
-    formula = Surv(ryear, rfs) ~ 1, 
-    data = gbsg5, 
-    conf.int = TRUE, 
-    times = 4.99,
-    cens.model = "km", 
-    metrics = "brier",
-    summary = "ipa"
+  riskRegression::Score(list("cox_validation" = efit1),
+                        formula = Surv(ryear, rfs) ~ 1, 
+                        data = gbsg5, 
+                        conf.int = TRUE, 
+                        times = 4.99,
+                        cens.model = "km", 
+                        metrics = "brier",
+                        summary = "ipa"
 )
 
 # Extra: bootstrap confidence intervals for IPA ------
@@ -746,7 +745,7 @@ boots_ls <- lapply(seq_len(B), function(b) {
 
   
   # Get IPA on boot validation data
-  score_boot <- Score(
+  score_boot <- riskRegression::Score(
     list("cox_validation" = efit1),
     formula = Surv(ryear, rfs) ~ 1,
     cens.model = "km", 
@@ -770,7 +769,7 @@ df_boots <- do.call(rbind.data.frame, boots_ls)
 
     ##                                Estimate Lower .95  Upper .95
     ## Brier - Validation data            0.22       0.21      0.24
-    ## Scaled Brier - Validation data     0.10       0.04      0.17
+    ## Scaled Brier - Validation data     0.10       0.05      0.15
 
 Brier and scaled Brier score were 0.22 and 0.10, respectively.
 
@@ -977,39 +976,39 @@ sessionInfo()
     ## 
     ## other attached packages:
     ##  [1] here_1.0.1                timeROC_0.4              
-    ##  [3] riskRegression_2022.03.22 pec_2022.05.04           
-    ##  [5] prodlim_2019.11.13        rms_6.3-0                
-    ##  [7] SparseM_1.81              Hmisc_4.7-1              
-    ##  [9] ggplot2_3.3.6             Formula_1.2-4            
-    ## [11] lattice_0.20-45           survival_3.4-0           
-    ## [13] pacman_0.5.1             
+    ##  [3] riskRegression_2022.03.22 rms_6.3-0                
+    ##  [5] SparseM_1.81              Hmisc_4.7-1              
+    ##  [7] ggplot2_3.3.6             Formula_1.2-4            
+    ##  [9] lattice_0.20-45           survival_3.4-0           
+    ## [11] pacman_0.5.1             
     ## 
     ## loaded via a namespace (and not attached):
-    ##  [1] foreach_1.5.2       splines_4.1.2       assertthat_0.2.1   
-    ##  [4] highr_0.9           latticeExtra_0.6-30 yaml_2.3.5         
-    ##  [7] globals_0.16.0      numDeriv_2016.8-1.1 timereg_2.0.2      
-    ## [10] pillar_1.8.1        backports_1.4.1     quantreg_5.94      
-    ## [13] glue_1.6.2          digest_0.6.29       RColorBrewer_1.1-3 
-    ## [16] checkmate_2.1.0     colorspace_2.0-3    sandwich_3.0-2     
-    ## [19] cmprsk_2.2-11       htmltools_0.5.3     Matrix_1.3-4       
-    ## [22] pkgconfig_2.0.3     listenv_0.8.0       purrr_0.3.4        
-    ## [25] mvtnorm_1.1-3       scales_1.2.1        jpeg_0.1-9         
-    ## [28] lava_1.6.10         MatrixModels_0.5-0  htmlTable_2.4.1    
-    ## [31] tibble_3.1.8        mets_1.2.9          generics_0.1.3     
-    ## [34] TH.data_1.1-1       withr_2.5.0         nnet_7.3-16        
-    ## [37] cli_3.3.0           magrittr_2.0.3      deldir_1.0-6       
-    ## [40] polspline_1.1.20    evaluate_0.16       parallelly_1.32.1  
-    ## [43] fansi_1.0.3         future_1.27.0       nlme_3.1-153       
-    ## [46] MASS_7.3-54         foreign_0.8-81      tools_4.1.2        
-    ## [49] data.table_1.14.2   lifecycle_1.0.1     multcomp_1.4-20    
-    ## [52] stringr_1.4.1       interp_1.1-3        munsell_0.5.0      
-    ## [55] cluster_2.1.2       compiler_4.1.2      rlang_1.0.4        
-    ## [58] grid_4.1.2          iterators_1.0.14    rstudioapi_0.14    
-    ## [61] htmlwidgets_1.5.4   base64enc_0.1-3     rmarkdown_2.15     
-    ## [64] gtable_0.3.0        codetools_0.2-18    DBI_1.1.3          
-    ## [67] R6_2.5.1            gridExtra_2.3       zoo_1.8-10         
-    ## [70] knitr_1.39          dplyr_1.0.9         fastmap_1.1.0      
-    ## [73] future.apply_1.9.0  utf8_1.2.2          rprojroot_2.0.3    
-    ## [76] stringi_1.7.6       parallel_4.1.2      Rcpp_1.0.9         
-    ## [79] vctrs_0.4.1         rpart_4.1-15        png_0.1-7          
-    ## [82] tidyselect_1.1.2    xfun_0.32
+    ##  [1] splines_4.1.2       foreach_1.5.2       prodlim_2019.11.13 
+    ##  [4] assertthat_0.2.1    highr_0.9           latticeExtra_0.6-30
+    ##  [7] pec_2022.05.04      yaml_2.3.5          globals_0.16.0     
+    ## [10] numDeriv_2016.8-1.1 timereg_2.0.2       pillar_1.8.1       
+    ## [13] backports_1.4.1     quantreg_5.94       glue_1.6.2         
+    ## [16] digest_0.6.29       RColorBrewer_1.1-3  checkmate_2.1.0    
+    ## [19] colorspace_2.0-3    sandwich_3.0-2      cmprsk_2.2-11      
+    ## [22] htmltools_0.5.3     Matrix_1.3-4        pkgconfig_2.0.3    
+    ## [25] listenv_0.8.0       purrr_0.3.4         mvtnorm_1.1-3      
+    ## [28] scales_1.2.1        jpeg_0.1-9          lava_1.6.10        
+    ## [31] MatrixModels_0.5-0  htmlTable_2.4.1     tibble_3.1.8       
+    ## [34] mets_1.2.9          generics_0.1.3      TH.data_1.1-1      
+    ## [37] withr_2.5.0         nnet_7.3-16         cli_3.3.0          
+    ## [40] magrittr_2.0.3      deldir_1.0-6        polspline_1.1.20   
+    ## [43] evaluate_0.16       parallelly_1.32.1   future_1.27.0      
+    ## [46] fansi_1.0.3         nlme_3.1-153        MASS_7.3-54        
+    ## [49] foreign_0.8-81      tools_4.1.2         data.table_1.14.2  
+    ## [52] lifecycle_1.0.1     multcomp_1.4-20     stringr_1.4.1      
+    ## [55] interp_1.1-3        munsell_0.5.0       cluster_2.1.2      
+    ## [58] compiler_4.1.2      rlang_1.0.4         grid_4.1.2         
+    ## [61] iterators_1.0.14    rstudioapi_0.14     htmlwidgets_1.5.4  
+    ## [64] base64enc_0.1-3     rmarkdown_2.15      gtable_0.3.0       
+    ## [67] codetools_0.2-18    DBI_1.1.3           R6_2.5.1           
+    ## [70] gridExtra_2.3       zoo_1.8-10          knitr_1.39         
+    ## [73] dplyr_1.0.9         fastmap_1.1.0       future.apply_1.9.0 
+    ## [76] utf8_1.2.2          rprojroot_2.0.3     stringi_1.7.6      
+    ## [79] parallel_4.1.2      Rcpp_1.0.9          vctrs_0.4.1        
+    ## [82] rpart_4.1-15        png_0.1-7           tidyselect_1.1.2   
+    ## [85] xfun_0.32
