@@ -121,8 +121,8 @@ attr(rcs3_nodes, "knots") <- NULL
 rotterdam$nodes3 <- rcs3_nodes
 
 # PGR
-rcs3_pgr <- rcspline.eval(rotterdam$pgr2, 
-                          knots = c(0, 41, 486)) # using knots of the original variable (not winsorized)
+rcs3_pgr <- Hmisc::rcspline.eval(rotterdam$pgr2,
+                                 knots = c(0, 41, 486)) # using knots of the original variable (not winsorized)
 attr(rcs3_pgr, "dim") <- NULL
 attr(rcs3_pgr, "knots") <- NULL
 rotterdam$pgr3 <- rcs3_pgr
@@ -143,13 +143,13 @@ levels(gbsg$grade3) <- c("1-2", "1-2", "3")
 
 # Restricted cubic spline 
 # Continuous nodes
-rcs3_nodes <- rcspline.eval(gbsg$nodes2, knots = c(0, 1, 9))
+rcs3_nodes <- Hmisc::rcspline.eval(gbsg$nodes2, knots = c(0, 1, 9))
 attr(rcs3_nodes, "dim") <- NULL
 attr(rcs3_nodes, "knots") <- NULL
 gbsg$nodes3 <- rcs3_nodes
 
 # PGR
-rcs3_pgr <- rcspline.eval(gbsg$pgr2, knots = c(0, 41, 486))
+rcs3_pgr <- Hmisc::rcspline.eval(gbsg$pgr2, knots = c(0, 41, 486))
 attr(rcs3_pgr, "dim") <- NULL
 attr(rcs3_pgr, "knots") <- NULL
 gbsg$pgr3 <- rcs3_pgr
@@ -234,17 +234,17 @@ sfit_rott_c <- survfit(Surv(ryear, rfs == 0) ~ 1,
 dev_plots <- list()
 
 # KM plot - development data
-dev_plots[[1]] <- ggsurvplot(sfit_rott, data = rotterdam,
-                             risk.table = TRUE,
-                             risk.table.fontsize = 3.6,
-                             palette = 3,
-                             size = 1.5,
-                             censor = FALSE,
-                             legend = "none",
-                             title = "Failure-free survival",
-                             xlab = "Years",
-                             ylab = "Probability",
-                             tables.theme = theme_cleantable())
+dev_plots[[1]] <- survminer::ggsurvplot(sfit_rott, data = rotterdam,
+                                        risk.table = TRUE,
+                                        risk.table.fontsize = 3.6,
+                                        palette = 3,
+                                        size = 1.5,
+                                        censor = FALSE,
+                                        legend = "none",
+                                        title = "Failure-free survival",
+                                        xlab = "Years",
+                                        ylab = "Probability",
+                                        tables.theme = theme_cleantable())
 
 dev_plots[[1]]$table <- dev_plots[[1]]$table + 
   theme(
@@ -253,19 +253,19 @@ dev_plots[[1]]$table <- dev_plots[[1]]$table +
   )
 
 # Censoring plot - development data
-dev_plots[[2]] <- ggsurvplot(sfit_rott_c, data = rotterdam,
-                             risk.table = TRUE,
-                             risk.table.fontsize = 3.6,
-                             palette = 2,
-                             size = 1.5,
-                             censor = FALSE,
-                             legend = "none",
-                             title = "Censoring",
-                             xlab = "Years",
-                             ylab = "Probability",
-                             # risk.table.title = "Number at risk",
-                             # risk.table.y.text.col =  TRUE,
-                             tables.theme = theme_cleantable())
+dev_plots[[2]] <- survminer::ggsurvplot(sfit_rott_c, data = rotterdam,
+                                        risk.table = TRUE,
+                                        risk.table.fontsize = 3.6,
+                                        palette = 2,
+                                        size = 1.5,
+                                        censor = FALSE,
+                                        legend = "none",
+                                        title = "Censoring",
+                                        xlab = "Years",
+                                        ylab = "Probability",
+                                        # risk.table.title = "Number at risk",
+                                        # risk.table.y.text.col =  TRUE,
+                                        tables.theme = theme_cleantable())
 
 dev_plots[[2]]$table <- dev_plots[[2]]$table + 
   theme(
@@ -274,9 +274,9 @@ dev_plots[[2]]$table <- dev_plots[[2]]$table +
   )
 
 # Join together 
-arrange_ggsurvplots(dev_plots, print = TRUE,
-                    ncol = 2, nrow = 1, risk.table.height = 0.15,
-                    title = "Development data")  
+survminer::arrange_ggsurvplots(dev_plots, print = TRUE,
+                               ncol = 2, nrow = 1, risk.table.height = 0.15,
+                               title = "Development data")  
 
 # Validation set
 sfit_gbsg <- survfit(Surv(ryear, rfs == 1) ~ 1, 
@@ -286,17 +286,17 @@ sfit_gbsg_c <- survfit(Surv(ryear, rfs == 0) ~ 1,
 
 # KM plot - validation data
 val_plots <- list()
-val_plots[[1]] <- ggsurvplot(sfit_gbsg, data = gbsg,
-                             risk.table = TRUE,
-                             risk.table.fontsize = 3.6,
-                             palette = 3,
-                             size = 1.5,
-                             censor = FALSE,
-                             legend = "none",
-                             title = "Failure-free survival",
-                             xlab = "Years",
-                             ylab = "Probability",
-                             tables.theme = theme_cleantable())
+val_plots[[1]] <- survminer::ggsurvplot(sfit_gbsg, data = gbsg,
+                                        risk.table = TRUE,
+                                        risk.table.fontsize = 3.6,
+                                        palette = 3,
+                                        size = 1.5,
+                                        censor = FALSE,
+                                        legend = "none",
+                                        title = "Failure-free survival",
+                                        xlab = "Years",
+                                        ylab = "Probability",
+                                        tables.theme = theme_cleantable())
 
 val_plots[[1]]$table <- val_plots[[1]]$table + 
   theme(
@@ -305,17 +305,17 @@ val_plots[[1]]$table <- val_plots[[1]]$table +
   )
 
 # Censoring - validation data
-val_plots[[2]] <- ggsurvplot(sfit_gbsg_c, data = gbsg,
-                             risk.table = TRUE,
-                             risk.table.fontsize = 3.6,
-                             palette = 2,
-                             size = 1.5,
-                             censor = FALSE,
-                             legend = "none",
-                             title = "Censoring",
-                             xlab = "Years",
-                             ylab = "Probability",
-                             tables.theme = theme_cleantable())
+val_plots[[2]] <- survminer::ggsurvplot(sfit_gbsg_c, data = gbsg,
+                                        risk.table = TRUE,
+                                        risk.table.fontsize = 3.6,
+                                        palette = 2,
+                                        size = 1.5,
+                                        censor = FALSE,
+                                        legend = "none",
+                                        title = "Censoring",
+                                        xlab = "Years",
+                                        ylab = "Probability",
+                                        tables.theme = theme_cleantable())
 
 val_plots[[2]]$table <- val_plots[[2]]$table + 
   theme(
@@ -324,10 +324,10 @@ val_plots[[2]]$table <- val_plots[[2]]$table +
   )
 
 # Join together 
-arrange_ggsurvplots(val_plots, print = TRUE,
-                    ncol = 2, nrow = 1,
-                    risk.table.height = 0.15,
-                    title = "Validation data")
+survminer::arrange_ggsurvplots(val_plots, print = TRUE,
+                               ncol = 2, nrow = 1,
+                               risk.table.height = 0.15,
+                               title = "Validation data")
 ```
  </details>
  
@@ -351,14 +351,14 @@ To deal with very large influential value, we winzorize progesterone level to th
 ```{r,ff, warning=FALSE, fig.align='center', echo=TRUE, eval=FALSE}
 dd <- datadist(rotterdam)
 options(datadist = "dd")
-fit_pgr <- cph(Surv(ryear, rfs) ~ rcs(pgr2), 
-               data = rotterdam, x = T, y = T, surv = T)
-fit_nodes <- cph(Surv(ryear, rfs) ~ rcs(nodes2), 
-               data = rotterdam, x = T, y = T, surv = T)
+fit_pgr <- rms::cph(Surv(ryear, rfs) ~ rcs(pgr2),
+                    data = rotterdam, x = T, y = T, surv = T)
+fit_nodes <- rms::cph(Surv(ryear, rfs) ~ rcs(nodes2),
+                      data = rotterdam, x = T, y = T, surv = T)
 
 oldpar <- par(mfrow = c(2, 2), mar = c(5, 5, 1, 1))
-plot(Predict(fit_pgr))
-plot(Predict(fit_nodes))
+plot(rms::Predict(fit_pgr))
+plot(rms::Predict(fit_nodes))
 options(datadist = NULL)
 par(oldpar)
 ``` 
@@ -482,8 +482,8 @@ Below the results of the models:
 dd <- datadist(rott5)
 options(datadist = "dd")
 options(prType = "html")
-fit_cph_rott5 <- cph(Surv(ryear, rfs) ~ csize + 
-                       rcs(nodes2, c(0, 1, 9)) + grade3,
+fit_cph_rott5 <- rms::cph(Surv(ryear, rfs) ~ csize +
+                            rcs(nodes2, c(0, 1, 9)) + grade3,
   data = rott5, x = T, y = T, surv = T
 )
 print(fit_cph_rott5)
@@ -515,13 +515,13 @@ efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
 
 # Development data
 t_horizon <- 5
-rott5$pred <- predictRisk(efit1, 
-                              newdata = rott5,
-                              times = t_horizon)
+rott5$pred <- riskRegression::predictRisk(efit1,
+                                          newdata = rott5,
+                                          times = t_horizon)
 
-rott5$pred_pgr <- predictRisk(efit1_pgr, 
-                              newdata = rott5,
-                              times = t_horizon)
+rott5$pred_pgr <- riskRegression::predictRisk(efit1_pgr,
+                                              newdata = rott5,
+                                              times = t_horizon)
 
 # par(mgp=c(4,1,0), mar=c(6,5,2,2))
 # oldpar <- par(mfrow = c(1, 2), las = 1)
@@ -530,34 +530,34 @@ xlab <- c(paste0('Basic model\nvariance = ',
                  round(var(rott5$pred), 3)),
           paste0('Extended model with PGR\nvariance = ',
                  round(var(rott5$pred_pgr), 3)))
-histbackback(rott5$pred, 
-             rott5$pred_pgr, 
-             brks = seq(0.01, 0.99, by = 0.02), 
-             xlab = xlab, 
-             ylab = 'Predicted probability')
+Hmisc::histbackback(rott5$pred,
+                    rott5$pred_pgr, 
+                    brks = seq(0.01, 0.99, by = 0.02), 
+                    xlab = xlab, 
+                    ylab = 'Predicted probability')
 title("Development data")
 
 
 # Validation data
-gbsg5$pred <- predictRisk(efit1, 
-                          newdata = gbsg5,
-                          times = t_horizon)
+gbsg5$pred <- riskRegression::predictRisk(efit1,
+                                          newdata = gbsg5,
+                                          times = t_horizon)
 
 
-gbsg5$pred_pgr <- predictRisk(efit1_pgr, 
-                              newdata = gbsg5,
-                              times = t_horizon)
+gbsg5$pred_pgr <- riskRegression::predictRisk(efit1_pgr,
+                                              newdata = gbsg5,
+                                              times = t_horizon)
 
 par(las = 1)
 xlab <- c(paste0('Basic model\nvariance = ', 
                  round(var(gbsg5$pred), 3)),
           paste0('Extended model with PGR\nvariance = ',
                 round(var(gbsg5$pred_pgr), 3)))
-histbackback(gbsg5$pred, 
-             gbsg5$pred_pgr, 
-             brks = seq(0.01, 0.99, by = 0.02), 
-             xlab = xlab, 
-             ylab = 'Predicted probability')
+Hmisc::histbackback(gbsg5$pred,
+                    gbsg5$pred_pgr,
+                    brks = seq(0.01, 0.99, by = 0.02),
+                    xlab = xlab,
+                    ylab = 'Predicted probability')
 title("Validation data")
 ```
 </details>
@@ -817,7 +817,7 @@ efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
 # Uno's time-dependent Area Under the Curve
 # Development
 Uno_rott5 <-
-  timeROC(
+  timeROC::timeROC(
     T = rott5$ryear, 
     delta = rott5$rfs,
     marker = predict(efit1, newdata = rott5),
@@ -828,7 +828,7 @@ Uno_rott5 <-
   )
 
 Uno_rott5_pgr <-
-  timeROC(
+  timeROC::timeROC(
     T = rott5$ryear, 
     delta = rott5$rfs,
     marker = predict(efit1_pgr, newdata = rott5),
@@ -840,7 +840,7 @@ Uno_rott5_pgr <-
 
 # Validation
 Uno_gbsg5 <-
-  timeROC(
+  timeROC::timeROC(
     T = gbsg5$ryear, 
     delta = gbsg5$rfs,
     marker = predict(efit1, newdata = gbsg5),
@@ -851,7 +851,7 @@ Uno_gbsg5 <-
   )
 
 Uno_gbsg5_pgr <-
-  timeROC(
+  timeROC::timeROC(
     T = gbsg5$ryear, 
     delta = gbsg5$rfs,
     marker = predict(efit1_pgr, newdata = gbsg5),
@@ -1406,13 +1406,13 @@ obj <- summary(survfit(Surv(ryear, rfs) ~ 1,
                        data = gbsg5), 
                times = horizon)
 
-pred <- predictRisk(efit1, 
-                    newdata = gbsg5, 
-                    times = horizon)
+pred <- riskRegression::predictRisk(efit1,
+                                    newdata = gbsg5, 
+                                    times = horizon)
 
-pred_pgr <- predictRisk(efit1_pgr, 
-                        newdata = gbsg5, 
-                        times = horizon)
+pred_pgr <- riskRegression::predictRisk(efit1_pgr,
+                                        newdata = gbsg5,
+                                        times = horizon)
 
 OE <- (1 - obj$surv) / mean(pred)
 OE_pgr <- (1 - obj$surv) / mean(pred_pgr)
@@ -1715,61 +1715,61 @@ efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
 
 # Calibration plot --------
 # Basic model
-gbsg5$pred <- predictRisk(efit1, 
-                          newdata = gbsg5, 
-                          times = 5)
+gbsg5$pred <- riskRegression::predictRisk(efit1,
+                                          newdata = gbsg5,
+                                          times = 5)
 gbsg5$pred.cll <- log(-log(1 - gbsg5$pred))
 
 # Extended model
-gbsg5$pred_pgr <- predictRisk(efit1_pgr, 
-                              newdata = gbsg5, 
-                              times = 5)
+gbsg5$pred_pgr <- riskRegression::predictRisk(efit1_pgr,
+                                              newdata = gbsg5,
+                                              times = 5)
 gbsg5$pred.cll_pgr <- log(-log(1 - gbsg5$pred_pgr))
 
 
 # Estimate actual risk - basic model
-vcal <- cph(Surv(ryear, rfs) ~ rcs(pred.cll, 3),
-            x = T,
-            y = T,
-            surv = T,
-            data = gbsg5
+vcal <- rms::cph(Surv(ryear, rfs) ~ rcs(pred.cll, 3),
+                 x = T,
+                 y = T,
+                 surv = T,
+                 data = gbsg5
 ) 
 
 # Estimate actual risk - extended model
-vcal_pgr <- cph(Surv(ryear, rfs) ~ rcs(pred.cll_pgr, 3),
-            x = T,
-            y = T,
-            surv = T,
-            data = gbsg5
+vcal_pgr <- rms::cph(Surv(ryear, rfs) ~ rcs(pred.cll_pgr, 3),
+                     x = T,
+                     y = T,
+                     surv = T,
+                     data = gbsg5
 ) 
 
 
 dat_cal <- cbind.data.frame(
-  "obs" = 1 - survest(vcal, 
-                      times = 5, 
-                      newdata = gbsg5)$surv,
+  "obs" = 1 - rms::survest(vcal,
+                           times = 5,
+                           newdata = gbsg5)$surv,
   
-  "lower" = 1 - survest(vcal, 
-                        times = 5, 
-                        newdata = gbsg5)$upper,
+  "lower" = 1 - rms::survest(vcal,
+                             times = 5,
+                             newdata = gbsg5)$upper,
   
-  "upper" = 1 - survest(vcal, 
-                        times = 5, 
-                        newdata = gbsg5)$lower,
+  "upper" = 1 - rms::survest(vcal,
+                             times = 5,
+                             newdata = gbsg5)$lower,
   "pred" = gbsg5$pred,
   
   
-   "obs_pgr" = 1 - survest(vcal_pgr, 
-                      times = 5, 
-                      newdata = gbsg5)$surv,
+   "obs_pgr" = 1 - rms::survest(vcal_pgr,
+                                times = 5,
+                                newdata = gbsg5)$surv,
   
-  "lower_pgr" = 1 - survest(vcal_pgr, 
-                        times = 5, 
-                        newdata = gbsg5)$upper,
+  "lower_pgr" = 1 - rms::survest(vcal_pgr,
+                                 times = 5,
+                                 newdata = gbsg5)$upper,
   
-  "upper_pgr" = 1 - survest(vcal_pgr, 
-                        times = 5, 
-                        newdata = gbsg5)$lower,
+  "upper_pgr" = 1 - rms::survest(vcal_pgr,
+                                 times = 5,
+                                 newdata = gbsg5)$lower,
   
   "pred_pgr" = gbsg5$pred_pgr
   
@@ -1871,48 +1871,48 @@ numsum_cph_pgr <- c(
 ## Bootstrap confidence intervals
 ## for the cal------
 B <- 50 # Set B = 2000 although it takes more time
-gbsg5_boot <- bootstraps(gbsg5, times = B)
+gbsg5_boot <- rsample::bootstraps(gbsg5, times = B)
 
 # Bootstrap calibration measures
 numsum_boot <- function(split) {
   
-  pred <- predictRisk(efit1, 
-                      newdata = analysis(split), 
-                      times = 5)
+  pred <- riskRegression::predictRisk(efit1,
+                                      newdata = analysis(split),
+                                      times = 5)
   
-  pred_pgr <- predictRisk(efit1_pgr, 
-                          newdata = analysis(split), 
-                          times = 5)
+  pred_pgr <- riskRegression::predictRisk(efit1_pgr,
+                                          newdata = analysis(split),
+                                          times = 5)
   
   pred.cll <- log(-log(1 - pred))
   pred.cll_pgr <- log(-log(1 - pred_pgr))
  
 # Estimate actual risk - basic model
-  vcal <- cph(Surv(ryear, rfs) ~ rcs(pred.cll, 3),
-              x = T,
-              y = T,
-              surv = T,
-              data = analysis(split)
+  vcal <- rms::cph(Surv(ryear, rfs) ~ rcs(pred.cll, 3),
+                   x = T,
+                   y = T,
+                   surv = T,
+                   data = analysis(split)
 ) 
  
- vcal_pgr <- cph(Surv(ryear, rfs) ~ rcs(pred.cll_pgr, 3),
-            x = T,
-            y = T,
-            surv = T,
-            data = analysis(split)
+ vcal_pgr <- rms::cph(Surv(ryear, rfs) ~ rcs(pred.cll_pgr, 3),
+                      x = T,
+                      y = T,
+                      surv = T,
+                      data = analysis(split)
 ) 
  
  # Save objects needed
 db_cal_boot <- data.frame(
-  "obs" = 1 - survest(vcal, 
-                      times = 5, 
-                      newdata = analysis(split))$surv,
+  "obs" = 1 - rms::survest(vcal,
+                           times = 5,
+                           newdata = analysis(split))$surv,
                       
   "pred" = pred,
   
-  "obs_pgr" = 1 - survest(vcal_pgr,
-                          times = 5, 
-                          newdata = analysis(split))$surv,
+  "obs_pgr" = 1 - rms::survest(vcal_pgr,
+                               times = 5, 
+                               newdata = analysis(split))$surv,
   
   "pred_pgr" = pred_pgr
 )
@@ -2044,37 +2044,37 @@ temp <- termplot(fit_02, term = 1, se = TRUE,  plot = FALSE)[[1]]
 yy <- temp$y + outer(temp$se, c(0, -1.96, 1.96), '*')
 par(las = 1, xaxs = "i", yaxs = "i")
 oldpar <- par(mfrow = c(1, 2))
-matplot(temp$x, 
-        exp(yy), 
-        log = 'y', 
-        type = 'l', 
-        lwd = c(2 ,1 ,1), 
-        lty = c(1 ,2, 2), 
-        col = 1,
-        xlim = c(-0.5, 2),
-        ylim = c(0.5, 2.5),
-        xlab = "Prognostic Index", 
-        ylab = "N of observed events / N of expected events", 
-        bty = "n",
-        main = "Basic model")
+graphics::matplot(temp$x,
+                  exp(yy), 
+                  log = 'y', 
+                  type = 'l', 
+                  lwd = c(2 ,1 ,1), 
+                  lty = c(1 ,2, 2), 
+                  col = 1,
+                  xlim = c(-0.5, 2),
+                  ylim = c(0.5, 2.5),
+                  xlab = "Prognostic Index", 
+                  ylab = "N of observed events / N of expected events", 
+                  bty = "n",
+                  main = "Basic model")
 abline(0, 0, lty = 3)
 
 # Plot - O/E vs PI - extended model
 temp_pgr <- termplot(fit_02_pgr, term = 1, se = TRUE,  plot = FALSE)[[1]]
 yy_pgr <- temp_pgr$y + outer(temp_pgr$se, c(0, -1.96, 1.96), '*')
-matplot(temp_pgr$x, 
-        exp(yy_pgr), 
-        log = 'y', 
-        type = 'l', 
-        lwd = c(2 ,1 ,1), 
-        lty = c(1 ,2, 2), 
-        col = 1,
-        xlim = c(-0.5, 2),
-        ylim = c(0.5, 2.5),
-        xlab = "Prognostic Index", 
-        ylab = "N of observed events / N of expected events", 
-        bty = "n",
-        main = "Extended model")
+graphics::matplot(temp_pgr$x, 
+                  exp(yy_pgr), 
+                  log = 'y', 
+                  type = 'l', 
+                  lwd = c(2 ,1 ,1), 
+                  lty = c(1 ,2, 2), 
+                  col = 1,
+                  xlim = c(-0.5, 2),
+                  ylim = c(0.5, 2.5),
+                  xlab = "Prognostic Index", 
+                  ylab = "N of observed events / N of expected events", 
+                  bty = "n",
+                  main = "Extended model")
 abline(0, 0, lty = 3)
 ```
 </details>
@@ -2208,84 +2208,84 @@ efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
 
 # Development set (apparent Brier and IPA) without pgr
 score_rott5 <-
-  Score(list("cox_development" = efit1),
-    formula = Surv(ryear, rfs) ~ 1, 
-    data = rott5, 
-    conf.int = TRUE, 
-    times = 4.99,
-    cens.model = "km", 
-    metrics = "brier",
-    summary = "ipa"
+  riskRegression::Score(list("cox_development" = efit1),
+                        formula = Surv(ryear, rfs) ~ 1, 
+                        data = rott5, 
+                        conf.int = TRUE, 
+                        times = 4.99,
+                        cens.model = "km", 
+                        metrics = "brier",
+                        summary = "ipa"
   )
 
 # Validation set without pgr
 score_gbsg5 <-
-  Score(list("cox_validation" = efit1),
-    formula = Surv(ryear, status) ~ 1, 
-    data = gbsg5, 
-    conf.int = TRUE,
-    times = 4.99,
-    cens.model = "km", 
-    metrics = "brier",
-    summary = "ipa"
+  riskRegression::Score(list("cox_validation" = efit1),
+                        formula = Surv(ryear, status) ~ 1, 
+                        data = gbsg5, 
+                        conf.int = TRUE,
+                        times = 4.99,
+                        cens.model = "km", 
+                        metrics = "brier",
+                        summary = "ipa"
   )
 
 # Development set (apparent Brier and IPA) with pgr
 score_rott5_pgr <-
-  Score(list("cox_development" = efit1_pgr),
-    formula = Surv(ryear, rfs) ~ 1, 
-    data = rott5, 
-    conf.int = TRUE, 
-    times = 4.99,
-    cens.model = "km", 
-    metrics = "brier",
-    summary = "ipa"
+  riskRegression::Score(list("cox_development" = efit1_pgr),
+                        formula = Surv(ryear, rfs) ~ 1, 
+                        data = rott5, 
+                        conf.int = TRUE, 
+                        times = 4.99,
+                        cens.model = "km", 
+                        metrics = "brier",
+                        summary = "ipa"
   )
 
 # Validation set with pgr
 score_gbsg5_pgr <-
-  Score(list("cox_validation" = efit1_pgr),
-    formula = Surv(ryear, rfs) ~ 1, 
-    data = gbsg5, 
-    conf.int = TRUE, 
-    times = 4.99,
-    cens.model = "km", 
-    metrics = "brier",
-    summary = "ipa"
+  riskRegression::Score(list("cox_validation" = efit1_pgr),
+                        formula = Surv(ryear, rfs) ~ 1, 
+                        data = gbsg5, 
+                        conf.int = TRUE, 
+                        times = 4.99,
+                        cens.model = "km", 
+                        metrics = "brier",
+                        summary = "ipa"
   )
 
 # Bootstrap for IPA -------------------------
 B <- 10
 set.seed(1234)
-rott5_boot <- bootstraps(rott5, times = B)
-gbsg5_boot <- bootstraps(gbsg5, times = B)
+rott5_boot <- rsample::bootstraps(rott5, times = B)
+gbsg5_boot <- rsample::bootstraps(gbsg5, times = B)
 
 # IPA confidence intervals
 # NOTE: computational time is too long to compute them when the number of bootstrap replications is high
 
 # Bootstrap for IPA - basic model
 score_boot <- function(split) {
-  Score(list("model" = efit1),
-    formula = Surv(ryear, rfs) ~ 1, 
-    data = analysis(split), 
-    conf.int = FALSE, 
-    times = 4.99,
-    cens.model = "km", 
-    metrics = "brier",
-    summary = "ipa"
+  riskRegression::Score(list("model" = efit1),
+                        formula = Surv(ryear, rfs) ~ 1, 
+                        data = analysis(split), 
+                        conf.int = FALSE, 
+                        times = 4.99,
+                        cens.model = "km", 
+                        metrics = "brier",
+                        summary = "ipa"
   )$Brier$score[model == "model"][["IPA"]]
 }
 
 # Bootstrap for IPA - extended model with PGR
 score_boot_pgr <- function(split) {
-  Score(list("model" = efit1_pgr),
-    formula = Surv(ryear, rfs) ~ 1, 
-    data = analysis(split), 
-    conf.int = FALSE, 
-    times = 4.99,
-    cens.model = "km", 
-    metrics = "brier",
-    summary = "ipa"
+  riskRegression::Score(list("model" = efit1_pgr),
+                        formula = Surv(ryear, rfs) ~ 1, 
+                        data = analysis(split), 
+                        conf.int = FALSE, 
+                        times = 4.99,
+                        cens.model = "km", 
+                        metrics = "brier",
+                        summary = "ipa"
   )$Brier$score[model == "model"][["IPA"]]
 }
 
@@ -2471,15 +2471,15 @@ efit1_pgr <- update(efit1, . ~ . + pgr2 + pgr3)
 
 # Development data ----
 # Predicted probability calculation
-rott5$pred5 <- predictRisk(efit1, 
-                          newdata = rott5, 
-                          times = 5)
+rott5$pred5 <- riskRegression::predictRisk(efit1,
+                                           newdata = rott5, 
+                                           times = 5)
 
 # Extended model with PGR
 # Predicted probability calculation
-rott5$pred5_pgr <- predictRisk(efit1_pgr, 
-                               newdata = rott5, 
-                               times = 5)
+rott5$pred5_pgr <- riskRegression::predictRisk(efit1_pgr,
+                                               newdata = rott5,
+                                               times = 5)
 
 # Run decision curve analysis
 
@@ -2560,15 +2560,15 @@ title("Development data", cex = 1.5)
 # External data
 # Validation data
 # Predicted probability calculation
-gbsg5$pred5 <- predictRisk(efit1, 
-                           newdata = gbsg5, 
-                           times = 5)
+gbsg5$pred5 <- riskRegression::predictRisk(efit1,
+                                           newdata = gbsg5,
+                                           times = 5)
 
 # Extended model with PGR
 # Predicted probability calculation
-gbsg5$pred5_pgr <- predictRisk(efit1_pgr, 
-                               newdata = gbsg5, 
-                               times = 5)
+gbsg5$pred5_pgr <- riskRegression::predictRisk(efit1_pgr,
+                                               newdata = gbsg5,
+                                               times = 5)
 
 # Run decision curve analysis
 
