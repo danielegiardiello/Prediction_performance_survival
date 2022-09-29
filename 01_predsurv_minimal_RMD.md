@@ -20,9 +20,10 @@ Performance assessment of survival prediction models - simplified code
     -   <a href="#21-discrimination-measures"
         id="toc-21-discrimination-measures">2.1 Discrimination measures</a>
     -   <a href="#22-calibration" id="toc-22-calibration">2.2 Calibration</a>
-        -   <a href="#221-mean-calibration---fixed-time-point"
-            id="toc-221-mean-calibration---fixed-time-point">2.2.1 Mean calibration
-            - fixed time point</a>
+        -   <a
+            href="#221-weak-calibration---observedexpected-ratio-for-fixed-time-point"
+            id="toc-221-weak-calibration---observedexpected-ratio-for-fixed-time-point">2.2.1
+            Weak calibration - observed/expected ratio for fixed time point</a>
         -   <a href="#222-weak-calibration---calibration-slope-for-fixed-time-point"
             id="toc-222-weak-calibration---calibration-slope-for-fixed-time-point">2.2.2
             Weak calibration - calibration slope for fixed time point</a>
@@ -453,7 +454,7 @@ at time *t* (5 years) and coefficients of the model.
 
 More detailed explanations are available in the paper.
 
-#### 2.2.1 Mean calibration - fixed time point
+#### 2.2.1 Weak calibration - observed/expected ratio for fixed time point
 
 The mean calibration at fixed time point (e.g. at 5 years) can be
 estimated using the Observed versus Expected ratio. The observed is
@@ -769,7 +770,7 @@ df_boots <- do.call(rbind.data.frame, boots_ls)
 
     ##                                Estimate Lower .95  Upper .95
     ## Brier - Validation data            0.22       0.21      0.24
-    ## Scaled Brier - Validation data     0.10       0.05      0.15
+    ## Scaled Brier - Validation data     0.10       0.05      0.16
 
 Brier and scaled Brier score were 0.22 and 0.10, respectively.
 
