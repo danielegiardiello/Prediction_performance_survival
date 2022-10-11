@@ -132,45 +132,29 @@ data gbsg_va; set gbsg;
 	if grade in (1,2) then gradecat=0;
 	if grade = 3 then gradecat=1;
     survtime = rfstime/365.25;  * days to years;
+	label survtime="Survival time (years)";
 	keep pid sizecat nodes nodes1 gradecat status age pgr pgr1 survtime;
 run;
 
 
 * Plot the overall Kaplan-Meier, as motivation for using a 5 year cut-off;
-proc lifetest data=gbsg_va method=pl plots=(s, ls, lls) outsurv=outkm;
+title "Kaplan-Meier plot in external dataset";
+footnote;
+ods listing sge=on style=printer image_dpi=300 gpath='C:\Users\sme544';
+ods graphics on / reset=all noborder outputfmt=png /*width=4in*/ 
+imagename="ext km" antialias=off/*antialiasmax=*/ ;
+
+proc lifetest data=gbsg_va method=pl plots=(s(atrisk(atrisktickonly outside)
+			=0,1,2,3,4,5,6,7 cb=hw nocensor name=Survival)) outsurv=outkm;
         time survtime*status(0);
 		ods exclude ProductLimitEstimates;   * suppress the long table;
 		title "Overall Kaplan-Meier";
 run;
 
-******* Optional Block ****** ;
-** to create a nicer Kaplan-Meier plot;
-
-data outkm1; 
-	set outkm; 
-	if _censor_=1 then delete; 
-	keep survival survtime; 
-run;
-
-*Create kaplan meier plot for external dataset;
-title;
-footnote;
-*- this allows editing of the .sge file;
-ods listing sge=on style=printer image_dpi=300 gpath='C:\Users\sme544';
-ods graphics on / reset=all noborder outputfmt=tiff /*width=4in*/ 
-	imagename="val km" antialias=off/*antialiasmax=*/;
-
-*create graph;
-proc sgplot data=outkm1;
-	yaxis values=(0 to 1 by 0.2) label="Recurrence-free survival probability";
-	xaxis values=(0 to 7 by 1) label="Years";
-	step y=survival x=survtime / lineattrs=(color=blue thickness=2 
-		pattern=solid) name="all";
-run;
-
 ods graphics off;
 
-******  End Optional Block ************;
+title;
+
 
 *** Descriptive statistics;
 proc freq data=gbsg_va;
@@ -444,8 +428,8 @@ run;
 
 ******* Optional Block ****** ;
 
-*For plot (Fig 1B in paper) get all observed times up to the event or censoring 
-time of each patient;
+*For plot of O/E at all observed times up to the event or censoring 
+time of each patient (Not in the paper or appendix);
 data plotall;
 	set pred1a;
 	proc sort; by pid survtime;
@@ -550,44 +534,109 @@ run;
 
 *Moderate assessment;
 ** Check functional form of lp;
-* Code LP as a restricted cubic spline with 3 knots;
-* First calculate the 10th, 50th and 90th percentiles for knots;
+* Code LP as a restricted cubic spline with 4 knots (3df);
+* First calculate the 5th, 35th, 65th, 95th percentiles for knots;
 proc univariate data = data2 noprint;
 	var lp;
-	output out=knots pctlpre=p_lp pctlpts= 10 50 90;
+	output out=knots pctlpre=p_lp pctlpts= /*10 50 90*/ 5 35 65 95;
 run;
 
 proc print data=knots; run;
 
 /* here we find the following values:
- 0.53907 1.07346 1.84423 
- 
+0.29394 0.88091 1.30518 2.00782 
+
 */
 
 data test;
 	set data2;
-	%rcspline(lp, 0.53907, 1.07346, 1.84423);
+	%rcspline(lp, 0.29394, 0.88091, 1.30518, 2.00782);
+run;
+
+* generate dataset to allow us to get expected rate over all PI;
+data genpi;
+	lp=-0.025;
+	do i=1 to 101;
+		lp + 0.025;
+		output;
+		end;
+run;
+
+*Get the spline formulas from the log window after running test above and paste 
+below;
+data genpi1;
+	set genpi;
+ 	_kd_= (2.00782 - 0.29394)**.666666666666 ;
+	lp1=max((lp-0.29394)/_kd_,0)**3
+		+((1.30518-0.29394)*max((lp-2.00782)/_kd_,0)**3
+		-(2.00782-0.29394)*max((lp-1.30518)/_kd_,0)**3)/(2.00782-1.30518);
+	lp2=max((lp-0.88091)/_kd_,0)**3
+		+((1.30518-0.88091)*max((lp-2.00782)/_kd_,0)**3
+		-(2.00782-0.88091)*max((lp-1.30518)/_kd_,0)**3)/(2.00782-1.30518);
+	*Using a dummy p of 1.0 gives the relative event rate, as compared to the 
+	Rotterdam data set as a whole.  (The expecteds add to the total number of 
+	deaths, in the reference fit).   So in this case use time=1 as the dummy;
+	logp=0;
+	drop i _kd_;
+run;
+
+data test1;
+	set test genpi1;
 run;
 
 *Fit Poisson model with spline terms and save predictions;
-proc genmod data=test;
-	model status=lp lp1 /offset=logp dist=poisson link=log;
-	output out=test1 pred=predobs lower=low upper=upp;
+proc genmod data=test1;
+	model status=lp lp1 lp2 /offset=logp dist=poisson link=log;
+	output out=test2 pred=predobs lower=low upper=upp;
 run;
 
+data test3;
+	set test2;
+	where pid=.;
+	r=1;
+run;
+
+*Produce plot in Appendix Fig S2;
+title;
+ods listing sge=on style=printer image_dpi=300 gpath='C:\Users\sme544';
+ods graphics on / reset=all noborder outputfmt=tiff 
+	imagename="calibration plot o over e v PI basic" antialias=off;
+
+proc sgplot data=test3 noautolegend ;
+xaxis       	label="Prognostic Index" values=(0 to 2.5 by 0.25);
+yaxis        	label="Number of observed events / Number of expected events" 
+	Values=(0.5 to 3 by 0.5) type=log logbase=10 logstyle=linear ;
+  keylegend "ref" "cal" "conf" / location=inside position=top down=3;
+  series x=lp y=predobs / lineattrs=(color=red thickness=2) name="cal" 
+	legendlabel="O/E based on Poisson approach";
+  refline r / axis=y  lineattrs=(color=black thickness=1)
+	name="ref" legendlabel="Ideal calibration (O/E=1)";
+  band x=lp lower=low upper=upp / nofill lineattrs=(color=black 
+	pattern=mediumdash thickness=2) noextend outline name="conf" 
+		legendlabel="95% confidence interval";
+run;
+
+ods graphics off;
+
+
+
+//*Optional block to plot cumulative hazard from Cox model v cumulative hazard
+from Poisson model - Not in paper or appendix*//;
+
 *Sort and code diagonal ref line;
-data test2;
-	set test1;
+data test4;
+	set test2;
 	if pid=1 then diag1=0;
 	if pid=1 then diag2=0;
 	if pid=6 then diag1=3;
 	if pid=6 then diag2=3;
+	if pid=. then delete;
 	proc sort; by p;
 run;
 
 *Select unique predictions;
-data test3;
-	set test2;
+data test5;
+	set test4;
 	by p;
 	if first.p;
 run;
@@ -598,7 +647,7 @@ ods listing sge=on style=printer image_dpi=300 gpath='C:\Users\sme544';
 ods graphics on / reset=all noborder outputfmt=tiff 
 	imagename="Calibration plot Poisson" ANTIALIAS=OFF;
 
-proc sgplot data=test3 noautolegend aspect=1;
+proc sgplot data=test5 noautolegend aspect=1;
 	xaxis       	label="Cumulative hazard from Cox model" 
 		values=(0 to 2.4 by 0.20);
 	yaxis        	label="Cumulative hazard from Poisson model" 
@@ -617,6 +666,7 @@ run;
 
 ods graphics off;
 
+*End of optional block;
 
 **************** FIXED TIME POINT ASSESSMENT OF CALIBRATION ******************;
 
@@ -1009,8 +1059,8 @@ run;
 
 ******* Optional Block ****** ;
 
-*For plot (Fig 1B in paper) get all observed times up to the event or censoring 
-time of each patient;
+*For plot of O/E for all times up to the event or censoring 
+time of each patient (Not in paper or appendix);
 data plotall;
 	set pred1a;
 	proc sort; by pid survtime;
@@ -1107,10 +1157,9 @@ ods graphics off;
 
 
 
-
-
-
 ******  End Optional Block ************;
+
+
 
 *Weak calibration - calibration slope;
 *the coefficient is the slope;
@@ -1120,32 +1169,97 @@ run;
 
 *Moderate calibration;
 ** Check functional form of lp;
-* Code LP as a restricted cubic spline with 3 knots;
-* First calculate the 10th, 50th and 90th percentiles for knots;
+* Code LP as a restricted cubic spline with 4 knots (3df);
+* First calculate the 5th, 35th, 65th and 95th percentiles for knots;
 proc univariate data = data2 noprint;
 	var lp;
-	output out=knots pctlpre=p_lp pctlpts= 10 50 90;
+	output out=knots pctlpre=p_lp pctlpts= /*10 50 90*/ 5 35 65 95;
 run;
 
 proc print data=knots; run;
 
-/* here we find the following values which we enter into the rcspline call below:
- 0.23955 0.90147 1.70181  
+/* here we find the following values which we enter into the rcspline 
+call below:
+p_lp5 		p_lp35 		p_lp65 		p_lp95 
+0.090982 	0.67938 	1.11916 	1.86255 
 */
 
 data test;
 	set data2;
-	%rcspline(lp, 0.23955, 0.90147, 1.70181);
+	%rcspline(lp, 0.090982, 0.67938, 1.11916, 1.86255);
 run;
 
-*Fit Poisson model with spline terms for PI;
-proc genmod data=test;
-	model status=lp lp1 /offset=logp dist=poisson link=log;
-	output out=test1 pred=predobs lower=low upper=upp;
+* generate dataset to allow us to get expected rate over all PI;
+data genpi;
+	lp=-0.5;
+	do i=1 to 121;
+		lp + 0.025;
+		output;
+		end;
 run;
 
-data test2;
-	set test1;
+*Get the spline formulas from the log window after running test above and paste 
+below;
+data genpi1;
+	set genpi;
+ 	_kd_= (1.86255 - 0.090982)**.666666666666 ;
+	lp1=max((lp-0.090982)/_kd_,0)**3
+		+((1.11916-0.090982)*max((lp-1.86255)/_kd_,0)**3
+ 		-(1.86255-0.090982)*max((lp-1.11916)/_kd_,0)**3)/(1.86255-1.11916);
+	lp2=max((lp-0.67938)/_kd_,0)**3
+		+((1.11916-0.67938)*max((lp-1.86255)/_kd_,0)**3
+		-(1.86255-0.67938)*max((lp-1.11916)/_kd_,0)**3)/(1.86255-1.11916);
+	*Using a dummy p of 1.0 gives the relative event rate, as compared to the 
+	Rotterdam data set as a whole.  (The expecteds add to the total number of 
+	deaths, in the reference fit).   So in this case use time=1 as the dummy;
+	logp=0;
+	drop i _kd_;
+run;
+
+data test1;
+	set test genpi1;
+run;
+
+*Fit Poisson model with spline terms and save predictions;
+proc genmod data=test1;
+	model status=lp lp1 lp2 /offset=logp dist=poisson link=log;
+	output out=test2 pred=predobs lower=low upper=upp;
+run;
+
+data test3;
+	set test2;
+	where pid=.;
+	r=1;
+run;
+
+*Produce plot in Appendix Fig S4;
+title;
+ods listing sge=on style=printer image_dpi=300 gpath='C:\Users\sme544';
+ods graphics on / reset=all noborder outputfmt=tiff 
+	imagename="calibration plot o over e v PI pgr" antialias=off;
+
+proc sgplot data=test3 noautolegend ;
+xaxis       	label="Prognostic Index" values=(-0.5 to 2.5 by 0.25);
+yaxis        	label="Number of observed events / Number of expected events" 
+	Values=(0 to 3.5 by 0.5) type=log logstyle=linear logbase=10;
+  keylegend "ref" "cal" "conf" / location=inside position=top down=3;
+  series x=lp y=predobs / lineattrs=(color=red thickness=2) name="cal" 
+	legendlabel="O/E based on Poisson approach";
+  refline r / axis=y  lineattrs=(color=black thickness=1)
+	name="ref" legendlabel="Ideal calibration (O/E=1)";
+  band x=lp lower=low upper=upp / nofill lineattrs=(color=black 
+	pattern=mediumdash thickness=2) noextend outline name="conf" 
+		legendlabel="95% confidence interval";
+run;
+
+ods graphics off;
+
+
+//*Optional block to plot cumulative hazard from Cox model v cumulative hazard
+from Poisson model - Not in paper or appendix*//;
+
+data test4;
+	set test2;
 	if pid=1 then diag1=0;
 	if pid=1 then diag2=0;
 	if pid=6 then diag1=3;
@@ -1153,8 +1267,8 @@ data test2;
 	proc sort; by p;
 run;
 
-data test3;
-	set test2;
+data test5;
+	set test4;
 	by p;
 	if first.p;
 run;
@@ -1165,7 +1279,7 @@ ods listing sge=on style=printer image_dpi=300 gpath='C:\Users\sme544';
 ods graphics on / reset=all noborder outputfmt=tiff 
 	imagename="Calibration plot Poisson PGR" ANTIALIAS=OFF;
 
-proc sgplot data=test3 noautolegend aspect=1;
+proc sgplot data=test5 noautolegend aspect=1;
 	xaxis       	label="Cumulative hazard from Cox model" 
 		values=(0 to 2.4 by 0.20);
 	yaxis        	label="Cumulative hazard from Poisson model" 
@@ -1184,7 +1298,7 @@ run;
 
 ods graphics off;
 
-
+*** End of optional block;
 
 
 **************** FIXED TIME POINT ASSESSMENT OF CALIBRATION ******************;

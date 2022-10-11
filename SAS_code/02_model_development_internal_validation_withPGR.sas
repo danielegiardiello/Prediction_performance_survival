@@ -20,10 +20,13 @@
 *					exercise we have used the versions found in the R package. ;
 *					(Older web sites have a habit of disappearing and we 	   ;
 *					expect R to be more stable). In R we used 				   ;
-*				   library(survival)									       ;
-*			       write.csv(rotterdam, row.names=FALSE, file="rotterdam.csv") ;
-*			       write.csv(gbsg,      row.names=FALSE, file="gbsg.csv")	   ;
+*				   	library(survival)									       ;
+*			       	write.csv(rotterdam, row.names=FALSE, file="rotterdam.csv");
+*			       	write.csv(gbsg,      row.names=FALSE, file="gbsg.csv")	   ;
 *				       to create the csv files.								   ;
+* Updates:			Updated on 4th Oct 2022 with bootstrap corrected mean and  ;
+*					weak calibration at fixed time point assessment and over   ;
+*					the time range											   ;
 *******************************************************************************;	
 ** Lines up to 260 are the same as in the STRATOS Model development and internal 
 ** validation final.sas programme;
@@ -112,9 +115,14 @@ p_node10 p_node50 p_node90
 
 *Use Frank Harrell's RCSPLINE macro for calculating the spline terms - found 
 *here: http://biostat.mc.vanderbilt.edu/wiki/Main/SasMacros;
+* instead of %rcspline you could also use following statement within PHREG:
+EFFECT spl = spline(nodes / details naturalcubic basis=tpf(noint) 
+	knotmethod=percentilelist(10 50 90));
+
 data r11;
 	set r1;
 	%rcspline(nodes, 0, 1, 9);
+	label survtime= 'Survival time (years)';
 run;
 
 
@@ -124,42 +132,25 @@ proc freq data=r11;
 run;
 
 
-* Plot the ovrall Kaplan-Meier, as motivation for using a 5 year cut-off;
+* Plot the overall Kaplan-Meier;
 * - n=1275 events by 5 years;
-proc lifetest data=r11 method=pl plots=(s, ls, lls) outsurv=outkm;
+title "Kaplan-Meier plot";
+footnote;
+ods listing sge=on style=printer image_dpi=300 gpath='C:\Users\sme544';
+ods graphics on / reset=all noborder outputfmt=png /*width=4in*/ 
+imagename="dev km" antialias=off/*antialiasmax=*/ ;
+
+proc lifetest data=r11 method=pl plots=(s(atrisk(atrisktickonly outside)
+			=0,5,10,15,20 cb=hw nocensor name=Survival)) outsurv=outkm;
         time survtime*status(0);
 		ods exclude ProductLimitEstimates;   * suppress the long table;
 		title "Overall Kaplan-Meier";
 run;
 
-******* Optional Block ****** ;
-** to create a nicer Kaplan-Meier plot;
-
-data outkm1; 
-	set outkm; 
-	if _censor_=1 then delete; 
-	keep survival survtime; 
-run;
-
-*Create kaplan meier plot for development dataset;
-title;
-footnote;
-*- this allows editing of the .sge file;
-ods listing sge=on style=printer image_dpi=300 gpath='c:';
-ods graphics on / reset=all noborder outputfmt=tiff /*width=4in*/ 
-imagename="dev km" antialias=off/*antialiasmax=*/;
-
-* create graph; 
-proc sgplot data=outkm1;
-	yaxis values=(0 to 1 by 0.2) label="Recurrence-free survival probability";
-	xaxis values=(0 to 16 by 1) label="Years";
-	step y=survival x=survtime / lineattrs=(color=blue thickness=2 pattern=solid) 
-	name="all";
-run;
-
 ods graphics off;
 
-******  End Optional Block ************;
+title;
+
 
 
 *get median follow-up using reverse kaplan-meier method;
@@ -197,6 +188,8 @@ P_PGR10 P_PGR50 P_PGR90
 *here: http://biostat.mc.vanderbilt.edu/wiki/Main/SasMacros;
 data ffpgr;
 	set rott;
+	*make copy of survival time for calibration bootstrap later;
+	survtime1=survtime;
 	%rcspline(pgr, 0, 41, 486);
 run;
 
@@ -288,7 +281,7 @@ run;
 *** Estimating Baseline Survival Function under PH;
 * - Take lowest values to calculate baseline survival;
 data inrisks;
-	set FFPGR;
+	set ffpgr;
 	where sizecat=0 & nodes=0 & gradecat=0 & PGR=0 & PGR1=0;
 	n+1;
 	if n>1 then delete;
@@ -493,6 +486,208 @@ data tdunocon;
 	by replicate;
 	optunoauc = apptduno - boottduno;
 run;
+
+
+
+
+
+
+
+
+*************** This block carries out internal validation assessment of;
+*************** calibration using bootstrap;
+*************** Optimism of time range calibration ******************;
+
+*** Simple model first;
+*** Using Crowson's Poisson approach;
+
+*- CUMHAZ command provides the expected number of events and XBETA provides 
+	linear predictor for original model applied to external cohort;
+
+*- For calibration we need to determine performance of each model developed;
+*- on the bootstrap dataset applied to the original data. The average of the;
+*- 500 performance estimates is the optimism;
+*- First mean calibration;
+
+* This needs to be run in chunks of 100 as we get memory problems otherwise;
+data outbootsub;
+	set outboot;
+	if 1<=replicate<=50 then gp=1;
+	else if 51<=replicate<=100 then gp=2;
+	else if 101<=replicate<=150 then gp=3;
+	else if 151<=replicate<=200 then gp=4;
+	else if 201<=replicate<=250 then gp=5;
+	else if 251<=replicate<=300 then gp=6;
+	else if 301<=replicate<=350 then gp=7;
+	else if 351<=replicate<=400 then gp=8;
+	else if 401<=replicate<=450 then gp=9;
+	else gp=10;
+run;
+
+%macro calib(subset);
+	%do i=1 %to &subset;
+
+		proc phreg data=outbootsub;
+			where gp=&i;
+			by replicate;
+			class sizecat (ref='<=20') gradecat (ref=first);
+			model survtime*status(0)=sizecat nodes nodes1 gradecat pgr pgr1/ ties=efron rl;
+			baseline out=ffpgrboot covariates=ffpgr cumhaz=p xbeta=lp;
+		run;
+
+		*get the original survival time for each person;
+		data pred1abt;
+			set ffpgrboot;
+			where survtime le survtime1; 
+			proc sort; by replicate pid survtime;
+		run;
+
+		*calculate log of expected number of events;
+		data pred1bt;
+			set pred1abt;
+			by replicate pid survtime;
+			*first get the follow-up time for each patient;
+			if last.pid;
+			*p is the outcome-martingale residual;
+			logp=log(p);
+			logbase=logp-lp;
+		run;
+
+		*Model 1 - Mean calibration (O/E);
+		*take exponential of Intercept estimate;
+		proc genmod data=pred1bt;
+			by replicate;
+			model status=/offset=logp dist=poisson link=log;
+			ods output parameterestimates=par;
+		run;
+
+		data meancalbt(rename=(estimate=tr_meancal));
+			set par;
+			if parameter="Scale" then delete;
+			keep replicate estimate;
+		run;
+
+		*Weak assessment - calibration slope;
+		*the coefficient is the slope;
+		proc genmod data=pred1bt;
+			by replicate;
+			model status=lp /offset=logbase dist=poisson link=log;
+			ods output parameterestimates=par1;
+		run;
+
+		data weakcalbt(rename=(estimate=tr_weakcal));
+			set par1;
+			if parameter ne "lp" then delete;
+			keep replicate estimate;
+		run;
+
+		*Combine mean and weak time range calibration;
+		data timeranc;
+			merge meancalbt weakcalbt;
+			by replicate;
+		run;
+
+		*delete large datasets to save memory;
+		proc datasets library=work nolist; 
+			delete ffpgrboot pred1abt pred1bt; 
+		quit;
+
+		proc append base=timeranc2 data=timeranc force;
+		run;
+
+	%end;
+
+%mend;
+
+%calib(10);
+
+
+
+*************** Optimism of Fixed time point calibration *****************;
+
+*** Mean / Calibration-in-the-large **;
+
+**- O/E using ratio of (1-Kaplan-Meier) and Avg predicted risk at 5 years;
+**- Lets first get the Kalan-Meier for 5 years in original dataset;
+
+proc lifetest data=ffpgr method=km atrisk outsurv=outkm_ext_c noprint;
+	time survtime*status(0);
+run;
+
+data outkm_ext_c1;
+	set outkm_ext_c;
+	where _censor_ = 0;
+run;
+
+*Output observed survival at 5 years;
+data outkm_ext_c2;
+	set outkm_ext_c1;
+	by _censor_;
+	if last._censor_;
+	keep survival;
+run;
+
+*replicate it 500 times for easy merge later with average predictions;
+data outkm_ext_c3(rename=(i=replicate));
+	set outkm_ext_c2;
+	do i=1 to 500;
+	output;
+	end;
+run;
+
+*Output predicted for each of the 500 bootstrap datasets applied to the original;
+*development data;
+proc phreg data=outboot;
+	by replicate;
+	class sizecat (ref='<=20') gradecat (ref=first);
+	model survtime*status(0)=sizecat nodes nodes1 gradecat pgr pgr1/ ties=efron rl;
+	baseline out=ffpgrbt covariates=ffpgr survival=psurv xbeta=lp 
+		timelist=5;
+run;
+
+*Extract the predictions and get mean;
+proc univariate data=ffpgrbt noprint;
+	by replicate;
+	var psurv;
+	output out=mean mean=meanpred;
+run;
+
+*Merge observed and predicted means, calculate proportion and 95% CI;
+data mean2;
+	merge outkm_ext_c3 mean;
+	by replicate;
+	f_meancal = (1-survival)/(1-meanpred);
+run;
+
+title 'Calibration-in-large using ratio of Kaplan-Meier & Avg predicted risk';
+proc print data=mean2;
+run;
+
+
+**Weak - Calibration slope;
+
+proc phreg data=ffpgrbt;
+	by replicate;
+	model survtime1*status(0) = lp /  ties=efron rl;
+	ods output parameterestimates=par2;
+run;
+
+data f_weakcalbt(rename=(estimate=f_weakcal));
+	set par2;
+	keep replicate estimate;
+run;
+
+*Combine mean and weak fixed time calibration;
+data timefixc;
+	merge mean2 f_weakcalbt;
+	by replicate;
+run;
+
+
+
+
+
+
 
 
 ************************************ Overall performance;
@@ -1133,7 +1328,7 @@ run;
 data all1;
 	*If you did not calculate all of the performance measures you will need to 
 		delete the related dataset from the merge statement;
-	merge finalipa harcon unocon tdunocon;
+	merge finalipa harcon unocon tdunocon timefixc timeranc2;
 	by replicate;
 run;
 
@@ -1143,17 +1338,20 @@ run;
 
 *calculate the average optimism in fit;
 proc univariate data= all1 noprint;
-	var OptBrier OptScaledB OptHarC OptUnoC OptUnoAUC;
+	var OptBrier OptScaledB OptHarC OptUnoC OptUnoAUC f_meancal f_weakcal 
+		tr_meancal tr_weakcal;
 	output out=avgopt mean=Mean_OptBrier Mean_OptScaleB Mean_OptHarC 
-		Mean_OptUnoC Mean_OptUnoAUC;
+		Mean_OptUnoC Mean_OptUnoAUC Mean_OptFMean Mean_OptFWeak Mean_OptTMean 
+		Mean_OptTWeak;
 run;
 
 **** Manually enter the performance measures for each model;
 data resultsdata;
 	infile datalines delimiter=',';
-	input OrigBrier OrigScBr OrigHarC OrigUnoC OrigUnoAUC;
+	input OrigBrier OrigScBr OrigHarC OrigUnoC OrigUnoAUC OrigFMean OrigFWeak 
+		OrigTMean OrigTWeak;
 	datalines;
-	0.206, 0.161, 0.689, 0.688, 0.727
+	0.206, 0.161, 0.689, 0.688, 0.727, 1, 1, 1, 1
 ;
 data resultsdata_new;
 	set resultsdata;
@@ -1177,6 +1375,10 @@ data correctedperf;
 	InternValHarC=OrigHarC - Mean_OptHarC;
 	InternValUnoC=OrigUnoC - Mean_OptUnoC;
 	InternValUnoAUC=OrigUnoAUC - Mean_OptUnoAUC;
+	InternValFMean=OrigFMean - Mean_OptFMean;
+	InternValFWeak=OrigFWeak - Mean_OptFWeak;
+	InternValTMean=OrigTMean - EXP(Mean_OptTMean);
+	InternValTWeak=OrigTWeak - Mean_OptTWeak;
 	drop ind;
 run;
 
@@ -1186,6 +1388,6 @@ proc print data=correctedperf;
 run;
 
 proc export data=correctedperf
-  	outfile= "C:\Users\sme544\Bootstrap_Val_PGR" 
+  	outfile= "C:\Users\sme544\Bootstrap_Val_PGR_Calibration" 
    	dbms=xlsx replace;
 run;
