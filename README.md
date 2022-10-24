@@ -38,7 +38,7 @@ The collaboration with STRATOS topic [groups](https://www.stratos-initiative.org
 
 | Name                                                         | Affiliation                           | Role                  |
 | ------------------------------------------------------------ | ------------------------------------- | ----------------------|
-| [Daniele Giardiello](https://github.com/danielegiardiello/)  | The Netherlands Cancer Institute (NL) <br /> Leiden University Medical Center (NL) <br /> EURAC research (IT) | Author/maintainer     |
+| [Daniele Giardiello](https://github.com/danielegiardiello/)  | The Netherlands Cancer Institute (NL) <br /> Leiden University Medical Center (NL) <br /> EURAC research (IT) | Author/maintainer and creator of R and Python code     |
 | [David McLernon](https://twitter.com/davemclernon?lang=en) | University of Aberdeen (UK) | Author of SAS code              |
 | [Laure Wynants](https://www.maastrichtuniversity.nl/laure.wynants) | Maastrict University (NL)  <br /> KU Leuven (BE) | Review of minimal .R/.Rmd codes |
 | [Nan van Geloven](https://www.lumc.nl/org/bds/medewerkers/1216536) | Leiden University Medical Center (NL) | Review of 02_.Rmd code |
