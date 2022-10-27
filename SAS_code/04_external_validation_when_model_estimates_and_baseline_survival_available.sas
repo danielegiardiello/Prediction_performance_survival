@@ -51,9 +51,21 @@ proc import out= gbsg
 run;
 
 *** Estimating Baseline Survival Function under PH;
+** Here baseline is where all predictors=0;
 ** Here S0 at 5 years =  0.80385;
 ** For model with PGR added, S0 = 0.76055;
 ** S(t)=S0(t)**exp(ß1X1+ß2X2+ß3X3+...+ßpXp)=S0(t)**exp(PI);
+
+** NOTE that if you want to center baseline survival at the mean of continuous;
+** predictors and reference category (=0) for categorical predictors then;
+** you would replace the S0 values above with those presented (and blocked out);
+** in the comments of the development programme i.e. S0=0.71782 for simple model;
+** and S0=0.70611 for model with PGR included;
+** The pi below would then be replaced with:;
+** pi= sizepi+0.304×(nodes-2.66331)-0.811×(nodes1-0.48308)+gradepi;
+** And for PGR model:;
+** pi2 = sizepi2 + 0.305*(nodes-2.663) - 0.820*(nodes1-0.483) + gradepi2 - 
+**	0.003*(pgr-156.386) + 0.013*(pgr1-22.261);
 
 *code up predictors and apply the original model;
 data l2gbsg_va;
@@ -1505,8 +1517,10 @@ symbol3 i=join c=blue;
 symbol4 i=join c=darkred;
 symbol5 i=join c=gray;
 
-%STDCA(data=L2GBSG_VAL, out=survivalmult, outcome=STATUS, ttoutcome=SURVTIME, timepoint=5, predictors=PROB);
-%STDCA(data=L2GBSG_VAL, out=survivalmult_new, outcome=STATUS, ttoutcome=SURVTIME, timepoint=5, predictors=PROB2);
+%STDCA(data=L2GBSG_VAL, out=survivalmult, outcome=STATUS, ttoutcome=SURVTIME, 
+		timepoint=5, predictors=PROB, smooth=yes);
+%STDCA(data=L2GBSG_VAL, out=survivalmult_new, outcome=STATUS, ttoutcome=SURVTIME, 
+		timepoint=5, predictors=PROB2, smooth=yes);
 
 *Sort by threshold variable;
 proc sort data=survivalmult out=kmsort;
@@ -1552,10 +1566,10 @@ proc sgplot data=crsort;
 		pattern=mediumdash) name="all" legendlabel="Treat All";
 	series y=kmmodel x=threshold / lineattrs=(color=green thickness=2 
 		pattern=solid) name="orig" 
-		legendlabel="Original model";
+		legendlabel="Original model" smoothconnect;
 	series y=crmodel x=threshold / lineattrs=(color=blue thickness=2 
 		pattern=longdash) name="new" 
-		legendlabel="Original model + PGR";
+		legendlabel="Original model + PGR" smoothconnect;
 	series y=none x=threshold / lineattrs=(color=red thickness=2 
 		pattern=shortdash)  name="none" legendlabel="Treat None";
 RUN;

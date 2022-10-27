@@ -328,7 +328,7 @@ ods graphics off;
 
 ********************FIT BASIC MODEL (without PGR)*******************;
 *** Estimating Baseline Survival Function under PH;
-* - Take lowest values to calculate baseline survival;
+* - Take lowest values to calculate baseline survival to agree with R;
 data inrisk;
 	set rott;
 	where sizecat=0 & nodes=0 & gradecat=0;
@@ -365,6 +365,9 @@ proc phreg data=ffpgr;
 	* This statement estimates baseline survival at yearly times;
 	baseline covariates=inrisk out=outph survival=ps timepoint=(1,2,3,4,5) /
 		method=breslow;
+	* If you want to center at the mean number of nodes, instead of using zero;
+		*values for all covariates then do not specify covariates as below;
+	*baseline out=outph survival=ps timepoint=(1,2,3,4,5) / method=breslow;
 	* Save the PI to the original dataset;
 	output out=rottx xbeta=xb;
 run;
@@ -379,6 +382,25 @@ run;
 /* <=20 	1-2 	0 		0 		3 		0.87193 
 /* <=20 	1-2 	0 		0 		4 		0.83548 
 /* <=20 	1-2 	0 		0 		5 		0.80385 
+
+With this form of baseline (the one we use in the case study), the PI is:
+
+PI= 0.342×1(if size is 21-50mm)+0.574×1(if size is>50)+0.304×nodes
+	-0.811×nodes1+0.362×1(if grade=3)
+
+*if we center at mean number of nodes then we get following:
+nodes 	nodes1 	sizecat 	gradecat 	survtime 	ps 
+2.66331 0.48308 <=20 		1-2 		1 			0.95288 
+2.66331 0.48308 <=20 		1-2 		2 			0.87637 
+2.66331 0.48308 <=20 		1-2 		3 			0.81213 
+2.66331 0.48308 <=20 		1-2 		4 			0.76114 
+2.66331 0.48308 <=20 		1-2 		5 			0.71782 
+
+With this form, the PI is:
+
+PI= 0.342×1(if size is 21-50mm)+0.574×1(if size is>50)+0.304×(nodes-2.66331)
+	-0.811×(nodes1-0.48308)+0.362×1(if grade=3)
+
 */
 ******Resample 500 versions of the internal dataset with replacement to allow 
 ******calculation of 95% CI and internal validation;
@@ -1529,9 +1551,9 @@ symbol4 i=join c=darkred;
 symbol5 i=join c=gray;
 
 %STDCA(data=NEWEXT1, out=survivalmult, outcome=STATUS, ttoutcome=SURVTIME1, 
-	timepoint=5, predictors=RISK_ORIG);
+	timepoint=5, predictors=RISK_ORIG, smooth=yes);
 %STDCA(data=NEWEXT1, out=survivalmult_new, outcome=STATUS, ttoutcome=SURVTIME1, 
-	timepoint=5, predictors=RISK_NEW);
+	timepoint=5, predictors=RISK_NEW, smooth=yes);
 
 *sort by threshold variable;
 proc sort data=survivalmult out=kmsort;
@@ -1583,10 +1605,10 @@ proc sgplot data=crsort;
 			pattern=mediumdash) name="all" legendlabel="Treat All";
 	series Y=kmmodel X=threshold / lineattrs=(color=green thickness=2 
 			pattern=solid) name="orig" 
-			legendlabel="Original model";
+			legendlabel="Original model" smoothconnect;
 	series Y=crmodel X=threshold / lineattrs=(color=blue thickness=2 
 			pattern=longdash) name="new" 
-			legendlabel="Original model + PGR";
+			legendlabel="Original model + PGR" smoothconnect;
 	series Y=none X=threshold / lineattrs=(color=red thickness=2 
 			pattern=shortdash)  name="none" legendlabel="Treat None";
 RUN;

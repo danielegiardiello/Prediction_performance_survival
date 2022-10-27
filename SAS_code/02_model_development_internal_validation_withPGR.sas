@@ -277,17 +277,18 @@ run;
 	4 	0.41512 0 		0 
  */
 
-
 *** Estimating Baseline Survival Function under PH;
-* - Take lowest values to calculate baseline survival;
-data inrisks;
+* - Take lowest values to calculate baseline survival to agree with R;
+data inrisk1;
 	set ffpgr;
-	where sizecat=0 & nodes=0 & gradecat=0 & PGR=0 & PGR1=0;
+	where sizecat=0 & nodes=0 & gradecat=0 & pgr=0;
 	n+1;
 	if n>1 then delete;
-	keep sizecat nodes nodes1 gradecat PGR PGR1;
+	keep sizecat nodes nodes1 gradecat pgr pgr1;
 run;
 
+
+*** Estimating Baseline Survival Function under PH;
 Title 'Extended model with proportional hazards assessment';
 *Note: Can block off saving the plots by blocking ods lines below;
 ods listing sge=on style=printer image_dpi=300 gpath='c:';
@@ -307,10 +308,14 @@ proc phreg data=ffpgr /*zph(global transform=log) ev*/;
 	*assess functional form;
 	assess ph / resample crpanel;
 	* This statement estimates baseline survival at yearly times;
-	baseline covariates=inrisks out=outph1 survival=ps timepoint=(1,2,3,4,5) / 
+	baseline covariates=inrisk1 out=outph1 survival=ps timepoint=(1,2,3,4,5) /
+		method=breslow;
+	* If you want to center at the mean number of nodes, instead of using zero;
+		*values for all covariates then do not specify covariates as below;
+	*baseline out=outph1 survival=ps timepoint=(1,2,3,4,5) / 
 		method=breslow;
 	* Save the PI to the original dataset;
-	output out=rottxa xbeta=xb;
+	output out=rottxa xbeta=xb survival=pr;
 run;
 
 ods graphics off;
@@ -319,13 +324,34 @@ proc print data=outph1;
 run;
 
 /* 
-Baseline survival copied from output window..
-sizecat gradecat pgr nodes nodes1 pgr1 survtime ps 
-<=20 	1-2 	0 	0 		0 		0 	1 		0.96123 
-<=20 	1-2 	0 	0 		0 		0 	2 		0.89709 
-<=20 	1-2 	0 	0 		0 		0 	3 		0.84235 
-<=20 	1-2 	0 	0 		0 		0 	4 		0.79835 
-<=20 	1-2 	0 	0 		0 		0 	5 		0.76055 
+*we find following results for baseline survival at yearly timepoints;
+sizecat gradecat 	pgr 	nodes 	nodes1 	pgr1 	survtime 	ps 
+<=20 	1-2 		0 		0 		0 		0 		1 			0.96123 
+<=20 	1-2 		0 		0 		0 		0 		2 			0.89709 
+<=20 	1-2 		0 		0 		0 		0 		3 			0.84235 
+<=20 	1-2 		0 		0 		0 		0 		4 			0.79835 
+<=20 	1-2 		0 		0 		0 		0 		5 			0.76055 
+
+
+With this form of baseline (the one we use in the case study), the PI is:
+
+PI= 0.320×1(if size is 21-50mm)+0.554×1(if size is>50)+0.305×nodes
+	-0.820×nodes1+0.305×1(if grade=3)-0.003×PGR+0.013×PGR1
+
+*if we center at mean number of nodes then we get following:
+nodes 		nodes1 	pgr 	pgr1 	sizecat gradecat 	survtime 	ps 
+2.66331 	0.48308 156.386 22.2605 <=20 	1-2 		1 			0.95097 
+2.66331 	0.48308 156.386 22.2605 <=20 	1-2 		2 			0.87104 
+2.66331 	0.48308 156.386 22.2605 <=20 	1-2 		3 			0.80404 
+2.66331 	0.48308 156.386 22.2605 <=20 	1-2 		4 			0.75102 
+2.66331 	0.48308 156.386 22.2605 <=20 	1-2 		5 			0.70611 
+
+
+With this form, the PI is:
+
+PI= 0.320×1(if size is 21-50mm)+0.554×1(if size is>50)+0.305×(nodes-2.66331)
+	-0.820×(nodes1-0.48308) +0.305×1(if grade=3)-0.003×(PGR-156.386)
+	+0.013×(PGR1-22.2605)
 */
 
 *Call bootstrap resampled dataset from previous programme (without pgr);

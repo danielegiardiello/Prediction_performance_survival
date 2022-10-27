@@ -1978,9 +1978,9 @@ symbol4 i=join c=darkred;
 symbol5 i=join c=gray;
 
 %STDCA(data=NEWEXT2, out=survivalmult, outcome=STATUS, ttoutcome=SURVTIME1, 
-timepoint=5, predictors=RISK_ORIG);
+timepoint=5, predictors=RISK_ORIG, smooth=yes);
 %STDCA(data=NEWEXT2, out=survivalmult_new, outcome=STATUS, ttoutcome=SURVTIME1, 
-timepoint=5, predictors=RISK_NEW);
+timepoint=5, predictors=RISK_NEW, smooth=yes);
 
 *Sort by threshold variable;
 proc sort data=survivalmult out=kmsort;
@@ -2032,10 +2032,10 @@ proc sgplot data=crsort;
 		pattern=mediumdash) name="all" legendlabel="Treat All";
 	series y=kmmodel x=threshold / lineattrs=(color=green thickness=2 
 		pattern=solid) name="orig" 
-		legendlabel="Original model";
+		legendlabel="Original model" smoothconnect;
 	series y=crmodel x=threshold / lineattrs=(color=blue thickness=2 
 		pattern=longdash) name="new" 
-		legendlabel="Original model + PGR";
+		legendlabel="Original model + PGR" smoothconnect;
 	series y=none x=threshold / lineattrs=(color=red thickness=2 
 		pattern=shortdash)  name="none" legendlabel="Treat None";
 RUN;
