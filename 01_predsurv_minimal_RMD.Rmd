@@ -718,6 +718,8 @@ And the decision curve is calculated as follows:
     treated;
 8.  Draw a straight line parallel to the *x-axis* at y=0 representing
     the net benefit associated with the strategy assuming that none of the patients are treated.
+    
+We smoothed the decision curves based on the risk prediction models to reduce the visual impact of random noise using ```stats::smooth()``` function.  
 
 ```{r, function_stdca, message=FALSE,warning=FALSE, fig.align='center',include=FALSE}
 if (!require("pacman")) install.packages("pacman")
@@ -736,6 +738,8 @@ if (!require("pacman")) install.packages("pacman")
 library(pacman)
 pacman::p_load(survival,
                Hmisc)
+
+t_horizon <- 5
 
 # Fit the model without PGR
 efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
@@ -768,9 +772,17 @@ dca_gbsg5 <- stdca(
 )
 
 # Decision curves plot
+
+# Smoothing DCA
+dca_gbsg5_smooth <- smooth(dca_gbsg5$net.benefit$pred
+                           [!is.na(dca_gbsg5$net.benefit$pred)],
+                           twiceit = TRUE)
+dca_gbsg5_smooth <- c(dca_gbsg5_smooth, 
+                      rep(NA, sum(is.na(dca_gbsg5$net.benefit$pred))))
+
 par(xaxs = "i", yaxs = "i", las = 1)
 plot(dca_gbsg5$net.benefit$threshold,
-  dca_gbsg5$net.benefit$pred,
+  dca_gbsg5_smooth,
   type = "l", 
   lwd = 3,
   lty = 2,
@@ -783,7 +795,6 @@ plot(dca_gbsg5$net.benefit$threshold,
   cex.axis = 1,
   col = 4
 )
-
 lines(dca_gbsg5$net.benefit$threshold, 
       dca_gbsg5$net.benefit$none, 
       type = "l", 

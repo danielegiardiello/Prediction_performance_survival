@@ -1,44 +1,44 @@
 Performance assessment of survival prediction models - simplified code
 ================
 
--   <a href="#goals" id="toc-goals">Goals</a>
-    -   <a href="#set-up---load-packages-and-import-data"
-        id="toc-set-up---load-packages-and-import-data">Set up - load packages
-        and import data</a>
-    -   <a href="#data-and-recoding" id="toc-data-and-recoding">Data and
-        recoding</a>
--   <a
-    href="#goal-1---develop-a-risk-prediction-model-with-a-time-to-event-outcome"
-    id="toc-goal-1---develop-a-risk-prediction-model-with-a-time-to-event-outcome">Goal
-    1 - Develop a risk prediction model with a time to event outcome</a>
-    -   <a href="#11-model-development---fit-the-risk-prediction-models"
-        id="toc-11-model-development---fit-the-risk-prediction-models">1.1 Model
-        development - fit the risk prediction models</a>
--   <a href="#goal-2---assessing-performance-in-survival-prediction-models"
-    id="toc-goal-2---assessing-performance-in-survival-prediction-models">Goal
-    2 - Assessing performance in survival prediction models</a>
-    -   <a href="#21-discrimination-measures"
-        id="toc-21-discrimination-measures">2.1 Discrimination measures</a>
-    -   <a href="#22-calibration" id="toc-22-calibration">2.2 Calibration</a>
-        -   <a
-            href="#221-mean-calibration---observedexpected-ratio-for-fixed-time-point"
-            id="toc-221-mean-calibration---observedexpected-ratio-for-fixed-time-point">2.2.1
-            Mean calibration - observed/expected ratio for fixed time point</a>
-        -   <a href="#222-weak-calibration---calibration-slope-for-fixed-time-point"
-            id="toc-222-weak-calibration---calibration-slope-for-fixed-time-point">2.2.2
-            Weak calibration - calibration slope for fixed time point</a>
-        -   <a href="#223-moderate-calibration---fixed-time-point"
-            id="toc-223-moderate-calibration---fixed-time-point">2.2.3 Moderate
-            calibration - fixed time point</a>
-    -   <a href="#23-overall-performance-measures"
-        id="toc-23-overall-performance-measures">2.3 Overall performance
-        measures</a>
--   <a href="#goal-3---clinical-utility"
-    id="toc-goal-3---clinical-utility">Goal 3 - Clinical utility</a>
--   <a href="#additional-notes" id="toc-additional-notes">Additional
-    notes</a>
--   <a href="#reproducibility-ticket"
-    id="toc-reproducibility-ticket">Reproducibility ticket</a>
+- <a href="#goals" id="toc-goals">Goals</a>
+  - <a href="#set-up---load-packages-and-import-data"
+    id="toc-set-up---load-packages-and-import-data">Set up - load packages
+    and import data</a>
+  - <a href="#data-and-recoding" id="toc-data-and-recoding">Data and
+    recoding</a>
+- <a
+  href="#goal-1---develop-a-risk-prediction-model-with-a-time-to-event-outcome"
+  id="toc-goal-1---develop-a-risk-prediction-model-with-a-time-to-event-outcome">Goal
+  1 - Develop a risk prediction model with a time to event outcome</a>
+  - <a href="#11-model-development---fit-the-risk-prediction-models"
+    id="toc-11-model-development---fit-the-risk-prediction-models">1.1 Model
+    development - fit the risk prediction models</a>
+- <a href="#goal-2---assessing-performance-in-survival-prediction-models"
+  id="toc-goal-2---assessing-performance-in-survival-prediction-models">Goal
+  2 - Assessing performance in survival prediction models</a>
+  - <a href="#21-discrimination-measures"
+    id="toc-21-discrimination-measures">2.1 Discrimination measures</a>
+  - <a href="#22-calibration" id="toc-22-calibration">2.2 Calibration</a>
+    - <a
+      href="#221-mean-calibration---observedexpected-ratio-for-fixed-time-point"
+      id="toc-221-mean-calibration---observedexpected-ratio-for-fixed-time-point">2.2.1
+      Mean calibration - observed/expected ratio for fixed time point</a>
+    - <a href="#222-weak-calibration---calibration-slope-for-fixed-time-point"
+      id="toc-222-weak-calibration---calibration-slope-for-fixed-time-point">2.2.2
+      Weak calibration - calibration slope for fixed time point</a>
+    - <a href="#223-moderate-calibration---fixed-time-point"
+      id="toc-223-moderate-calibration---fixed-time-point">2.2.3 Moderate
+      calibration - fixed time point</a>
+  - <a href="#23-overall-performance-measures"
+    id="toc-23-overall-performance-measures">2.3 Overall performance
+    measures</a>
+- <a href="#goal-3---clinical-utility"
+  id="toc-goal-3---clinical-utility">Goal 3 - Clinical utility</a>
+- <a href="#additional-notes" id="toc-additional-notes">Additional
+  notes</a>
+- <a href="#reproducibility-ticket"
+  id="toc-reproducibility-ticket">Reproducibility ticket</a>
 
 ## Goals
 
@@ -280,17 +280,17 @@ non-linear as investigated previously.
 
 The performance of a risk prediction models may be evaluated through:
 
--   discrimination: it is the ability to differentiate between subjects
-    who have the outcome by a certain time point and subjects who do
-    not. It requires the coefficients (or the log of the hazard ratios)
-    of the developed risk prediction model to be evaluated.
+- discrimination: it is the ability to differentiate between subjects
+  who have the outcome by a certain time point and subjects who do not.
+  It requires the coefficients (or the log of the hazard ratios) of the
+  developed risk prediction model to be evaluated.
 
--   calibration: the agreement between observed and predicted
-    probabilities. It requires the baseline (cumulative) hazard or
-    survival.  
+- calibration: the agreement between observed and predicted
+  probabilities. It requires the baseline (cumulative) hazard or
+  survival.  
 
--   overall performance measures: as a combination of discrimination and
-    calibration and/or as a measure of the explained variation;
+- overall performance measures: as a combination of discrimination and
+  calibration and/or as a measure of the explained variation;
 
 Unfortunately, only few publications report the complete baseline
 (cumulative) hazard or survival or even the baseline (cumulative) hazard
@@ -313,25 +313,24 @@ Discrimination is the ability to differentiate between subjects who have
 the outcome by a certain time point and subjects who do not. Concordance
 can be assessed over several different time intervals:
 
--   the entire range of the data. Two concordance measures are
-    suggested:
+- the entire range of the data. Two concordance measures are suggested:
 
-    -   Harrell’s C quantifies the degree of concordance as the
-        proportion of evaluable pairs where the patient with a longer
-        survival time has better predicted survival;
+  - Harrell’s C quantifies the degree of concordance as the proportion
+    of evaluable pairs where the patient with a longer survival time has
+    better predicted survival;
 
-    -   Uno’s C uses a time dependent weighting that more fully adjusts
-        for censoring;
+  - Uno’s C uses a time dependent weighting that more fully adjusts for
+    censoring;
 
--   a 5 year window corresponding to our target assessment point. Uno’s
-    cumulative/dynamic time-dependent Area Under the Curve (AUC) is
-    suggested. Uno’s time-dependent AUC summarizes discrimination at
-    specific fixed time points. At any time point of interest, *t*, a
-    patient is classified as having an event if the patient experienced
-    the event between baseline and *t* (5 years in our case study), and
-    as a non-event if the patient remained event-free at *t*. The
-    time-dependent AUC evaluates whether predicted probabilities were
-    higher for cases than for non-cases.
+- a 5 year window corresponding to our target assessment point. Uno’s
+  cumulative/dynamic time-dependent Area Under the Curve (AUC) is
+  suggested. Uno’s time-dependent AUC summarizes discrimination at
+  specific fixed time points. At any time point of interest, *t*, a
+  patient is classified as having an event if the patient experienced
+  the event between baseline and *t* (5 years in our case study), and as
+  a non-event if the patient remained event-free at *t*. The
+  time-dependent AUC evaluates whether predicted probabilities were
+  higher for cases than for non-cases.
 
 There is some uncertainty in the literature about the original Harrell
 formulation versus Uno’s suggestion to re-weight the time scale by the
@@ -443,14 +442,14 @@ In the scenario we consider here, we can evaluate calibration only at
 fixed time point *t* (i.e. 5 years) since we may have baseline survival
 at time *t* (5 years) and coefficients of the model.
 
--   Mean calibration at a fixed time point can be estimated using the
-    Observed versus Expected ratio at time t;
+- Mean calibration at a fixed time point can be estimated using the
+  Observed versus Expected ratio at time t;
 
--   Weak calibration can be estimated by additionally calculating
-    calibration slope.
+- Weak calibration can be estimated by additionally calculating
+  calibration slope.
 
--   Moderate calibration can estimated at a fixed time point using a
-    flexible calibration curve, complemented with ICI, E50, E90.
+- Moderate calibration can estimated at a fixed time point using a
+  flexible calibration curve, complemented with ICI, E50, E90.
 
 More detailed explanations are available in the paper.
 
@@ -554,32 +553,32 @@ Moderate calibration at fixed time point can be assessed using flexible
 calibration curve, complemented with ICI, E50, E90 as suggested by
 Austin et al.
 
--   Calibration curve is a graphical representation of moderate
-    calibration. It shows:
+- Calibration curve is a graphical representation of moderate
+  calibration. It shows:
 
-    -   on the *x-axis* the predicted survival (or risk) probabilities
-        at a fixed time horizon (e.g. at 5 years);
+  - on the *x-axis* the predicted survival (or risk) probabilities at a
+    fixed time horizon (e.g. at 5 years);
 
-    -   on the *y-axis* the observed survival (or risk) probabilities at
-        a fixed time horizon (e.g. at 5 years);
+  - on the *y-axis* the observed survival (or risk) probabilities at a
+    fixed time horizon (e.g. at 5 years);
 
-    -   The 45-degree line indicates perfect calibration. Points below
-        the 45-degree line indicate that the model overestimates the
-        observed risk. If points are above the 45-degree line, the model
-        underestimate the observed risk; The observed probabilities
-        estimated by the Kaplan-Meier curves (in case of survival) or by
-        the complementary of the Kaplan-Meier curves (in case of risk)
-        are represented in terms of percentiles of the predicted
-        survival (risk) probabilities.
+  - The 45-degree line indicates perfect calibration. Points below the
+    45-degree line indicate that the model overestimates the observed
+    risk. If points are above the 45-degree line, the model
+    underestimate the observed risk; The observed probabilities
+    estimated by the Kaplan-Meier curves (in case of survival) or by the
+    complementary of the Kaplan-Meier curves (in case of risk) are
+    represented in terms of percentiles of the predicted survival (risk)
+    probabilities.
 
--   Integrated Calibration Index (ICI) is the weighted mean of absolute
-    difference between smoothed observed proportions and predicted
-    probabilities in which observations are weighted by the empirical
-    density function of the predicted probabilities;
+- Integrated Calibration Index (ICI) is the weighted mean of absolute
+  difference between smoothed observed proportions and predicted
+  probabilities in which observations are weighted by the empirical
+  density function of the predicted probabilities;
 
--   E50 and E90 denote the median and the 90th percentile of the
-    absolute differences between observed and predicted probabilities of
-    the outcome at time *t*;
+- E50 and E90 denote the median and the 90th percentile of the absolute
+  differences between observed and predicted probabilities of the
+  outcome at time *t*;
 
 <details>
 <summary>
@@ -693,14 +692,14 @@ measures.
 Two overall performance measures are proposed for prediction models with
 a survival outcome:
 
--   Brier score: it is the mean squared difference between observed
-    event indicators and predicted risks at a fixed time point (e.g. at
-    5 years), lower is better;
+- Brier score: it is the mean squared difference between observed event
+  indicators and predicted risks at a fixed time point (e.g. at 5
+  years), lower is better;
 
--   Scaled Brier score, also known as Index of Prediction Accuracy
-    (IPA): it improves interpretability by scaling the Brier Score. It
-    is the decrease in Brier compared to a null model, expressed as a
-    percentage, higher is better.
+- Scaled Brier score, also known as Index of Prediction Accuracy (IPA):
+  it improves interpretability by scaling the Brier Score. It is the
+  decrease in Brier compared to a null model, expressed as a percentage,
+  higher is better.
 
 <details>
 <summary>
@@ -833,6 +832,10 @@ And the decision curve is calculated as follows:
     the net benefit associated with the strategy assuming that none of
     the patients are treated.
 
+We smoothed the decision curves based on the risk prediction models to
+reduce the visual impact of random noise using `stats::smooth()`
+function.
+
 <details>
 <summary>
 Click to expand code
@@ -843,6 +846,8 @@ if (!require("pacman")) install.packages("pacman")
 library(pacman)
 pacman::p_load(survival,
                Hmisc)
+
+t_horizon <- 5
 
 # Fit the model without PGR
 efit1 <- coxph(Surv(ryear, rfs) ~ csize + nodes2 + nodes3 + grade3,
@@ -875,9 +880,17 @@ dca_gbsg5 <- stdca(
 )
 
 # Decision curves plot
+
+# Smoothing DCA
+dca_gbsg5_smooth <- smooth(dca_gbsg5$net.benefit$pred
+                           [!is.na(dca_gbsg5$net.benefit$pred)],
+                           twiceit = TRUE)
+dca_gbsg5_smooth <- c(dca_gbsg5_smooth, 
+                      rep(NA, sum(is.na(dca_gbsg5$net.benefit$pred))))
+
 par(xaxs = "i", yaxs = "i", las = 1)
 plot(dca_gbsg5$net.benefit$threshold,
-  dca_gbsg5$net.benefit$pred,
+  dca_gbsg5_smooth,
   type = "l", 
   lwd = 3,
   lty = 2,
@@ -890,7 +903,6 @@ plot(dca_gbsg5$net.benefit$threshold,
   cex.axis = 1,
   col = 4
 )
-
 lines(dca_gbsg5$net.benefit$threshold, 
       dca_gbsg5$net.benefit$none, 
       type = "l", 
@@ -959,57 +971,54 @@ the plot!
 sessionInfo()
 ```
 
-    ## R version 4.1.2 (2021-11-01)
+    ## R version 4.2.1 (2022-06-23 ucrt)
     ## Platform: x86_64-w64-mingw32/x64 (64-bit)
-    ## Running under: Windows 10 x64 (build 19044)
+    ## Running under: Windows 10 x64 (build 22000)
     ## 
     ## Matrix products: default
     ## 
     ## locale:
-    ## [1] LC_COLLATE=English_United States.1252 
-    ## [2] LC_CTYPE=English_United States.1252   
-    ## [3] LC_MONETARY=English_United States.1252
-    ## [4] LC_NUMERIC=C                          
-    ## [5] LC_TIME=English_United States.1252    
+    ## [1] LC_COLLATE=English_Netherlands.utf8  LC_CTYPE=English_Netherlands.utf8   
+    ## [3] LC_MONETARY=English_Netherlands.utf8 LC_NUMERIC=C                        
+    ## [5] LC_TIME=English_Netherlands.utf8    
     ## 
     ## attached base packages:
     ## [1] stats     graphics  grDevices utils     datasets  methods   base     
     ## 
     ## other attached packages:
     ##  [1] here_1.0.1                timeROC_0.4              
-    ##  [3] riskRegression_2022.03.22 rms_6.3-0                
+    ##  [3] riskRegression_2022.09.23 rms_6.3-0                
     ##  [5] SparseM_1.81              Hmisc_4.7-1              
     ##  [7] ggplot2_3.3.6             Formula_1.2-4            
-    ##  [9] lattice_0.20-45           survival_3.4-0           
+    ##  [9] lattice_0.20-45           survival_3.3-1           
     ## [11] pacman_0.5.1             
     ## 
     ## loaded via a namespace (and not attached):
-    ##  [1] splines_4.1.2       foreach_1.5.2       prodlim_2019.11.13 
+    ##  [1] splines_4.2.1       foreach_1.5.2       prodlim_2019.11.13 
     ##  [4] assertthat_0.2.1    highr_0.9           latticeExtra_0.6-30
-    ##  [7] pec_2022.05.04      yaml_2.3.5          globals_0.16.0     
+    ##  [7] pec_2022.05.04      yaml_2.3.5          globals_0.16.1     
     ## [10] numDeriv_2016.8-1.1 timereg_2.0.2       pillar_1.8.1       
     ## [13] backports_1.4.1     quantreg_5.94       glue_1.6.2         
     ## [16] digest_0.6.29       RColorBrewer_1.1-3  checkmate_2.1.0    
     ## [19] colorspace_2.0-3    sandwich_3.0-2      cmprsk_2.2-11      
-    ## [22] htmltools_0.5.3     Matrix_1.3-4        pkgconfig_2.0.3    
-    ## [25] listenv_0.8.0       purrr_0.3.4         mvtnorm_1.1-3      
-    ## [28] scales_1.2.1        jpeg_0.1-9          lava_1.6.10        
-    ## [31] MatrixModels_0.5-0  htmlTable_2.4.1     tibble_3.1.8       
-    ## [34] mets_1.2.9          generics_0.1.3      TH.data_1.1-1      
-    ## [37] withr_2.5.0         nnet_7.3-16         cli_3.3.0          
-    ## [40] magrittr_2.0.3      deldir_1.0-6        polspline_1.1.20   
-    ## [43] evaluate_0.16       parallelly_1.32.1   future_1.27.0      
-    ## [46] fansi_1.0.3         nlme_3.1-153        MASS_7.3-54        
-    ## [49] foreign_0.8-81      tools_4.1.2         data.table_1.14.2  
-    ## [52] lifecycle_1.0.1     multcomp_1.4-20     stringr_1.4.1      
-    ## [55] interp_1.1-3        munsell_0.5.0       cluster_2.1.2      
-    ## [58] compiler_4.1.2      rlang_1.0.4         grid_4.1.2         
-    ## [61] iterators_1.0.14    rstudioapi_0.14     htmlwidgets_1.5.4  
-    ## [64] base64enc_0.1-3     rmarkdown_2.15      gtable_0.3.0       
-    ## [67] codetools_0.2-18    DBI_1.1.3           R6_2.5.1           
-    ## [70] gridExtra_2.3       zoo_1.8-10          knitr_1.39         
-    ## [73] dplyr_1.0.9         fastmap_1.1.0       future.apply_1.9.0 
-    ## [76] utf8_1.2.2          rprojroot_2.0.3     stringi_1.7.6      
-    ## [79] parallel_4.1.2      Rcpp_1.0.9          vctrs_0.4.1        
-    ## [82] rpart_4.1-15        png_0.1-7           tidyselect_1.1.2   
-    ## [85] xfun_0.32
+    ## [22] htmltools_0.5.3     Matrix_1.5-1        pkgconfig_2.0.3    
+    ## [25] listenv_0.8.0       mvtnorm_1.1-3       scales_1.2.1       
+    ## [28] jpeg_0.1-9          lava_1.6.10         MatrixModels_0.5-1 
+    ## [31] htmlTable_2.4.1     tibble_3.1.8        mets_1.3.1         
+    ## [34] generics_0.1.3      TH.data_1.1-1       withr_2.5.0        
+    ## [37] nnet_7.3-17         cli_3.4.1           magrittr_2.0.3     
+    ## [40] deldir_1.0-6        polspline_1.1.20    evaluate_0.17      
+    ## [43] parallelly_1.32.1   fansi_1.0.3         future_1.28.0      
+    ## [46] nlme_3.1-157        MASS_7.3-57         foreign_0.8-82     
+    ## [49] tools_4.2.1         data.table_1.14.2   lifecycle_1.0.3    
+    ## [52] multcomp_1.4-20     stringr_1.4.1       interp_1.1-3       
+    ## [55] munsell_0.5.0       cluster_2.1.3       compiler_4.2.1     
+    ## [58] rlang_1.0.6         grid_4.2.1          iterators_1.0.14   
+    ## [61] rstudioapi_0.14     htmlwidgets_1.5.4   base64enc_0.1-3    
+    ## [64] rmarkdown_2.17      gtable_0.3.1        codetools_0.2-18   
+    ## [67] DBI_1.1.3           R6_2.5.1            gridExtra_2.3      
+    ## [70] zoo_1.8-11          knitr_1.40          dplyr_1.0.10       
+    ## [73] fastmap_1.1.0       future.apply_1.9.1  utf8_1.2.2         
+    ## [76] rprojroot_2.0.3     stringi_1.7.8       parallel_4.2.1     
+    ## [79] Rcpp_1.0.9          vctrs_0.4.2         rpart_4.1.16       
+    ## [82] png_0.1-7           tidyselect_1.2.0    xfun_0.33
