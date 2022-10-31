@@ -329,10 +329,14 @@ df_nb[df_nb$threshold == 0.23,]
 # Make basic decision curve plot
 
 # Decision curves plot
+
+# Smoothed decision curve
+smooth_nb <- smooth(df_nb$NB, twiceit = TRUE)
+
 dev.new() 
 par(xaxs = "i", yaxs = "i", las = 1)
 plot(df_nb$threshold,
-     df_nb$NB,
+     smooth_nb,
      type = "l", 
      lwd = 3, 
      lty = 2,
@@ -612,10 +616,14 @@ df_nb[df_nb$threshold == 0.23,]
 # Make basic decision curve plot
 
 # Decision curves plot
+
+# Smoothed decision curve
+smooth_nb <- smooth(df_nb$NB, twiceit = TRUE)
+
 dev.new() 
 par(xaxs = "i", yaxs = "i", las = 1)
 plot(df_nb$threshold,
-     df_nb$NB,
+     smooth_nb,
      type = "l", 
      lwd = 3, 
      lty = 2,
