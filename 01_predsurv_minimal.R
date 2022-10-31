@@ -364,6 +364,10 @@ df_nb <- do.call(rbind.data.frame, list_nb)
 df_nb[df_nb$threshold == 0.23,]
 
 # Decision curves plot
+
+# Smoothed decision curve
+smooth_nb <- smooth(df_nb$NB, twiceit = TRUE)
+
 # Make basic decision curve plot
 dev.new()
 par(
@@ -374,7 +378,7 @@ par(
   mgp = c(4.25, 1, 0)
 )
 plot(df_nb$threshold,
-     df_nb$NB,
+     smooth_nb,
      type = "l", 
      lwd = 3,
      lty = 2,
@@ -661,6 +665,10 @@ df_nb <- do.call(rbind.data.frame, list_nb)
 df_nb[df_nb$threshold == 0.23,]
 
 # Decision curves plot
+
+# Smoothed decision curve
+smooth_nb <- smooth(df_nb$NB, twiceit = TRUE)
+
 # Make basic decision curve plot
 dev.new()
 par(
@@ -671,7 +679,7 @@ par(
   mgp = c(4.25, 1, 0)
 )
 plot(df_nb$threshold,
-     df_nb$NB,
+     smooth_nb,
      type = "l", 
      lwd = 3,
      lty = 2,
