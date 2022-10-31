@@ -1,75 +1,75 @@
 Performance assessment of survival prediction models - extended code
 ================
 
--   <a href="#goals" id="toc-goals">Goals</a>
-    -   <a href="#load-packages-and-import-data"
-        id="toc-load-packages-and-import-data">Load packages and import data</a>
-    -   <a href="#data-preparation-and-descriptive-statistics"
-        id="toc-data-preparation-and-descriptive-statistics">Data preparation
-        and descriptive statistics</a>
--   <a
-    href="#goal-1---develop-a-risk-prediction-model-with-a-time-to-event-outcome"
-    id="toc-goal-1---develop-a-risk-prediction-model-with-a-time-to-event-outcome">Goal
-    1 - Develop a risk prediction model with a time-to-event outcome</a>
-    -   <a
-        href="#11-preliminary-investigation---survival-and-censoring-curves-in-the-development-and-validation-data"
-        id="toc-11-preliminary-investigation---survival-and-censoring-curves-in-the-development-and-validation-data">1.1
-        Preliminary investigation - survival and censoring curves in the
-        development and validation data</a>
-    -   <a
-        href="#12-secondary-investigation---check-non-linearity-of-continuous-predictors"
-        id="toc-12-secondary-investigation---check-non-linearity-of-continuous-predictors">1.2
-        Secondary investigation - check non-linearity of continuous
-        predictors</a>
-    -   <a
-        href="#13-model-development---first-check---the-proportional-hazard-ph-assumption"
-        id="toc-13-model-development---first-check---the-proportional-hazard-ph-assumption">1.3
-        Model development - first check - the proportional hazard (PH)
-        assumption</a>
-    -   <a href="#14-model-development---fit-the-risk-prediction-models"
-        id="toc-14-model-development---fit-the-risk-prediction-models">1.4 Model
-        development - fit the risk prediction models</a>
-    -   <a
-        href="#15-histograms-of-predictions-with-and-without-the-additional-marker"
-        id="toc-15-histograms-of-predictions-with-and-without-the-additional-marker">1.5
-        Histograms of predictions with and without the additional marker</a>
--   <a href="#goal-2---assessing-performance-in-survival-prediction-models"
-    id="toc-goal-2---assessing-performance-in-survival-prediction-models">Goal
-    2 - Assessing performance in survival prediction models</a>
-    -   <a href="#21-discrimination-measures"
-        id="toc-21-discrimination-measures">2.1 Discrimination measures</a>
-    -   <a href="#22-calibration" id="toc-22-calibration">2.2 Calibration</a>
-        -   <a href="#221-mean-calibration" id="toc-221-mean-calibration">2.2.1 Mean
-            calibration</a>
-            -   <a href="#2211-mean-calibration---fixed-time-point"
-                id="toc-2211-mean-calibration---fixed-time-point">2.2.1.1 Mean
-                calibration - fixed time point</a>
-            -   <a href="#2212-mean-calibration---time-range-assessment"
-                id="toc-2212-mean-calibration---time-range-assessment">2.2.1.2 Mean
-                calibration - time range assessment</a>
-        -   <a href="#222-weak-calibration" id="toc-222-weak-calibration">2.2.2 Weak
-            calibration</a>
-            -   <a href="#2221-weak-calibration---fixed-time-point"
-                id="toc-2221-weak-calibration---fixed-time-point">2.2.2.1 Weak
-                calibration - fixed time point</a>
-            -   <a href="#2222-weak-calibration---time-range-assessment"
-                id="toc-2222-weak-calibration---time-range-assessment">2.2.2.2 Weak
-                calibration - time range assessment</a>
-        -   <a href="#223-moderate-calibration"
-            id="toc-223-moderate-calibration">2.2.3 Moderate calibration</a>
-            -   <a href="#2231-moderate-calibration---fixed-time-point"
-                id="toc-2231-moderate-calibration---fixed-time-point">2.2.3.1 Moderate
-                calibration - fixed time point</a>
-            -   <a href="#2232-moderate-calibration---time-range-assessment"
-                id="toc-2232-moderate-calibration---time-range-assessment">2.2.3.2
-                Moderate calibration - time range assessment</a>
-    -   <a href="#23-overall-performance-measures"
-        id="toc-23-overall-performance-measures">2.3 Overall performance
-        measures</a>
--   <a href="#goal-3---clinical-utility"
-    id="toc-goal-3---clinical-utility">Goal 3 - Clinical utility</a>
--   <a href="#reproducibility-ticket"
-    id="toc-reproducibility-ticket">Reproducibility ticket</a>
+- <a href="#goals" id="toc-goals">Goals</a>
+  - <a href="#load-packages-and-import-data"
+    id="toc-load-packages-and-import-data">Load packages and import data</a>
+  - <a href="#data-preparation-and-descriptive-statistics"
+    id="toc-data-preparation-and-descriptive-statistics">Data preparation
+    and descriptive statistics</a>
+- <a
+  href="#goal-1---develop-a-risk-prediction-model-with-a-time-to-event-outcome"
+  id="toc-goal-1---develop-a-risk-prediction-model-with-a-time-to-event-outcome">Goal
+  1 - Develop a risk prediction model with a time-to-event outcome</a>
+  - <a
+    href="#11-preliminary-investigation---survival-and-censoring-curves-in-the-development-and-validation-data"
+    id="toc-11-preliminary-investigation---survival-and-censoring-curves-in-the-development-and-validation-data">1.1
+    Preliminary investigation - survival and censoring curves in the
+    development and validation data</a>
+  - <a
+    href="#12-secondary-investigation---check-non-linearity-of-continuous-predictors"
+    id="toc-12-secondary-investigation---check-non-linearity-of-continuous-predictors">1.2
+    Secondary investigation - check non-linearity of continuous
+    predictors</a>
+  - <a
+    href="#13-model-development---first-check---the-proportional-hazard-ph-assumption"
+    id="toc-13-model-development---first-check---the-proportional-hazard-ph-assumption">1.3
+    Model development - first check - the proportional hazard (PH)
+    assumption</a>
+  - <a href="#14-model-development---fit-the-risk-prediction-models"
+    id="toc-14-model-development---fit-the-risk-prediction-models">1.4 Model
+    development - fit the risk prediction models</a>
+  - <a
+    href="#15-histograms-of-predictions-with-and-without-the-additional-marker"
+    id="toc-15-histograms-of-predictions-with-and-without-the-additional-marker">1.5
+    Histograms of predictions with and without the additional marker</a>
+- <a href="#goal-2---assessing-performance-in-survival-prediction-models"
+  id="toc-goal-2---assessing-performance-in-survival-prediction-models">Goal
+  2 - Assessing performance in survival prediction models</a>
+  - <a href="#21-discrimination-measures"
+    id="toc-21-discrimination-measures">2.1 Discrimination measures</a>
+  - <a href="#22-calibration" id="toc-22-calibration">2.2 Calibration</a>
+    - <a href="#221-mean-calibration" id="toc-221-mean-calibration">2.2.1 Mean
+      calibration</a>
+      - <a href="#2211-mean-calibration---fixed-time-point"
+        id="toc-2211-mean-calibration---fixed-time-point">2.2.1.1 Mean
+        calibration - fixed time point</a>
+      - <a href="#2212-mean-calibration---time-range-assessment"
+        id="toc-2212-mean-calibration---time-range-assessment">2.2.1.2 Mean
+        calibration - time range assessment</a>
+    - <a href="#222-weak-calibration" id="toc-222-weak-calibration">2.2.2 Weak
+      calibration</a>
+      - <a href="#2221-weak-calibration---fixed-time-point"
+        id="toc-2221-weak-calibration---fixed-time-point">2.2.2.1 Weak
+        calibration - fixed time point</a>
+      - <a href="#2222-weak-calibration---time-range-assessment"
+        id="toc-2222-weak-calibration---time-range-assessment">2.2.2.2 Weak
+        calibration - time range assessment</a>
+    - <a href="#223-moderate-calibration"
+      id="toc-223-moderate-calibration">2.2.3 Moderate calibration</a>
+      - <a href="#2231-moderate-calibration---fixed-time-point"
+        id="toc-2231-moderate-calibration---fixed-time-point">2.2.3.1 Moderate
+        calibration - fixed time point</a>
+      - <a href="#2232-moderate-calibration---time-range-assessment"
+        id="toc-2232-moderate-calibration---time-range-assessment">2.2.3.2
+        Moderate calibration - time range assessment</a>
+  - <a href="#23-overall-performance-measures"
+    id="toc-23-overall-performance-measures">2.3 Overall performance
+    measures</a>
+- <a href="#goal-3---clinical-utility"
+  id="toc-goal-3---clinical-utility">Goal 3 - Clinical utility</a>
+- <a href="#reproducibility-ticket"
+  id="toc-reproducibility-ticket">Reproducibility ticket</a>
 
 ## Goals
 
@@ -932,7 +932,7 @@ S0_t5_c <- bh_c$surv[bh_c$time == 5]
 
 Below the results of the models:
 
--   Classical model:
+- Classical model:
 
  <strong>Cox Proportional Hazards Model</strong>
  
@@ -1027,7 +1027,7 @@ Below the results of the models:
 </tbody>
 </table>
 
--   Extended model:
+- Extended model:
 
  <strong>Cox Proportional Hazards Model</strong>
  
@@ -1213,17 +1213,17 @@ title("Validation data")
 
 The performance of a risk prediction models may be evaluated through:
 
--   discrimination: the ability of the model to correctly rank patients
-    with and without the outcome by a certain time point. This requires
-    the coefficients (or the log of the hazard ratios) of the developed
-    Cox prediction model to be evaluated;
+- discrimination: the ability of the model to correctly rank patients
+  with and without the outcome by a certain time point. This requires
+  the coefficients (or the log of the hazard ratios) of the developed
+  Cox prediction model to be evaluated;
 
--   calibration: the agreement between observed and predicted
-    probabilities. It additionally requires the baseline (cumulative)
-    hazard or survival;
+- calibration: the agreement between observed and predicted
+  probabilities. It additionally requires the baseline (cumulative)
+  hazard or survival;
 
--   overall performance measures: a combination of discrimination and
-    calibration.
+- overall performance measures: a combination of discrimination and
+  calibration.
 
 It is common that physicians focus on one or more clinically relevant
 time horizons to inform subjects about their risk. We aim to assess the
@@ -1237,25 +1237,24 @@ Discrimination is the ability to differentiate between subjects who have
 the outcome by a certain time point and subjects who do not. Concordance
 can be assessed over several different time intervals:
 
--   the entire range of the data. Two concordance measures are
-    suggested:
+- the entire range of the data. Two concordance measures are suggested:
 
-    -   Harrell’s C quantifies the degree of concordance as the
-        proportion of evaluable pairs where the patient with a longer
-        survival time has better predicted survival;
+  - Harrell’s C quantifies the degree of concordance as the proportion
+    of evaluable pairs where the patient with a longer survival time has
+    better predicted survival;
 
-    -   Uno’s C uses a time dependent weighting that more fully adjusts
-        for censoring;
+  - Uno’s C uses a time dependent weighting that more fully adjusts for
+    censoring;
 
--   a 5 year window corresponding to our target assessment point. Uno’s
-    cumulative/dynamic time-dependent Area Under the Curve (AUC) is
-    suggested. Uno’s time-dependent AUC summarizes discrimination at
-    specific fixed time points. At any time point of interest, *t*, a
-    patient is classified as having an event if the patient experienced
-    the event between baseline and *t* (5 years in our case study), and
-    as a non-event if the patient remained event-free at *t*. The
-    time-dependent AUC evaluates whether predicted probabilities were
-    higher for cases than for non-cases.
+- a 5 year window corresponding to our target assessment point. Uno’s
+  cumulative/dynamic time-dependent Area Under the Curve (AUC) is
+  suggested. Uno’s time-dependent AUC summarizes discrimination at
+  specific fixed time points. At any time point of interest, *t*, a
+  patient is classified as having an event if the patient experienced
+  the event between baseline and *t* (5 years in our case study), and as
+  a non-event if the patient remained event-free at *t*. The
+  time-dependent AUC evaluates whether predicted probabilities were
+  higher for cases than for non-cases.
 
 There is some uncertainty in the literature about the original Harrell
 formulation versus Uno’s suggestion to re-weight the time scale by the
@@ -1529,7 +1528,7 @@ NA
 0.7
 </td>
 <td style="text-align:right;">
-0.69
+0.68
 </td>
 <td style="text-align:right;">
 NA
@@ -2308,42 +2307,37 @@ hazard at fixed time point and coefficient are available.
 Since different level of information may be available, different level
 of calibration can be estimated: mean, weak, and moderate calibration.
 
--   Mean calibration can be estimated:
+- Mean calibration can be estimated:
 
-    -   at a fixed time point:
-        -   using the Observed and Expected ratio at time t. The
-            estimated Observed number of events is calculated by the
-            Kaplan-Meier curve, and the Expected number of events
-            iscalculated as the average of the estimated predicted risk
-            at time *t* (e.g. 5 years);
-    -   time range:
-        -   using the exponential of Poisson model intercept,
-            exp(a)=(O/E), with log of cumulative hazard as offset.
+  - at a fixed time point:
+    - using the Observed and Expected ratio at time t. The estimated
+      Observed number of events is calculated by the Kaplan-Meier curve,
+      and the Expected number of events iscalculated as the average of
+      the estimated predicted risk at time *t* (e.g. 5 years);
+  - time range:
+    - using the exponential of Poisson model intercept, exp(a)=(O/E),
+      with log of cumulative hazard as offset.
 
--   Weak calibration can be estimated:
+- Weak calibration can be estimated:
 
-    -   at a fixed time point
-        -   using a new ‘secondary’ Cox model using all of the
-            validation data with the PI from the development model as
-            the only covariate.
-    -   time range:
-        -   using slope as the coefficient of PI in Poisson model with
-            log of baseline cumulative hazard minus PI as offset.
+  - at a fixed time point
+    - using a new ‘secondary’ Cox model using all of the validation data
+      with the PI from the development model as the only covariate.
+  - time range:
+    - using slope as the coefficient of PI in Poisson model with log of
+      baseline cumulative hazard minus PI as offset.
 
--   Moderate calibration can estimated:
+- Moderate calibration can estimated:
 
-    -   at a fixed time point:
-        -   using flexible calibration curve, complemented with ICI,E50,
-            E90.
-    -   time range:
-        -   Plot the observed / expected number of events over time
-            using Poisson model intercept, exp(a) with log of cumulative
-            hazard as offset across all time points to *t* (i.e. 5
-            years);  
-        -   Model relationship between predictions and observed risk in
-            external dataset using Poisson model. Plot cumulative hazard
-            from Poisson model versus cumulative hazard from original
-            Cox model.
+  - at a fixed time point:
+    - using flexible calibration curve, complemented with ICI,E50, E90.
+  - time range:
+    - Plot the observed / expected number of events over time using
+      Poisson model intercept, exp(a) with log of cumulative hazard as
+      offset across all time points to *t* (i.e. 5 years);  
+    - Model relationship between predictions and observed risk in
+      external dataset using Poisson model. Plot cumulative hazard from
+      Poisson model versus cumulative hazard from original Cox model.
 
 More detailed explanations are available in the preprint version of the
 [paper](https://www.medrxiv.org/content/10.1101/2022.03.17.22272411v1).
@@ -2857,28 +2851,27 @@ al](https://onlinelibrary.wiley.com/doi/full/10.1002/sim.8570).
 Calibration curve: it is a graphical representation of calibration
 in-the-large and calibration. It shows:
 
--   on the *x-axis* the predicted survival (or risk) probabilities at a
-    fixed time horizon (e.g. at 5 years);
+- on the *x-axis* the predicted survival (or risk) probabilities at a
+  fixed time horizon (e.g. at 5 years);
 
--   on the *y-axis* the observed survival (or risk) probabilities at a
-    fixed time horizon (e.g. at 5 years);
+- on the *y-axis* the observed survival (or risk) probabilities at a
+  fixed time horizon (e.g. at 5 years);
 
--   The 45-degree line indicates the good overall calibration. Points
-    below the 45-degree line indicates that the model overestimate the
-    observed risk. If points are above the 45-degree line, the model
-    underestimate the observed risk; The observed probabilities
-    estimated by the Kaplan-Meier curves (in case of survival) or by the
-    complementary of the Kaplan-Meier curves (in case of risk in absence
-    of competing risks) are represented in terms of percentiles of the
-    predicted survival (risk) probabilities.
+- The 45-degree line indicates the good overall calibration. Points
+  below the 45-degree line indicates that the model overestimate the
+  observed risk. If points are above the 45-degree line, the model
+  underestimate the observed risk; The observed probabilities estimated
+  by the Kaplan-Meier curves (in case of survival) or by the
+  complementary of the Kaplan-Meier curves (in case of risk in absence
+  of competing risks) are represented in terms of percentiles of the
+  predicted survival (risk) probabilities.
 
--   Integrated Calibration Index (ICI): it is the mean absolute
-    difference between smoothed observed proportions and predicted
-    probabilities;
+- Integrated Calibration Index (ICI): it is the mean absolute difference
+  between smoothed observed proportions and predicted probabilities;
 
--   E50 and E90 denote the median, the 90th percentile of the absolute
-    difference between observed and predicted probabilities of the
-    outcome at time *t*;
+- E50 and E90 denote the median, the 90th percentile of the absolute
+  difference between observed and predicted probabilities of the outcome
+  at time *t*;
 
 <details>
 <summary>
@@ -3206,7 +3199,7 @@ External data
 0.02
 </td>
 <td style="text-align:right;">
-0.06
+0.07
 </td>
 <td style="text-align:right;">
 0.03
@@ -3221,7 +3214,7 @@ External data
 0.07
 </td>
 <td style="text-align:right;">
-0.04
+0.03
 </td>
 <td style="text-align:right;">
 0.12
@@ -3244,16 +3237,16 @@ External data + PGR
 0.02
 </td>
 <td style="text-align:right;">
-0.01
+0.00
 </td>
 <td style="text-align:right;">
-0.07
+0.06
 </td>
 <td style="text-align:right;">
 0.05
 </td>
 <td style="text-align:right;">
-0.02
+0.03
 </td>
 <td style="text-align:right;">
 0.11
@@ -3353,14 +3346,14 @@ abline(0, 0, lty = 3)
 Two overall performance measures are proposed for prediction models with
 a survival outcome:
 
--   Brier score: it is the mean squared difference between observed
-    event indicators and predicted risks at a fixed time point (e.g. at
-    5 years), lower is better;
+- Brier score: it is the mean squared difference between observed event
+  indicators and predicted risks at a fixed time point (e.g. at 5
+  years), lower is better;
 
--   Scaled Brier score, also known as Index of Prediction Accuracy
-    (IPA): it improves interpretability by scaling the Brier Score. It
-    is the decrease in Brier compared to a null model, expressed as a
-    percentage, higher is better.
+- Scaled Brier score, also known as Index of Prediction Accuracy (IPA):
+  it improves interpretability by scaling the Brier Score. It is the
+  decrease in Brier compared to a null model, expressed as a percentage,
+  higher is better.
 
 <details>
 <summary>
@@ -3787,6 +3780,10 @@ And the the decision curve is calculated as follows:
 Given some thresholds, the model/strategy with higher net benefit
 represents the one that potentially improves clinical decision making.
 
+We smoothed the decision curves based on the risk prediction models to
+reduce the visual impact of random noise using `stats::smooth()`
+function.
+
 <details>
 <summary>
 Click to expand code
@@ -3828,6 +3825,14 @@ dca_rott5 <- stdca(
   graph = FALSE
 )
 
+# Smoothing DCA without PGR
+dca_rott5_smooth <- smooth(dca_rott5$net.benefit$pred5
+                           [!is.na(dca_rott5$net.benefit$pred5)],
+                           twiceit = TRUE)
+dca_rott5_smooth <- c(dca_rott5_smooth, 
+                      rep(NA, sum(is.na(dca_rott5$net.benefit$pred5))))
+
+
 # Model with PGR
 dca_rott5_pgr <- stdca(
   data = rott5, 
@@ -3840,10 +3845,17 @@ dca_rott5_pgr <- stdca(
   graph = FALSE
 )
 
+# Smoothing DCA with PGR
+dca_rott5_pgr_smooth <- smooth(dca_rott5_pgr$net.benefit$pred5_pgr
+                            [!is.na(dca_rott5_pgr$net.benefit$pred5_pgr)],
+                               twiceit = TRUE)
+dca_rott5_pgr_smooth <- c(dca_rott5_pgr_smooth,
+                  rep(NA,sum(is.na(dca_rott5_pgr$net.benefit$pred5_pgr))))
+
 # Decision curves plot
 par(xaxs = "i", yaxs = "i", las = 1)
 plot(dca_rott5$net.benefit$threshold,
-  dca_rott5$net.benefit$pred5,
+  dca_rott5_smooth,
   type = "l", 
   lwd = 3, 
   lty = 2,
@@ -3868,7 +3880,7 @@ lines(dca_rott5$net.benefit$threshold,
       lty = 4,
       col = 2)
 lines(dca_rott5_pgr$net.benefit$threshold, 
-      dca_rott5_pgr$net.benefit$pred5_pgr, 
+      dca_rott5_pgr_smooth, 
       type = "l", 
       lwd = 3, 
       lty = 5,
@@ -3928,10 +3940,24 @@ dca_gbsg5_pgr <- stdca(
   graph = FALSE
 )
 
+# Smoothing DCA without PGR
+dca_gbsg5_smooth <- smooth(dca_gbsg5$net.benefit$pred5
+                           [!is.na(dca_gbsg5$net.benefit$pred5)],
+                           twiceit = TRUE)
+dca_gbsg5_smooth <- c(dca_gbsg5_smooth, 
+                      rep(NA, sum(is.na(dca_gbsg5$net.benefit$pred5))))
+
+# Smoothing DCA with PGR
+dca_gbsg5_pgr_smooth <- smooth(dca_gbsg5_pgr$net.benefit$pred5_pgr
+                            [!is.na(dca_gbsg5_pgr$net.benefit$pred5_pgr)],
+                               twiceit = TRUE)
+dca_gbsg5_pgr_smooth <- c(dca_gbsg5_pgr_smooth,
+                  rep(NA,sum(is.na(dca_gbsg5_pgr$net.benefit$pred5_pgr))))
+
 # Decision curves plot
 par(xaxs = "i", yaxs = "i", las = 1)
 plot(dca_gbsg5$net.benefit$threshold,
-  dca_gbsg5$net.benefit$pred5,
+  dca_gbsg5_smooth,
   type = "l", 
   lwd = 3, 
   lty = 2,
@@ -3957,7 +3983,7 @@ lines(dca_gbsg5$net.benefit$threshold,
       lty = 2,
       col = 2)
 lines(dca_gbsg5_pgr$net.benefit$threshold,
-      dca_gbsg5_pgr$net.benefit$pred5_pgr, 
+      dca_gbsg5_pgr_smooth, 
       type = "l", 
       lwd = 3, 
       lty = 5,
@@ -4069,170 +4095,170 @@ $p_{t}$ is the risk threshold.
 sessioninfo::session_info()
 ```
 
-    ## - Session info ---------------------------------------------------------------
+    ## ─ Session info ───────────────────────────────────────────────────────────────
     ##  setting  value
-    ##  version  R version 4.1.2 (2021-11-01)
-    ##  os       Windows 10 x64 (build 19044)
+    ##  version  R version 4.2.1 (2022-06-23 ucrt)
+    ##  os       Windows 10 x64 (build 22000)
     ##  system   x86_64, mingw32
     ##  ui       RTerm
     ##  language (EN)
-    ##  collate  English_United States.1252
-    ##  ctype    English_United States.1252
+    ##  collate  English_Netherlands.utf8
+    ##  ctype    English_Netherlands.utf8
     ##  tz       Europe/Berlin
-    ##  date     2022-09-29
-    ##  pandoc   2.18 @ C:/Program Files/RStudio/bin/quarto/bin/tools/ (via rmarkdown)
+    ##  date     2022-10-31
+    ##  pandoc   2.19.2 @ C:/Program Files/RStudio/bin/quarto/bin/tools/ (via rmarkdown)
     ## 
-    ## - Packages -------------------------------------------------------------------
+    ## ─ Packages ───────────────────────────────────────────────────────────────────
     ##  package        * version    date (UTC) lib source
-    ##  abind            1.4-5      2016-07-21 [1] CRAN (R 4.1.1)
-    ##  assertthat       0.2.1      2019-03-21 [1] CRAN (R 4.1.2)
-    ##  backports        1.4.1      2021-12-13 [1] CRAN (R 4.1.2)
-    ##  base64enc        0.1-3      2015-07-28 [1] CRAN (R 4.1.1)
-    ##  boot           * 1.3-28     2021-05-03 [2] CRAN (R 4.1.2)
-    ##  broom            1.0.0      2022-07-01 [1] CRAN (R 4.1.3)
-    ##  broom.helpers    1.8.0      2022-07-05 [1] CRAN (R 4.1.3)
-    ##  car              3.1-0      2022-06-15 [1] CRAN (R 4.1.3)
-    ##  carData          3.0-5      2022-01-06 [1] CRAN (R 4.1.3)
-    ##  cellranger       1.1.0      2016-07-27 [1] CRAN (R 4.1.2)
-    ##  checkmate        2.1.0      2022-04-21 [1] CRAN (R 4.1.3)
-    ##  cli              3.3.0      2022-04-25 [1] CRAN (R 4.1.3)
-    ##  cluster          2.1.2      2021-04-17 [2] CRAN (R 4.1.2)
-    ##  cmprsk           2.2-11     2022-01-06 [1] CRAN (R 4.1.3)
-    ##  codetools        0.2-18     2020-11-04 [2] CRAN (R 4.1.2)
-    ##  colorspace       2.0-3      2022-02-21 [1] CRAN (R 4.1.3)
-    ##  crayon           1.5.1      2022-03-26 [1] CRAN (R 4.1.3)
-    ##  curl             4.3.2      2021-06-23 [1] CRAN (R 4.1.2)
-    ##  data.table       1.14.2     2021-09-27 [1] CRAN (R 4.1.2)
-    ##  DBI              1.1.3      2022-06-18 [1] CRAN (R 4.1.3)
-    ##  dbplyr           2.2.1      2022-06-27 [1] CRAN (R 4.1.3)
-    ##  deldir           1.0-6      2021-10-23 [1] CRAN (R 4.1.1)
-    ##  digest           0.6.29     2021-12-01 [1] CRAN (R 4.1.2)
-    ##  dplyr          * 1.0.9      2022-04-28 [1] CRAN (R 4.1.3)
-    ##  ellipsis         0.3.2      2021-04-29 [1] CRAN (R 4.1.2)
-    ##  evaluate         0.16       2022-08-09 [1] CRAN (R 4.1.3)
-    ##  fansi            1.0.3      2022-03-24 [1] CRAN (R 4.1.3)
-    ##  farver           2.1.1      2022-07-06 [1] CRAN (R 4.1.3)
-    ##  fastmap          1.1.0      2021-01-25 [1] CRAN (R 4.1.2)
-    ##  forcats        * 0.5.2      2022-08-19 [1] CRAN (R 4.1.3)
-    ##  foreach          1.5.2      2022-02-02 [1] CRAN (R 4.1.3)
-    ##  foreign          0.8-81     2020-12-22 [2] CRAN (R 4.1.2)
-    ##  Formula        * 1.2-4      2020-10-16 [1] CRAN (R 4.1.1)
-    ##  fs               1.5.2      2021-12-08 [1] CRAN (R 4.1.3)
-    ##  furrr            0.3.1      2022-08-15 [1] CRAN (R 4.1.3)
-    ##  future           1.27.0     2022-07-22 [1] CRAN (R 4.1.3)
-    ##  future.apply     1.9.0      2022-04-25 [1] CRAN (R 4.1.3)
-    ##  gargle           1.2.0      2021-07-02 [1] CRAN (R 4.1.2)
-    ##  generics         0.1.3      2022-07-05 [1] CRAN (R 4.1.3)
-    ##  ggplot2        * 3.3.6      2022-05-03 [1] CRAN (R 4.1.3)
-    ##  ggpubr         * 0.4.0      2020-06-27 [1] CRAN (R 4.1.2)
-    ##  ggsignif         0.6.3      2021-09-09 [1] CRAN (R 4.1.2)
-    ##  ggtext           0.1.1      2020-12-17 [1] CRAN (R 4.1.3)
-    ##  globals          0.16.0     2022-08-05 [1] CRAN (R 4.1.3)
-    ##  glue             1.6.2      2022-02-24 [1] CRAN (R 4.1.3)
-    ##  googledrive      2.0.0      2021-07-08 [1] CRAN (R 4.1.2)
-    ##  googlesheets4    1.0.1      2022-08-13 [1] CRAN (R 4.1.3)
-    ##  gridExtra      * 2.3        2017-09-09 [1] CRAN (R 4.1.2)
-    ##  gridtext         0.1.4      2020-12-10 [1] CRAN (R 4.1.3)
-    ##  gt               0.6.0      2022-05-24 [1] CRAN (R 4.1.3)
-    ##  gtable           0.3.0      2019-03-25 [1] CRAN (R 4.1.2)
-    ##  gtsummary      * 1.6.1      2022-06-22 [1] CRAN (R 4.1.3)
-    ##  haven            2.5.0      2022-04-15 [1] CRAN (R 4.1.3)
-    ##  here             1.0.1      2020-12-13 [1] CRAN (R 4.1.2)
-    ##  highr            0.9        2021-04-16 [1] CRAN (R 4.1.2)
-    ##  Hmisc          * 4.7-1      2022-08-15 [1] CRAN (R 4.1.3)
-    ##  hms              1.1.2      2022-08-19 [1] CRAN (R 4.1.3)
-    ##  htmlTable        2.4.1      2022-07-07 [1] CRAN (R 4.1.3)
-    ##  htmltools        0.5.3      2022-07-18 [1] CRAN (R 4.1.3)
-    ##  htmlwidgets      1.5.4      2021-09-08 [1] CRAN (R 4.1.2)
-    ##  httr             1.4.4      2022-08-17 [1] CRAN (R 4.1.3)
-    ##  interp           1.1-3      2022-07-13 [1] CRAN (R 4.1.3)
-    ##  iterators        1.0.14     2022-02-05 [1] CRAN (R 4.1.3)
-    ##  jpeg             0.1-9      2021-07-24 [1] CRAN (R 4.1.1)
-    ##  jsonlite         1.8.0      2022-02-22 [1] CRAN (R 4.1.3)
-    ##  kableExtra     * 1.3.4      2021-02-20 [1] CRAN (R 4.1.2)
-    ##  km.ci            0.5-6      2022-04-06 [1] CRAN (R 4.1.3)
-    ##  KMsurv           0.1-5      2012-12-03 [1] CRAN (R 4.1.1)
-    ##  knitr          * 1.39       2022-04-26 [1] CRAN (R 4.1.3)
-    ##  labeling         0.4.2      2020-10-20 [1] CRAN (R 4.1.1)
-    ##  lattice        * 0.20-45    2021-09-22 [2] CRAN (R 4.1.2)
-    ##  latticeExtra     0.6-30     2022-07-04 [1] CRAN (R 4.1.3)
-    ##  lava             1.6.10     2021-09-02 [1] CRAN (R 4.1.2)
-    ##  lifecycle        1.0.1      2021-09-24 [1] CRAN (R 4.1.2)
-    ##  listenv          0.8.0      2019-12-05 [1] CRAN (R 4.1.2)
-    ##  lubridate        1.8.0      2021-10-07 [1] CRAN (R 4.1.2)
-    ##  magrittr         2.0.3      2022-03-30 [1] CRAN (R 4.1.3)
-    ##  MASS             7.3-54     2021-05-03 [2] CRAN (R 4.1.2)
-    ##  Matrix           1.3-4      2021-06-01 [2] CRAN (R 4.1.2)
-    ##  MatrixModels     0.5-0      2021-03-02 [1] CRAN (R 4.1.2)
-    ##  mets             1.2.9      2021-09-06 [1] CRAN (R 4.1.2)
-    ##  modelr           0.1.9      2022-08-19 [1] CRAN (R 4.1.3)
-    ##  multcomp         1.4-20     2022-08-07 [1] CRAN (R 4.1.3)
-    ##  munsell          0.5.0      2018-06-12 [1] CRAN (R 4.1.2)
-    ##  mvtnorm          1.1-3      2021-10-08 [1] CRAN (R 4.1.1)
-    ##  nlme             3.1-153    2021-09-07 [2] CRAN (R 4.1.2)
-    ##  nnet             7.3-16     2021-05-03 [2] CRAN (R 4.1.2)
-    ##  numDeriv         2016.8-1.1 2019-06-06 [1] CRAN (R 4.1.1)
-    ##  openxlsx         4.2.5      2021-12-14 [1] CRAN (R 4.1.3)
-    ##  pacman         * 0.5.1      2019-03-11 [1] CRAN (R 4.1.2)
-    ##  parallelly       1.32.1     2022-07-21 [1] CRAN (R 4.1.3)
-    ##  pec            * 2022.05.04 2022-05-04 [1] CRAN (R 4.1.3)
-    ##  pillar           1.8.1      2022-08-19 [1] CRAN (R 4.1.3)
-    ##  pkgconfig        2.0.3      2019-09-22 [1] CRAN (R 4.1.2)
-    ##  plotrix        * 3.8-2      2021-09-08 [1] CRAN (R 4.1.1)
-    ##  png              0.1-7      2013-12-03 [1] CRAN (R 4.1.1)
-    ##  polspline        1.1.20     2022-04-25 [1] CRAN (R 4.1.3)
-    ##  prodlim        * 2019.11.13 2019-11-17 [1] CRAN (R 4.1.2)
-    ##  purrr          * 0.3.4      2020-04-17 [1] CRAN (R 4.1.2)
-    ##  quantreg         5.94       2022-07-20 [1] CRAN (R 4.1.3)
-    ##  R6               2.5.1      2021-08-19 [1] CRAN (R 4.1.2)
-    ##  RColorBrewer     1.1-3      2022-04-03 [1] CRAN (R 4.1.3)
-    ##  Rcpp             1.0.9      2022-07-08 [1] CRAN (R 4.1.3)
-    ##  readr          * 2.1.2      2022-01-30 [1] CRAN (R 4.1.3)
-    ##  readxl           1.4.1      2022-08-17 [1] CRAN (R 4.1.3)
-    ##  reprex           2.0.2      2022-08-17 [1] CRAN (R 4.1.3)
-    ##  rio            * 0.5.29     2021-11-22 [1] CRAN (R 4.1.2)
-    ##  riskRegression * 2022.03.22 2022-03-23 [1] CRAN (R 4.1.3)
-    ##  rlang            1.0.4      2022-07-12 [1] CRAN (R 4.1.3)
-    ##  rmarkdown        2.15       2022-08-16 [1] CRAN (R 4.1.3)
-    ##  rms            * 6.3-0      2022-04-22 [1] CRAN (R 4.1.3)
-    ##  rpart            4.1-15     2019-04-12 [2] CRAN (R 4.1.2)
-    ##  rprojroot        2.0.3      2022-04-02 [1] CRAN (R 4.1.3)
-    ##  rsample        * 1.1.0      2022-08-08 [1] CRAN (R 4.1.3)
-    ##  rstatix          0.7.0      2021-02-13 [1] CRAN (R 4.1.2)
-    ##  rstudioapi       0.14       2022-08-22 [1] CRAN (R 4.1.2)
-    ##  rvest            1.0.3      2022-08-19 [1] CRAN (R 4.1.3)
-    ##  sandwich         3.0-2      2022-06-15 [1] CRAN (R 4.1.3)
-    ##  scales           1.2.1      2022-08-20 [1] CRAN (R 4.1.3)
-    ##  sessioninfo      1.2.2      2021-12-06 [1] CRAN (R 4.1.2)
-    ##  SparseM        * 1.81       2021-02-18 [1] CRAN (R 4.1.1)
-    ##  stringi          1.7.6      2021-11-29 [1] CRAN (R 4.1.2)
-    ##  stringr        * 1.4.1      2022-08-20 [1] CRAN (R 4.1.3)
-    ##  survival       * 3.4-0      2022-08-09 [1] CRAN (R 4.1.3)
-    ##  survminer      * 0.4.9      2021-03-09 [1] CRAN (R 4.1.3)
-    ##  survMisc         0.5.6      2022-04-07 [1] CRAN (R 4.1.3)
-    ##  svglite          2.1.0      2022-02-03 [1] CRAN (R 4.1.3)
-    ##  systemfonts      1.0.4      2022-02-11 [1] CRAN (R 4.1.3)
-    ##  TH.data          1.1-1      2022-04-26 [1] CRAN (R 4.1.3)
-    ##  tibble         * 3.1.8      2022-07-22 [1] CRAN (R 4.1.3)
-    ##  tidyr          * 1.2.0      2022-02-01 [1] CRAN (R 4.1.3)
-    ##  tidyselect       1.1.2      2022-02-21 [1] CRAN (R 4.1.3)
-    ##  tidyverse      * 1.3.2      2022-07-18 [1] CRAN (R 4.1.3)
-    ##  timereg          2.0.2      2022-04-11 [1] CRAN (R 4.1.3)
-    ##  timeROC        * 0.4        2019-12-18 [1] CRAN (R 4.1.2)
-    ##  tzdb             0.3.0      2022-03-28 [1] CRAN (R 4.1.3)
-    ##  utf8             1.2.2      2021-07-24 [1] CRAN (R 4.1.2)
-    ##  vctrs            0.4.1      2022-04-13 [1] CRAN (R 4.1.3)
-    ##  viridisLite      0.4.1      2022-08-22 [1] CRAN (R 4.1.2)
-    ##  webshot        * 0.5.3      2022-04-14 [1] CRAN (R 4.1.3)
-    ##  withr            2.5.0      2022-03-03 [1] CRAN (R 4.1.3)
-    ##  xfun             0.32       2022-08-10 [1] CRAN (R 4.1.3)
-    ##  xml2             1.3.3      2021-11-30 [1] CRAN (R 4.1.2)
-    ##  xtable           1.8-4      2019-04-21 [1] CRAN (R 4.1.2)
-    ##  yaml             2.3.5      2022-02-21 [1] CRAN (R 4.1.3)
-    ##  zip              2.2.0      2021-05-31 [1] CRAN (R 4.1.2)
-    ##  zoo              1.8-10     2022-04-15 [1] CRAN (R 4.1.3)
+    ##  abind            1.4-5      2016-07-21 [1] CRAN (R 4.2.0)
+    ##  assertthat       0.2.1      2019-03-21 [1] CRAN (R 4.2.1)
+    ##  backports        1.4.1      2021-12-13 [1] CRAN (R 4.2.0)
+    ##  base64enc        0.1-3      2015-07-28 [1] CRAN (R 4.2.0)
+    ##  boot           * 1.3-28     2021-05-03 [2] CRAN (R 4.2.1)
+    ##  broom            1.0.1      2022-08-29 [1] CRAN (R 4.2.1)
+    ##  broom.helpers    1.9.0      2022-09-23 [1] CRAN (R 4.2.1)
+    ##  car              3.1-0      2022-06-15 [1] CRAN (R 4.2.1)
+    ##  carData          3.0-5      2022-01-06 [1] CRAN (R 4.2.1)
+    ##  cellranger       1.1.0      2016-07-27 [1] CRAN (R 4.2.1)
+    ##  checkmate        2.1.0      2022-04-21 [1] CRAN (R 4.2.1)
+    ##  cli              3.4.1      2022-09-23 [1] CRAN (R 4.2.1)
+    ##  cluster          2.1.3      2022-03-28 [2] CRAN (R 4.2.1)
+    ##  cmprsk           2.2-11     2022-01-06 [1] CRAN (R 4.2.1)
+    ##  codetools        0.2-18     2020-11-04 [2] CRAN (R 4.2.1)
+    ##  colorspace       2.0-3      2022-02-21 [1] CRAN (R 4.2.1)
+    ##  crayon           1.5.2      2022-09-29 [1] CRAN (R 4.2.1)
+    ##  curl             4.3.3      2022-10-06 [1] CRAN (R 4.2.1)
+    ##  data.table       1.14.2     2021-09-27 [1] CRAN (R 4.2.1)
+    ##  DBI              1.1.3      2022-06-18 [1] CRAN (R 4.2.1)
+    ##  dbplyr           2.2.1      2022-06-27 [1] CRAN (R 4.2.1)
+    ##  deldir           1.0-6      2021-10-23 [1] CRAN (R 4.2.0)
+    ##  digest           0.6.29     2021-12-01 [1] CRAN (R 4.2.1)
+    ##  dplyr          * 1.0.10     2022-09-01 [1] CRAN (R 4.2.1)
+    ##  ellipsis         0.3.2      2021-04-29 [1] CRAN (R 4.2.1)
+    ##  evaluate         0.17       2022-10-07 [1] CRAN (R 4.2.1)
+    ##  fansi            1.0.3      2022-03-24 [1] CRAN (R 4.2.1)
+    ##  farver           2.1.1      2022-07-06 [1] CRAN (R 4.2.1)
+    ##  fastmap          1.1.0      2021-01-25 [1] CRAN (R 4.2.1)
+    ##  forcats        * 0.5.2      2022-08-19 [1] CRAN (R 4.2.1)
+    ##  foreach          1.5.2      2022-02-02 [1] CRAN (R 4.2.1)
+    ##  foreign          0.8-82     2022-01-16 [2] CRAN (R 4.2.1)
+    ##  Formula        * 1.2-4      2020-10-16 [1] CRAN (R 4.2.0)
+    ##  fs               1.5.2      2021-12-08 [1] CRAN (R 4.2.1)
+    ##  furrr            0.3.1      2022-08-15 [1] CRAN (R 4.2.1)
+    ##  future           1.28.0     2022-09-02 [1] CRAN (R 4.2.1)
+    ##  future.apply     1.9.1      2022-09-07 [1] CRAN (R 4.2.1)
+    ##  gargle           1.2.1      2022-09-08 [1] CRAN (R 4.2.1)
+    ##  generics         0.1.3      2022-07-05 [1] CRAN (R 4.2.1)
+    ##  ggplot2        * 3.3.6      2022-05-03 [1] CRAN (R 4.2.1)
+    ##  ggpubr         * 0.4.0      2020-06-27 [1] CRAN (R 4.2.1)
+    ##  ggsignif         0.6.3      2021-09-09 [1] CRAN (R 4.2.1)
+    ##  ggtext           0.1.2      2022-09-16 [1] CRAN (R 4.2.1)
+    ##  globals          0.16.1     2022-08-28 [1] CRAN (R 4.2.1)
+    ##  glue             1.6.2      2022-02-24 [1] CRAN (R 4.2.1)
+    ##  googledrive      2.0.0      2021-07-08 [1] CRAN (R 4.2.1)
+    ##  googlesheets4    1.0.1      2022-08-13 [1] CRAN (R 4.2.1)
+    ##  gridExtra      * 2.3        2017-09-09 [1] CRAN (R 4.2.1)
+    ##  gridtext         0.1.5      2022-09-16 [1] CRAN (R 4.2.1)
+    ##  gt               0.7.0      2022-08-25 [1] CRAN (R 4.2.1)
+    ##  gtable           0.3.1      2022-09-01 [1] CRAN (R 4.2.1)
+    ##  gtsummary      * 1.6.2      2022-09-30 [1] CRAN (R 4.2.1)
+    ##  haven            2.5.1      2022-08-22 [1] CRAN (R 4.2.1)
+    ##  here             1.0.1      2020-12-13 [1] CRAN (R 4.2.1)
+    ##  highr            0.9        2021-04-16 [1] CRAN (R 4.2.1)
+    ##  Hmisc          * 4.7-1      2022-08-15 [1] CRAN (R 4.2.1)
+    ##  hms              1.1.2      2022-08-19 [1] CRAN (R 4.2.1)
+    ##  htmlTable        2.4.1      2022-07-07 [1] CRAN (R 4.2.1)
+    ##  htmltools        0.5.3      2022-07-18 [1] CRAN (R 4.2.1)
+    ##  htmlwidgets      1.5.4      2021-09-08 [1] CRAN (R 4.2.1)
+    ##  httr             1.4.4      2022-08-17 [1] CRAN (R 4.2.1)
+    ##  interp           1.1-3      2022-07-13 [1] CRAN (R 4.2.1)
+    ##  iterators        1.0.14     2022-02-05 [1] CRAN (R 4.2.1)
+    ##  jpeg             0.1-9      2021-07-24 [1] CRAN (R 4.2.0)
+    ##  jsonlite         1.8.2      2022-10-02 [1] CRAN (R 4.2.1)
+    ##  kableExtra     * 1.3.4      2021-02-20 [1] CRAN (R 4.2.1)
+    ##  km.ci            0.5-6      2022-04-06 [1] CRAN (R 4.2.1)
+    ##  KMsurv           0.1-5      2012-12-03 [1] CRAN (R 4.2.0)
+    ##  knitr          * 1.40       2022-08-24 [1] CRAN (R 4.2.1)
+    ##  labeling         0.4.2      2020-10-20 [1] CRAN (R 4.2.0)
+    ##  lattice        * 0.20-45    2021-09-22 [2] CRAN (R 4.2.1)
+    ##  latticeExtra     0.6-30     2022-07-04 [1] CRAN (R 4.2.1)
+    ##  lava             1.6.10     2021-09-02 [1] CRAN (R 4.2.1)
+    ##  lifecycle        1.0.3      2022-10-07 [1] CRAN (R 4.2.1)
+    ##  listenv          0.8.0      2019-12-05 [1] CRAN (R 4.2.1)
+    ##  lubridate        1.8.0      2021-10-07 [1] CRAN (R 4.2.1)
+    ##  magrittr         2.0.3      2022-03-30 [1] CRAN (R 4.2.1)
+    ##  MASS             7.3-57     2022-04-22 [2] CRAN (R 4.2.1)
+    ##  Matrix           1.5-1      2022-09-13 [1] CRAN (R 4.2.1)
+    ##  MatrixModels     0.5-1      2022-09-11 [1] CRAN (R 4.2.1)
+    ##  mets             1.3.1      2022-10-02 [1] CRAN (R 4.2.1)
+    ##  modelr           0.1.9      2022-08-19 [1] CRAN (R 4.2.1)
+    ##  multcomp         1.4-20     2022-08-07 [1] CRAN (R 4.2.1)
+    ##  munsell          0.5.0      2018-06-12 [1] CRAN (R 4.2.1)
+    ##  mvtnorm          1.1-3      2021-10-08 [1] CRAN (R 4.2.0)
+    ##  nlme             3.1-157    2022-03-25 [2] CRAN (R 4.2.1)
+    ##  nnet             7.3-17     2022-01-16 [2] CRAN (R 4.2.1)
+    ##  numDeriv         2016.8-1.1 2019-06-06 [1] CRAN (R 4.2.0)
+    ##  openxlsx         4.2.5      2021-12-14 [1] CRAN (R 4.2.1)
+    ##  pacman         * 0.5.1      2019-03-11 [1] CRAN (R 4.2.1)
+    ##  parallelly       1.32.1     2022-07-21 [1] CRAN (R 4.2.1)
+    ##  pec            * 2022.05.04 2022-05-04 [1] CRAN (R 4.2.1)
+    ##  pillar           1.8.1      2022-08-19 [1] CRAN (R 4.2.1)
+    ##  pkgconfig        2.0.3      2019-09-22 [1] CRAN (R 4.2.1)
+    ##  plotrix        * 3.8-2      2021-09-08 [1] CRAN (R 4.2.0)
+    ##  png              0.1-7      2013-12-03 [1] CRAN (R 4.2.0)
+    ##  polspline        1.1.20     2022-04-25 [1] CRAN (R 4.2.0)
+    ##  prodlim        * 2019.11.13 2019-11-17 [1] CRAN (R 4.2.1)
+    ##  purrr          * 0.3.5      2022-10-06 [1] CRAN (R 4.2.1)
+    ##  quantreg         5.94       2022-07-20 [1] CRAN (R 4.2.1)
+    ##  R6               2.5.1      2021-08-19 [1] CRAN (R 4.2.1)
+    ##  RColorBrewer     1.1-3      2022-04-03 [1] CRAN (R 4.2.0)
+    ##  Rcpp             1.0.9      2022-07-08 [1] CRAN (R 4.2.1)
+    ##  readr          * 2.1.3      2022-10-01 [1] CRAN (R 4.2.1)
+    ##  readxl           1.4.1      2022-08-17 [1] CRAN (R 4.2.1)
+    ##  reprex           2.0.2      2022-08-17 [1] CRAN (R 4.2.1)
+    ##  rio            * 0.5.29     2021-11-22 [1] CRAN (R 4.2.1)
+    ##  riskRegression * 2022.09.23 2022-09-26 [1] CRAN (R 4.2.1)
+    ##  rlang            1.0.6      2022-09-24 [1] CRAN (R 4.2.1)
+    ##  rmarkdown        2.17       2022-10-07 [1] CRAN (R 4.2.1)
+    ##  rms            * 6.3-0      2022-04-22 [1] CRAN (R 4.2.1)
+    ##  rpart            4.1.16     2022-01-24 [2] CRAN (R 4.2.1)
+    ##  rprojroot        2.0.3      2022-04-02 [1] CRAN (R 4.2.1)
+    ##  rsample        * 1.1.0      2022-08-08 [1] CRAN (R 4.2.1)
+    ##  rstatix          0.7.0      2021-02-13 [1] CRAN (R 4.2.1)
+    ##  rstudioapi       0.14       2022-08-22 [1] CRAN (R 4.2.1)
+    ##  rvest            1.0.3      2022-08-19 [1] CRAN (R 4.2.1)
+    ##  sandwich         3.0-2      2022-06-15 [1] CRAN (R 4.2.1)
+    ##  scales           1.2.1      2022-08-20 [1] CRAN (R 4.2.1)
+    ##  sessioninfo      1.2.2      2021-12-06 [1] CRAN (R 4.2.1)
+    ##  SparseM        * 1.81       2021-02-18 [1] CRAN (R 4.2.0)
+    ##  stringi          1.7.8      2022-07-11 [1] CRAN (R 4.2.1)
+    ##  stringr        * 1.4.1      2022-08-20 [1] CRAN (R 4.2.1)
+    ##  survival       * 3.3-1      2022-03-03 [2] CRAN (R 4.2.1)
+    ##  survminer      * 0.4.9      2021-03-09 [1] CRAN (R 4.2.1)
+    ##  survMisc         0.5.6      2022-04-07 [1] CRAN (R 4.2.1)
+    ##  svglite          2.1.0      2022-02-03 [1] CRAN (R 4.2.1)
+    ##  systemfonts      1.0.4      2022-02-11 [1] CRAN (R 4.2.1)
+    ##  TH.data          1.1-1      2022-04-26 [1] CRAN (R 4.2.1)
+    ##  tibble         * 3.1.8      2022-07-22 [1] CRAN (R 4.2.1)
+    ##  tidyr          * 1.2.1      2022-09-08 [1] CRAN (R 4.2.1)
+    ##  tidyselect       1.2.0      2022-10-10 [1] CRAN (R 4.2.1)
+    ##  tidyverse      * 1.3.2      2022-07-18 [1] CRAN (R 4.2.1)
+    ##  timereg          2.0.2      2022-04-11 [1] CRAN (R 4.2.1)
+    ##  timeROC        * 0.4        2019-12-18 [1] CRAN (R 4.2.1)
+    ##  tzdb             0.3.0      2022-03-28 [1] CRAN (R 4.2.1)
+    ##  utf8             1.2.2      2021-07-24 [1] CRAN (R 4.2.1)
+    ##  vctrs            0.4.2      2022-09-29 [1] CRAN (R 4.2.1)
+    ##  viridisLite      0.4.1      2022-08-22 [1] CRAN (R 4.2.1)
+    ##  webshot        * 0.5.4      2022-09-26 [1] CRAN (R 4.2.1)
+    ##  withr            2.5.0      2022-03-03 [1] CRAN (R 4.2.1)
+    ##  xfun             0.33       2022-09-12 [1] CRAN (R 4.2.1)
+    ##  xml2             1.3.3      2021-11-30 [1] CRAN (R 4.2.1)
+    ##  xtable           1.8-4      2019-04-21 [1] CRAN (R 4.2.1)
+    ##  yaml             2.3.5      2022-02-21 [1] CRAN (R 4.2.1)
+    ##  zip              2.2.1      2022-09-08 [1] CRAN (R 4.2.1)
+    ##  zoo              1.8-11     2022-09-17 [1] CRAN (R 4.2.1)
     ## 
-    ##  [1] C:/Users/dgiardiello/Documents/R/win-library/4.1
-    ##  [2] C:/Program Files/R/R-4.1.2/library
+    ##  [1] C:/Users/danie/AppData/Local/R/win-library/4.2
+    ##  [2] C:/Program Files/R/R-4.2.1/library
     ## 
-    ## ------------------------------------------------------------------------------
+    ## ──────────────────────────────────────────────────────────────────────────────

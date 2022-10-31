@@ -2453,6 +2453,8 @@ For survival data *TP* and *FP* is calculated as follows:
 
 Given some thresholds, the model/strategy with higher net benefit represents the one that potentially improves clinical decision making. 
 
+We smoothed the decision curves based on the risk prediction models to reduce the visual impact of random noise using ```stats::smooth()``` function.  
+
 ```{r, function_stdca, message=FALSE,warning=FALSE, fig.align='center',include=FALSE}
 # Run the function to calculate the net benefit and the elements needed to develop decision curve analysis
 source(here::here('Functions/stdca.R'))
@@ -2497,6 +2499,14 @@ dca_rott5 <- stdca(
   graph = FALSE
 )
 
+# Smoothing DCA without PGR
+dca_rott5_smooth <- smooth(dca_rott5$net.benefit$pred5
+                           [!is.na(dca_rott5$net.benefit$pred5)],
+                           twiceit = TRUE)
+dca_rott5_smooth <- c(dca_rott5_smooth, 
+                      rep(NA, sum(is.na(dca_rott5$net.benefit$pred5))))
+
+
 # Model with PGR
 dca_rott5_pgr <- stdca(
   data = rott5, 
@@ -2509,10 +2519,17 @@ dca_rott5_pgr <- stdca(
   graph = FALSE
 )
 
+# Smoothing DCA with PGR
+dca_rott5_pgr_smooth <- smooth(dca_rott5_pgr$net.benefit$pred5_pgr
+                            [!is.na(dca_rott5_pgr$net.benefit$pred5_pgr)],
+                               twiceit = TRUE)
+dca_rott5_pgr_smooth <- c(dca_rott5_pgr_smooth,
+                  rep(NA,sum(is.na(dca_rott5_pgr$net.benefit$pred5_pgr))))
+
 # Decision curves plot
 par(xaxs = "i", yaxs = "i", las = 1)
 plot(dca_rott5$net.benefit$threshold,
-  dca_rott5$net.benefit$pred5,
+  dca_rott5_smooth,
   type = "l", 
   lwd = 3, 
   lty = 2,
@@ -2537,7 +2554,7 @@ lines(dca_rott5$net.benefit$threshold,
       lty = 4,
       col = 2)
 lines(dca_rott5_pgr$net.benefit$threshold, 
-      dca_rott5_pgr$net.benefit$pred5_pgr, 
+      dca_rott5_pgr_smooth, 
       type = "l", 
       lwd = 3, 
       lty = 5,
@@ -2597,10 +2614,24 @@ dca_gbsg5_pgr <- stdca(
   graph = FALSE
 )
 
+# Smoothing DCA without PGR
+dca_gbsg5_smooth <- smooth(dca_gbsg5$net.benefit$pred5
+                           [!is.na(dca_gbsg5$net.benefit$pred5)],
+                           twiceit = TRUE)
+dca_gbsg5_smooth <- c(dca_gbsg5_smooth, 
+                      rep(NA, sum(is.na(dca_gbsg5$net.benefit$pred5))))
+
+# Smoothing DCA with PGR
+dca_gbsg5_pgr_smooth <- smooth(dca_gbsg5_pgr$net.benefit$pred5_pgr
+                            [!is.na(dca_gbsg5_pgr$net.benefit$pred5_pgr)],
+                               twiceit = TRUE)
+dca_gbsg5_pgr_smooth <- c(dca_gbsg5_pgr_smooth,
+                  rep(NA,sum(is.na(dca_gbsg5_pgr$net.benefit$pred5_pgr))))
+
 # Decision curves plot
 par(xaxs = "i", yaxs = "i", las = 1)
 plot(dca_gbsg5$net.benefit$threshold,
-  dca_gbsg5$net.benefit$pred5,
+  dca_gbsg5_smooth,
   type = "l", 
   lwd = 3, 
   lty = 2,
@@ -2626,7 +2657,7 @@ lines(dca_gbsg5$net.benefit$threshold,
       lty = 2,
       col = 2)
 lines(dca_gbsg5_pgr$net.benefit$threshold,
-      dca_gbsg5_pgr$net.benefit$pred5_pgr, 
+      dca_gbsg5_pgr_smooth, 
       type = "l", 
       lwd = 3, 
       lty = 5,
