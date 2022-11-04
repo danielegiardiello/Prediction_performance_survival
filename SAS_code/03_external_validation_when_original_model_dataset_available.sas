@@ -1967,6 +1967,33 @@ data newext2;
 	risk_new=1-fiveyr_pgr;
 run;
 
+*count number tp and fp for cut pt of 0.23;
+*testpos=1 is number used in Suppl 7 for worked example;
+data tp;
+	set newext2;
+	if risk_orig gt 0.23 then testpos=1;
+	else testpos=0;
+	if risk_new gt 0.23 then testpos_pgr=1;
+	else testpos_pgr=0;
+run;
+
+proc freq data=tp;
+	table testpos testpos_pgr;
+run;
+
+*Kaplan-Meier probability at 5 years - used in Suppl 7 worked example;
+proc lifetest data=tp method=pl timelist=5;
+	where testpos=1;
+    time survtime1*status(0);
+run;
+
+proc lifetest data=tp method=pl  timelist=5;
+	where testpos_pgr=1;
+    time survtime1*status(0);
+run;
+
+
+
 
 %put _user_;
 goptions reset = all;
@@ -1977,10 +2004,15 @@ symbol3 i=join c=blue;
 symbol4 i=join c=darkred;
 symbol5 i=join c=gray;
 
+*Use the %STDCA macro to calculate net benefit and plot decision curves;
+*Note that you can add smooth=yes to get the smoothed curves in the paper;
+*Smoothing reduces the visual impact of random noise;
+*However, using this option only provides net benefit estimates to 2 decimals;
+*rather than 4, so you may wish to run with and without smoothing;
 %STDCA(data=NEWEXT2, out=survivalmult, outcome=STATUS, ttoutcome=SURVTIME1, 
-timepoint=5, predictors=RISK_ORIG, smooth=yes);
+	timepoint=5, predictors=RISK_ORIG, xby=0.02, smooth=yes);
 %STDCA(data=NEWEXT2, out=survivalmult_new, outcome=STATUS, ttoutcome=SURVTIME1, 
-timepoint=5, predictors=RISK_NEW, smooth=yes);
+	timepoint=5, predictors=RISK_NEW, xby=0.02, smooth=yes);
 
 *Sort by threshold variable;
 proc sort data=survivalmult out=kmsort;
