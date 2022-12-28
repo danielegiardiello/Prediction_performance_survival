@@ -2,7 +2,7 @@
 
 R and SAS Code repository for the manuscript 'Assessing performance and clinical usefulness in prediction models with survival outcomes: practical guidance for Cox proportional hazards models' (published in Annals of Internal Medicine).
 
-**Journal version of the manuscript published in Annals of Internal Medicine is [here](https://www.acpjournals.org/doi/pdf/10.7326/M22-0844).**  
+**Journal version of the manuscript is [here](https://www.acpjournals.org/doi/pdf/10.7326/M22-0844).**  
 **A preprint version of the manuscript is [here](https://www.medrxiv.org/content/10.1101/2022.03.17.22272411v1).**
 
 
