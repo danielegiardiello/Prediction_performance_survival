@@ -40,13 +40,13 @@ bootstrap_cv <- function(db, B = 10,
 
 
   # Duplicate data
-  db_ext <- db %>% slice(rep(row_number(), B))
+  db_ext <- db %>% dplyr::slice(rep(dplyr::row_number(), B))
   db_ext$.rep <- with(db_ext, ave(seq_along(id), id, FUN = seq_along)) # add an index identifying the replications
 
   db_tbl <- db_ext %>%
-    group_by(.rep) %>%
-    nest() %>%
-    rename(
+    dplyr::group_by(.rep) %>%
+    tidyr::nest() %>%
+    dplyr::rename(
       orig_data = data,
       id_boot = .rep
     )
@@ -62,9 +62,9 @@ bootstrap_cv <- function(db, B = 10,
     db_boot <- db[sample_row, ]
     db_boot$id_boot <- sort(rep(1:B, nrow(db)))
     db_boot <- db_boot %>%
-      group_by(id_boot) %>%
-      nest() %>%
-      rename(boot_data = data)
+      dplyr::group_by(id_boot) %>%
+      tidyr::nest() %>%
+      dplyr::rename(boot_data = data)
     return(db_boot)
   }
 
@@ -73,85 +73,88 @@ bootstrap_cv <- function(db, B = 10,
   b <- a %>% left_join(db_tbl)
 
   # Create optimism-corrected performance measures
-  b <- b %>% mutate(
-    cox_boot = map(
+  b <- b %>% 
+    dplyr::mutate(
+      cox_boot = purrr::map(
       boot_data,
       ~ coxph(frm_model, data = ., x = T, y = T)
     ),
     
-    cox_apparent = map(
+    cox_apparent = purrr::map(
       orig_data,
       ~ coxph(frm_model, data = ., x = T, y = T)
     ),
     
     Harrell_C_app =
-      map2_dbl(
+      purrr::map2_dbl(
       orig_data, cox_apparent,
-      ~ concordance(Surv(.x[[time]], .x[[status]]) 
-                    ~ predict(.y, newdata = .x),
-                    reverse = TRUE)$concordance
+      ~ survival::concordance(Surv(.x[[time]], .x[[status]])
+                              ~ predict(.y, newdata = .x),
+                              reverse = TRUE)$concordance
     ),
     
     Harrell_C_orig =
-      map2_dbl(
+      purrr::map2_dbl(
         orig_data, cox_boot,
-        ~ concordance(Surv(.x[[time]], .x[[status]]) 
-                      ~ predict(.y, newdata = .x),
-                      reverse = TRUE)$concordance
+        ~ survival::concordance(Surv(.x[[time]], .x[[status]]) 
+                                ~ predict(.y, newdata = .x),
+                                reverse = TRUE)$concordance
       ),
     
     Harrell_C_boot =
-      map2_dbl(
+      purrr::map2_dbl(
         boot_data, cox_boot,
-        ~ concordance(Surv(.x[[time]],.x[[status]]) 
-                      ~ predict(.y, newdata = .x),
-                      reverse = TRUE)$concordance
+        ~ survival::concordance(Surv(.x[[time]],.x[[status]])
+                                ~ predict(.y, newdata = .x),
+                                reverse = TRUE)$concordance
       ),
     
-    Harrell_C_diff = map2_dbl(
-      Harrell_C_boot, Harrell_C_orig,
-      function(a, b) {
-        a - b
+    Harrell_C_diff = 
+      purrr::map2_dbl(
+        Harrell_C_boot, Harrell_C_orig,
+        function(a, b) {
+          a - b
       }
     ),
     
     Uno_C_app =
-      map2_dbl(
+      purrr::map2_dbl(
         orig_data, cox_apparent,
-        ~ concordance(Surv(.x[[time]], .x[[status]]) 
-                      ~ predict(.y, newdata = .x),
-                      reverse = TRUE,
-                      timewt = "n/G2")$concordance
+        ~ survival::concordance(Surv(.x[[time]], .x[[status]])
+                                ~ predict(.y, newdata = .x),
+                                reverse = TRUE,
+                                timewt = "n/G2")$concordance
       ),
     
     Uno_C_orig =
-      map2_dbl(
+      purrr::map2_dbl(
         orig_data, cox_boot,
-        ~ concordance(Surv(.x[[time]], .x[[status]]) 
-                      ~ predict(.y, newdata = .x),
-                      reverse = TRUE,
-                      timewt = "n/G2")$concordance
+        ~ survival::concordance(Surv(.x[[time]], .x[[status]])
+                                ~ predict(.y, newdata = .x),
+                                reverse = TRUE,
+                                timewt = "n/G2")$concordance
       ),
     
     Uno_C_boot =
-      map2_dbl(
+      purrr::map2_dbl(
         boot_data, cox_boot,
-        ~ concordance(Surv(.x[[time]],.x[[status]]) 
-                      ~ predict(.y, newdata = .x),
-                      reverse = TRUE,
-                      timewt = "n/G2")$concordance
+        ~ survival::concordance(Surv(.x[[time]],.x[[status]])
+                                ~ predict(.y, newdata = .x),
+                                reverse = TRUE,
+                                timewt = "n/G2")$concordance
       ),
     
-    Uno_C_diff = map2_dbl(
-      Uno_C_boot, Uno_C_orig,
-      function(a, b) {
-        a - b
+    Uno_C_diff = 
+      purrr::map2_dbl(
+        Uno_C_boot, Uno_C_orig,
+        function(a, b) {
+          a - b
       }
     ),
     
     AUC_app = map2_dbl(
       orig_data, cox_apparent,
-      ~ timeROC(
+      ~ timeROC::timeROC(
         T = .x[[time]], delta = .x[[status]],
         marker = predict(.y, newdata = .x),
         cause = 1, weighting = "marginal", times = pred.time,
@@ -161,7 +164,7 @@ bootstrap_cv <- function(db, B = 10,
     
     AUC_orig = map2_dbl(
       orig_data, cox_boot,
-      ~ timeROC(
+      ~ timeROC::timeROC(
         T = .x[[time]], delta = .x[[status]],
         marker = predict(.y, newdata = .x),
         cause = 1, weighting = "marginal", times = pred.time,
@@ -169,9 +172,9 @@ bootstrap_cv <- function(db, B = 10,
       )$AUC[[2]]
     ),
     
-    AUC_boot = map2_dbl(
+    AUC_boot = purrr::map2_dbl(
       boot_data, cox_boot,
-      ~ timeROC(
+      ~ timeROC::timeROC(
         T = .x[[time]], delta = .x[[status]],
         marker = predict(.y, newdata = .x),
         cause = 1, weighting = "marginal", times = pred.time,
@@ -179,60 +182,60 @@ bootstrap_cv <- function(db, B = 10,
       )$AUC[[2]]
     ),
     
-    AUC_diff = map2_dbl(
+    AUC_diff = purrr::map2_dbl(
       AUC_boot, AUC_orig,
       function(a, b) {
         a - b
       }
     ),
     
-    Score_app = map2(
+    Score_app = purrr::map2(
       orig_data, cox_apparent,
-      ~ Score(list("Cox" = .y),
-        formula = frm_ipcw,
-        data = .x, times = pred.time,
-        cens.model = "km",
-        metrics = "brier",
-        summary = "ipa"
-      )$Brier[[1]]
+      ~ riskRegression::Score(list("Cox" = .y),
+                              formula = frm_ipcw,
+                              data = .x, times = pred.time,
+                              cens.model = "km",
+                              metrics = "brier",
+                              summary = "ipa"
+                              )$Brier[[1]]
     ),
     
-    Brier_app = map_dbl(Score_app, ~ .x$Brier[[2]]),
-    IPA_app = map_dbl(Score_app, ~ .x$IPA[[2]]),
-    Score_orig = map2(
+    Brier_app = purrr::map_dbl(Score_app, ~ .x$Brier[[2]]),
+    IPA_app = purrr::map_dbl(Score_app, ~ .x$IPA[[2]]),
+    Score_orig = purrr::map2(
       orig_data, cox_boot,
-      ~ Score(list("Cox" = .y),
-        formula = frm_ipcw,
-        data = .x, times = pred.time,
-        cens.model = "km",
-        metrics = "brier",
-        summary = "ipa"
-      )$Brier[[1]]
+      ~ riskRegression::Score(list("Cox" = .y),
+                              formula = frm_ipcw,
+                              data = .x, times = pred.time,
+                              cens.model = "km",
+                              metrics = "brier",
+                              summary = "ipa"
+                              )$Brier[[1]]
     ),
     
-    Brier_orig = map_dbl(Score_orig, ~ .x$Brier[[2]]),
-    IPA_orig = map_dbl(Score_orig, ~ .x$IPA[[2]]),
-    Score_boot = map2(
+    Brier_orig = purrr::map_dbl(Score_orig, ~ .x$Brier[[2]]),
+    IPA_orig = purrr::map_dbl(Score_orig, ~ .x$IPA[[2]]),
+    Score_boot = purrr::map2(
       boot_data, cox_boot,
-      ~ Score(list("Cox" = .y),
-        formula = frm_ipcw,
-        data = .x, times = pred.time,
-        cens.model = "km",
-        metrics = "brier",
-        summary = "ipa"
-      )$Brier[[1]]
+      ~ riskRegression::Score(list("Cox" = .y),
+                              formula = frm_ipcw,
+                              data = .x, times = pred.time,
+                              cens.model = "km",
+                              metrics = "brier",
+                              summary = "ipa"
+                              )$Brier[[1]]
     ),
     
-    Brier_boot = map_dbl(Score_boot, ~ .x$Brier[[2]]),
-    IPA_boot = map_dbl(Score_boot, ~ .x$IPA[[2]]),
-    Brier_diff = map2_dbl(
+    Brier_boot = purrr::map_dbl(Score_boot, ~ .x$Brier[[2]]),
+    IPA_boot = purrr::map_dbl(Score_boot, ~ .x$IPA[[2]]),
+    Brier_diff = purrr::map2_dbl(
       Brier_boot, Brier_orig,
       function(a, b) {
         a - b
       }
     ),
     
-    IPA_diff = map2_dbl(
+    IPA_diff = purrr::map2_dbl(
       IPA_boot, IPA_orig,
       function(a, b) {
         a - b
