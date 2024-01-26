@@ -93,10 +93,10 @@ rotterdam$ryear[rotterdam$rfs == 1 &
                   rotterdam$death == 1 & 
                   (rotterdam$rtime < rotterdam$dtime)] <- 
   
-  rotterdam$dtime[rotterdam$rfs == 1 &
-                    rotterdam$recur == 0 & 
-                    rotterdam$death == 1 & 
-                    (rotterdam$rtime < rotterdam$dtime)]/365.25  
+rotterdam$dtime[rotterdam$rfs == 1 &
+                  rotterdam$recur == 0 & 
+                  rotterdam$death == 1 & 
+                  (rotterdam$rtime < rotterdam$dtime)]/365.25  
 
 # variables used in the analysis
 pgr99 <- quantile(rotterdam$pgr, .99, type = 1) # there is a large outlier of 5000, used type=1 to get same result as in SAS
@@ -718,7 +718,7 @@ res_C <- matrix(c(
   harrell_C_rott5$concordance + 
     qnorm(1 - alpha / 2) * sqrt(harrell_C_rott5$var),
   
-  int_val["Harrell C corrected"],
+  int_val["Harrell C corrected", ],
   NA,
   NA,
   
@@ -728,7 +728,7 @@ res_C <- matrix(c(
   harrell_C_rott5_pgr$concordance + 
     qnorm(1 - alpha / 2) * sqrt(harrell_C_rott5_pgr$var),
   
-  int_val_pgr["Harrell C corrected"],
+  int_val_pgr["Harrell C corrected", ],
   NA,
   NA,
   
@@ -750,7 +750,7 @@ res_C <- matrix(c(
   harrell_C_rott5$concordance + 
     qnorm(1 - alpha / 2) * sqrt(harrell_C_rott5$var),
   
-  int_val["Harrell C corrected"],
+  int_val["Harrell C corrected", ],
   NA,
   NA,
   
@@ -760,7 +760,7 @@ res_C <- matrix(c(
   Uno_C_rott5_pgr$concordance + 
     qnorm(1 - alpha / 2) * sqrt(Uno_C_rott5_pgr$var),
   
-  int_val_pgr["Uno C corrected"],
+  int_val_pgr["Uno C corrected", ],
   NA,
   NA,
   
@@ -788,7 +788,7 @@ res_C <- matrix(c(
   )
 )
 
-res_C <- round(res_C, 2) # Digits
+res_C <- round(res_C, 3) # Digits
 kable(res_C) |>
   kable_styling("striped", position = "center") |>
   add_header_above(c(" " = 1, 
@@ -881,7 +881,7 @@ res_AUC <- matrix(c(
   Uno_rott5$AUC["t=4.99"] +
     qnorm(1 - alpha / 2) * Uno_rott5$inference$vect_sd_1["t=4.99"],
   
-  int_val["AUC corrected"],
+  int_val["AUC corrected", ],
   NA,
   NA,
   
@@ -891,7 +891,7 @@ res_AUC <- matrix(c(
   Uno_rott5_pgr$AUC["t=4.99"] +
     qnorm(1 - alpha / 2) * Uno_rott5_pgr$inference$vect_sd_1["t=4.99"],
   
-  int_val_pgr["AUC corrected"],
+  int_val_pgr["AUC corrected", ],
   NA,
   NA,
   
@@ -917,7 +917,7 @@ res_AUC <- matrix(c(
     rep(c("Estimate", "Lower .95 ", "Upper .95"), 6)
 )
 )
-res_AUC <- round(res_AUC, 2) # Digits
+res_AUC <- round(res_AUC, 3) # Digits
 kable(res_AUC) |>
   kable_styling("striped", position = "center") |>
   add_header_above(c(" " = 1, 
@@ -1425,31 +1425,41 @@ OE_pgr <- (1 - obj$surv) / mean(pred_pgr)
 
 ```{r, res_OE, message=FALSE, warning=FALSE, echo=FALSE}
 alpha <- 0.05
-res_OE <- matrix(c(OE,
-                   OE * exp(-qnorm(1 - alpha / 2) * sqrt(1 / obj$n.event)),
-                   OE * exp(qnorm(1 - alpha / 2) * sqrt(1 / obj$n.event)),
-                   
-                   OE_pgr,
-                   OE_pgr 
-                   * exp(-qnorm(1 - alpha / 2) * sqrt(1 / obj$n.event)),
-                   OE_pgr 
-                   * exp(qnorm(1 - alpha / 2) * sqrt(1 / obj$n.event))
-                   ),
+res_OE <- matrix(c(
+  
+  int_val["Mean calibration fixed time point - OE", ],
+  NA,
+  NA,
+  
+  OE,
+  OE * exp(-qnorm(1 - alpha / 2) * sqrt(1 / obj$n.event)),
+  OE * exp(qnorm(1 - alpha / 2) * sqrt(1 / obj$n.event)),
+  
+  int_val_pgr["Mean calibration fixed time point - OE", ],
+  NA,
+  NA,
+  OE_pgr,
+  OE_pgr * exp(-qnorm(1 - alpha / 2) * sqrt(1 / obj$n.event)),
+  OE_pgr * exp(qnorm(1 - alpha / 2) * sqrt(1 / obj$n.event))
+  ),
                  
                  nrow = 1,
-                 ncol = 6,
+                 ncol = 12,
                  byrow = T,
                  dimnames = list(
                    c("OE ratio"),
-                   rep(c("Estimate", "Lower .95", "Upper .95"),2))
+                   rep(c("Estimate", "Lower .95", "Upper .95"), 4))
 )
 
-res_OE <- round(res_OE, 2)
+res_OE <- round(res_OE, 3)
 kable(res_OE) |>
   kable_styling("striped", position = "center") |>
   add_header_above(c(" " = 1, 
-                     "External" = 3, 
+                     "Internal" = 3,
+                     "External" = 3,
+                     "Internal + PGR" = 3,
                      "External + PGR" = 3))
+
 ```
 
 Observed and Expected ratio is 1.02 (95% CI: 0.91 - 1.14) for the basic model and 0.99 (95% CI: 0.88 - 1.12) for the extended model.
@@ -1501,32 +1511,41 @@ int_summary_pgr <- summary(pfit1_pgr)$coefficients
 ```{r, res_Poisson_int, echo=FALSE,message=FALSE,warning=FALSE}
 alpha <- 0.05
 res_cal <- matrix(c(
-    exp(int_summary[1]),
-    exp(int_summary[1] - qnorm(1 - alpha / 2) * int_summary[2]),
-    exp(int_summary[1] + qnorm(1 - alpha / 2) * int_summary[2]),
-    
-    exp(int_summary_pgr[1]),
-    exp(int_summary_pgr[1] - qnorm(1 - alpha / 2) 
-        * int_summary_pgr[2]),
-    exp(int_summary_pgr[1] + qnorm(1 - alpha / 2) 
-    * int_summary_pgr[2])
+  
+  int_val["Mean calibration corrected - time range", ],
+  NA,
+  NA,
+  
+  exp(int_summary[1]),
+  exp(int_summary[1] - qnorm(1 - alpha / 2) * int_summary[2]),
+  exp(int_summary[1] + qnorm(1 - alpha / 2) * int_summary[2]),
+  
+  int_val_pgr["Mean calibration corrected - time range", ],
+  NA,
+  NA,
+  
+  exp(int_summary_pgr[1]),
+  exp(int_summary_pgr[1] - qnorm(1 - alpha / 2) * int_summary_pgr[2]),
+    exp(int_summary_pgr[1] + qnorm(1 - alpha / 2) * int_summary_pgr[2])
 ),
 
   nrow = 1, 
-  ncol = 6, 
+  ncol = 12, 
   byrow = T,
   dimnames = list(
   c("Calibration in-the-large"),
-  rep(c("Estimate", "Lower .95 ", "Upper .95"), 2)
+  rep(c("Estimate", "Lower .95 ", "Upper .95"), 4)
 )
 )
 
-k <- 2
+k <- 3
 res_cal <- round(res_cal, k) # number of digits
 kable(res_cal) |>
   kable_styling("striped", position = "center") |>
   add_header_above(c(" " = 1,  
+                     "Internal" = 3,
                      "External" = 3, 
+                     "Internal + PGR" = 3,
                      "External + PGR" = 3))
 ```
 The ratio is 1.02 (95% CI: 0.90 - 1.14) for the basic model and 0.99 (95% CI: 0.88 - 1.11) for the extended model. 
@@ -1570,30 +1589,38 @@ gval_prs <- coxph(Surv(ryear, rfs) ~ lp_pgr, data = gbsg5)
 ```{r, res_cal, message=FALSE, warning=FALSE, echo=FALSE}
 alpha <- 0.05
 
-res_cal <- matrix(c(gval$coef,
-                    gval$coef - qnorm(1 - alpha / 2) * sqrt(gval$var),
-                    gval$coef + qnorm(1 - alpha / 2) * sqrt(gval$var),
+res_cal <- matrix(c(
+  int_val["Weak calibration corrected (slope) - fixed time point", ],
+  NA,
+  NA,
+  
+  gval$coef,
+  gval$coef - qnorm(1 - alpha / 2) * sqrt(gval$var),
+  gval$coef + qnorm(1 - alpha / 2) * sqrt(gval$var),
+  
+  int_val_pgr["Weak calibration corrected (slope) - fixed time point", ],
+  NA,
+  NA,
                     
-                    gval_prs$coef,
-                    gval_prs$coef -
-                      qnorm(1 - alpha / 2) * sqrt(gval$var),
-                    gval_prs$coef + 
-                      qnorm(1 - alpha / 2) * sqrt(gval$var) 
-                   ),
-          
-                 nrow = 1,
-                 ncol = 6,
-                 byrow = T,
-                 dimnames = list(
-                   c("Calibration slope"),
-                   rep(c("Estimate", "Lower .95", "Upper .95"),2))
+  gval_prs$coef,
+  gval_prs$coef - qnorm(1 - alpha / 2) * sqrt(gval$var),
+  gval_prs$coef + qnorm(1 - alpha / 2) * sqrt(gval$var) 
+  ),
+  nrow = 1,
+  ncol = 12,
+  byrow = T,
+  dimnames = list(
+    c("Calibration slope"),
+    rep(c("Estimate", "Lower .95", "Upper .95"), 4))
 )
 
-res_cal <- round(res_cal, 2)
+res_cal <- round(res_cal, 3)
 kable(res_cal) |>
   kable_styling("striped", position = "center") |>
   add_header_above(c(" " = 1, 
-                     "External" = 3, 
+                     "Internal"= 3,
+                     "External" = 3,
+                     "Internal + PGR" = 3, 
                      "External + PGR" = 3))
 
 ```
@@ -1648,33 +1675,41 @@ slope_summary_pgr <- summary(pfit_pgr)$coefficients
 ```{r, res_Poisson, echo=FALSE,message=FALSE,warning=FALSE}
 alpha <- 0.05
 res_cal <- matrix(c(
-
-    slope_summary[2, 1],
-    slope_summary[2, 1] - qnorm(1 - alpha / 2) * slope_summary[2, 2],
-    slope_summary[2, 1] + qnorm(1 - alpha / 2) * slope_summary[2, 2],
+  
+  int_val["Weak calibration corrected (slope) - time range", ],
+  NA,
+  NA,
+  
+  slope_summary[2, 1],
+  slope_summary[2, 1] - qnorm(1 - alpha / 2) * slope_summary[2, 2],
+  slope_summary[2, 1] + qnorm(1 - alpha / 2) * slope_summary[2, 2],
+  
+  int_val_pgr["Weak calibration corrected (slope) - time range", ],
+  NA,
+  NA,
     
-    slope_summary_pgr[2, 1],
-    slope_summary_pgr[2, 1] - 
-      qnorm(1 - alpha / 2) * slope_summary_pgr[2, 2],
-    slope_summary_pgr[2, 1] + 
-      qnorm(1 - alpha / 2) * slope_summary_pgr[2, 2]
+  slope_summary_pgr[2, 1],
+  slope_summary_pgr[2, 1] - qnorm(1 - alpha / 2) * slope_summary_pgr[2, 2],
+  slope_summary_pgr[2, 1] + qnorm(1 - alpha / 2) * slope_summary_pgr[2, 2]
 ),
 
-  nrow = 1, 
-  ncol = 6, 
-  byrow = T,
-  dimnames = list(
-  c("Calibration slope"),
-  rep(c("Estimate", "Lower .95 ", "Upper .95"), 2)
+nrow = 1, 
+ncol = 12, 
+byrow = T,
+dimnames = list(
+c("Calibration slope"),
+rep(c("Estimate", "Lower .95 ", "Upper .95"), 4)
 )
 )
 
-k <- 2
+k <- 3
 res_cal <- round(res_cal, k) # number of digits
 kable(res_cal) |>
   kable_styling("striped", position = "center") |>
-  add_header_above(c(" " = 1,  
-                     "External" = 3, 
+  add_header_above(c(" " = 1,
+                     "Internal" = 3,
+                     "External" = 3,
+                     "Internal + PGR" = 3,
                      "External + PGR" = 3))
 ```
 
