@@ -6,6 +6,7 @@
 #' @param formula_model formula for the model (Cox model)
 #' @param pred.time time horizon as predictor
 #' @param formula_ipcw formula to calculate inverse probability censoring weighting
+#' @seed set the seed for bootstrap computation (default 2024)
 #'
 #' @return
 #'
@@ -33,7 +34,8 @@ bootstrap_cv <- function(db, B = 10,
                          status,
                          formula_model,
                          pred.time,
-                         formula_ipcw) {
+                         formula_ipcw,
+                         seed = 2024) {
   frm_model <- as.formula(formula_model)
   frm_ipcw <- as.formula(formula_ipcw)
   db$id <- 1:nrow(db)
@@ -53,6 +55,7 @@ bootstrap_cv <- function(db, B = 10,
 
   # Create bootstrap samples
   sample_boot <- function(db, B) {
+    set.seed(seed)
     db_boot <- matrix(NA, nrow = nrow(db) * B, ncol = ncol(db))
     sample_row <- list()
     for (j in 1:B) {
@@ -84,6 +87,9 @@ bootstrap_cv <- function(db, B = 10,
       orig_data,
       ~ coxph(frm_model, data = ., x = T, y = T)
     ),
+    
+    # Discrimination assessment ------ 
+    # Discrimination - time range (Harrell & Uno c-statistic)
     
     Harrell_C_app =
       purrr::map2_dbl(
@@ -152,6 +158,8 @@ bootstrap_cv <- function(db, B = 10,
       }
     ),
     
+    # Discrimination - fixed time horizon (Uno's AUC)
+    
     AUC_app = map2_dbl(
       orig_data, cox_apparent,
       ~ timeROC::timeROC(
@@ -189,6 +197,7 @@ bootstrap_cv <- function(db, B = 10,
       }
     ),
     
+    # Overall performance - Brier Score & Scaled Brier 
     Score_app = purrr::map2(
       orig_data, cox_apparent,
       ~ riskRegression::Score(list("Cox" = .y),
@@ -240,19 +249,203 @@ bootstrap_cv <- function(db, B = 10,
       function(a, b) {
         a - b
       }
-    )
+    ),
+    
+    
+  # Calibration assessment --------
+  
+  obs_apparent = purrr::map_dbl(orig_data, ~ 
+                                  summary(survival::survfit(Surv(.x[[time]], .x[[status]]) ~ 1,
+                                                            data = .), time = pred.time)$surv), 
+  # obs_apparent and obs_orig should be the same in this case
+  obs_boot = purrr::map_dbl(boot_data, ~ 
+                              summary(survival::survfit(Surv(.x[[time]], .x[[status]]) ~ 1,
+                                                        data = .), time = pred.time)$surv),
+  
+  pred_apparent = purrr::map2(orig_data, 
+                              cox_apparent, 
+                              ~ riskRegression::predictRisk(.y,
+                                                            newdata = .x,
+                                                            time = pred.time)),
+  
+  pred_orig = purrr::map2(orig_data, 
+                          cox_boot, 
+                          ~ riskRegression::predictRisk(.y,
+                                                        newdata = .x,
+                                                        time = pred.time)),
+  
+  pred_boot = purrr::map2(boot_data, 
+                          cox_boot, 
+                          ~ riskRegression::predictRisk(.y,
+                                                        newdata = .x,
+                                                        time = pred.time)),
+  
+  OE_apparent = purrr::map2_dbl(obs_apparent, 
+                                pred_apparent, 
+                                ~ (1 - .x) / mean(.y)),
+  
+  OE_orig = purrr::map2_dbl(obs_apparent, 
+                            pred_orig, 
+                            ~ (1 - .x) / mean(.y)),
+  
+  OE_boot = purrr::map2_dbl(obs_boot, 
+                            pred_boot, 
+                            ~ (1 - .x) / mean(.y)),
+  
+  OE_diff = purrr::map2_dbl(OE_boot, OE_orig, 
+                            function(a, b) {
+                              a - b
+                            }
+  ),
+  
+  
+  # mean calibration - time range assessment
+  
+  p_apparent = purrr::map2(orig_data, 
+                           cox_apparent,
+                           ~ predict(.y,
+                                     newdata = .x,
+                                     type = "expected")),
+  
+  p_orig = purrr::map2(orig_data, 
+                       cox_boot,
+                       ~ predict(.y,
+                                 newdata = .x,
+                                 type = "expected")),
+  
+  p_boot = purrr::map2(boot_data, 
+                       cox_boot,
+                       ~ predict(.y,
+                                 newdata = .x,
+                                 type = "expected")),
+  
+  intercept_app = purrr::map2_dbl(orig_data, 
+                                  p_apparent,
+                                  ~ exp(glm(.x[[status]] ~ offset(log(.y)), 
+                                            family = poisson,
+                                            data = .x,
+                                            subset = (.y > 0))$coefficients)),
+  
+  
+  intercept_orig = purrr::map2_dbl(orig_data, 
+                                   p_orig,
+                                   ~ exp(glm(.x[[status]] ~ offset(log(.y)), 
+                                             family = poisson,
+                                             data = .x,
+                                             subset = (.y > 0))$coefficients)),
+  
+  intercept_boot = purrr::map2_dbl(boot_data, 
+                                   p_boot,
+                                   ~ exp(glm(.x[[status]] ~ offset(log(.y)), 
+                                             family = poisson,
+                                             data = .x,
+                                             subset = (.y > 0))$coefficients)),
+  
+  
+  intercept_diff = purrr::map2_dbl(intercept_boot, 
+                                   intercept_orig,
+                                   function(a, b) {
+                                     a - b
+                                   }),
+  
+  
+  # weak calibration - fixed t
+  
+  lp_apparent = purrr::map2(orig_data, 
+                            cox_apparent,
+                            ~ predict(.y, newdata = .x, type = "lp")),
+  
+  lp_orig = purrr::map2(orig_data, 
+                        cox_boot,
+                        ~ predict(.y, newdata = .x, type = "lp")),
+  
+  lp_boot = purrr::map2(boot_data, 
+                        cox_boot,
+                        ~ predict(.y, newdata = .x, type = "lp")),
+  
+  
+  slope_apparent = purrr::map2_dbl(orig_data, 
+                                   lp_apparent,
+                                   ~ coxph(Surv(.x[[time]], .x[[status]]) ~ .y)$coefficients), 
+  
+  slope_orig =purrr:: map2_dbl(orig_data, 
+                               lp_orig,
+                               ~ coxph(Surv(.x[[time]], .x[[status]]) ~ .y)$coefficients),
+  
+  slope_boot = purrr::map2_dbl(boot_data, 
+                               lp_boot,
+                               ~ coxph(Surv(.x[[time]], .x[[status]]) ~ .y)$coefficients),
+  
+  slope_diff = purrr::map2_dbl(slope_boot, 
+                               slope_orig,
+                               function(a, b) {
+                                 a - b
+                               }),
+  
+  # weak calibration - time range
+  slope_range_apparent = purrr::pmap_dbl(list(lp = lp_apparent,
+                                              p = p_apparent,
+                                              db = orig_data),
+                                         function(lp, p, db){
+                                           slope = glm(db[[status]] ~ lp + offset(log(p) - lp), 
+                                                       data = as.data.frame(db),
+                                                       family = poisson,
+                                                       subset = (p > 0))$coefficients[2]
+                                         }),
+  
+  slope_range_orig = purrr::pmap_dbl(list(lp = lp_orig,
+                                          p = p_orig,
+                                          db = orig_data),
+                                     function(lp, p, db){
+                                       slope = glm(db[[status]] ~  lp + offset(log(p) - lp), 
+                                                   data = as.data.frame(db),
+                                                   family = poisson,
+                                                   subset = (p > 0))$coefficients[2]
+                                     }),
+  
+  slope_range_boot = purrr::pmap_dbl(list(lp = lp_boot, 
+                                          p = p_boot, 
+                                          db = boot_data),
+                                     function(lp, p, db){
+                                       slope = glm(db[[status]] ~  lp + offset(log(p) - lp), 
+                                                   data = as.data.frame(db),
+                                                   family = poisson,
+                                                   subset = (p > 0))$coefficients[2]
+                                     }),
+  
+  slope_range_diff =purrr::map2_dbl(slope_range_boot, slope_range_orig,
+                                    function(a, b){
+                                      a - b
+                                    })
+  
+  
   )
-
+  
   # Generate output
+  # Discrimation & overall performance (Brier) ---
   AUC_corrected <- b$AUC_app[1] - mean(b$AUC_diff)
   Brier_corrected <- b$Brier_app[1] - mean(b$Brier_diff)
   IPA_corrected <- b$IPA_app[1] - mean(b$IPA_diff)
   Harrell_C_corrected <- b$Harrell_C_app[1] - mean(b$Harrell_C_diff)
+  
+  # Calibration ---
+  OE_corrected <- b$OE_apparent[1] - mean(b$OE_diff)
+  intercept_corrected <- b$intercept_app[1] - mean(b$intercept_diff)
+  slope_corrected <- b$slope_apparent[1] - mean(b$slope_diff)
+  slope_range_corrected <- b$slope_range_apparent[1] - mean(b$slope_range_diff)
+  
   Uno_C_corrected <- b$Uno_C_app[1] - mean(b$Uno_C_diff)
   res <- c("AUC corrected" = AUC_corrected, 
            "Brier corrected" = Brier_corrected, 
            "IPA corrected" = IPA_corrected, 
            "Harrell C corrected" = Harrell_C_corrected,
-           "Uno C corrected" = Uno_C_corrected)
-  return(res)
+           "Uno C corrected" = Uno_C_corrected,
+           
+           "Mean calibration fixed time point - OE" = OE_corrected,
+           "Mean calibration corrected - time range" = intercept_corrected,
+           
+           "Weak calibration corrected (slope) - fixed time point" = slope_corrected,
+           "Weak calibration corrected (slope) - time range" = slope_range_corrected
+           )
+  return(cbind(res))
 }
