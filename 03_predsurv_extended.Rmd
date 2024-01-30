@@ -2380,13 +2380,13 @@ int_val_pgr <- bootstrap_cv(db = rott5,
 ```{r, overall_table, echo=FALSE}
 # Table overall measures
 alpha <- .05
-k <- 2 # number of digits
+k <- 3 # number of digits
 res_ov <- matrix(unlist(c(
   score_rott5$Brier$score[model == "cox_development"][["Brier"]],
   score_rott5$Brier$score[model == "cox_development"][["lower"]],
   score_rott5$Brier$score[model == "cox_development"][["upper"]],
   
-  int_val["Brier corrected"],
+  int_val["Brier corrected", ],
   NA,
   NA,
   
@@ -2394,7 +2394,7 @@ res_ov <- matrix(unlist(c(
   score_rott5_pgr$Brier$score[model == "cox_development"][["lower"]],
   score_rott5_pgr$Brier$score[model == "cox_development"][["upper"]],
   
-  int_val_pgr["Brier corrected"],
+  int_val_pgr["Brier corrected", ],
   NA,
   NA,
   
@@ -2411,7 +2411,7 @@ res_ov <- matrix(unlist(c(
   quantile(rott5_boot$IPA, probs = alpha / 2),
   quantile(rott5_boot$IPA, probs = 1 - alpha / 2),
   
-  int_val["IPA corrected"],
+  int_val["IPA corrected", ],
   NA,
   NA,
   
@@ -2419,7 +2419,7 @@ res_ov <- matrix(unlist(c(
   quantile(rott5_boot$IPA_pgr, probs = alpha / 2),
   quantile(rott5_boot$IPA_pgr, probs = 1 - alpha / 2),
   
-  int_val_pgr["IPA corrected"],
+  int_val_pgr["IPA corrected", ],
   NA,
   NA,
   
@@ -2440,7 +2440,7 @@ res_ov <- matrix(unlist(c(
 )
 )
 
-res_ov <- round(res_ov, 2) # Digits
+res_ov <- round(res_ov, 3) # Digits
 kable(res_ov) |>
   kable_styling("striped", position = "center") |>
   add_header_above(c(" " = 1, 

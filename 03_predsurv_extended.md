@@ -3776,31 +3776,16 @@ Upper .95
 Brier
 </td>
 <td style="text-align:right;">
-0.21
+0.207
 </td>
 <td style="text-align:right;">
-0.20
+0.201
 </td>
 <td style="text-align:right;">
-0.21
+0.214
 </td>
 <td style="text-align:right;">
-NA
-</td>
-<td style="text-align:right;">
-NA
-</td>
-<td style="text-align:right;">
-NA
-</td>
-<td style="text-align:right;">
-0.21
-</td>
-<td style="text-align:right;">
-0.20
-</td>
-<td style="text-align:right;">
-0.21
+0.209
 </td>
 <td style="text-align:right;">
 NA
@@ -3809,25 +3794,40 @@ NA
 NA
 </td>
 <td style="text-align:right;">
+0.206
+</td>
+<td style="text-align:right;">
+0.199
+</td>
+<td style="text-align:right;">
+0.213
+</td>
+<td style="text-align:right;">
+0.208
+</td>
+<td style="text-align:right;">
 NA
 </td>
 <td style="text-align:right;">
-0.22
+NA
 </td>
 <td style="text-align:right;">
-0.21
+0.225
 </td>
 <td style="text-align:right;">
-0.24
+0.209
 </td>
 <td style="text-align:right;">
-0.22
+0.240
 </td>
 <td style="text-align:right;">
-0.20
+0.217
 </td>
 <td style="text-align:right;">
-0.23
+0.202
+</td>
+<td style="text-align:right;">
+0.233
 </td>
 </tr>
 <tr>
@@ -3835,31 +3835,16 @@ NA
 IPA
 </td>
 <td style="text-align:right;">
-0.16
+0.155
 </td>
 <td style="text-align:right;">
-0.13
+0.133
 </td>
 <td style="text-align:right;">
-0.18
+0.181
 </td>
 <td style="text-align:right;">
-NA
-</td>
-<td style="text-align:right;">
-NA
-</td>
-<td style="text-align:right;">
-NA
-</td>
-<td style="text-align:right;">
-0.16
-</td>
-<td style="text-align:right;">
-0.14
-</td>
-<td style="text-align:right;">
-0.19
+0.150
 </td>
 <td style="text-align:right;">
 NA
@@ -3868,25 +3853,40 @@ NA
 NA
 </td>
 <td style="text-align:right;">
+0.161
+</td>
+<td style="text-align:right;">
+0.137
+</td>
+<td style="text-align:right;">
+0.188
+</td>
+<td style="text-align:right;">
+0.154
+</td>
+<td style="text-align:right;">
 NA
 </td>
 <td style="text-align:right;">
-0.10
+NA
 </td>
 <td style="text-align:right;">
-0.03
+0.101
 </td>
 <td style="text-align:right;">
-0.12
+0.033
 </td>
 <td style="text-align:right;">
-0.13
+0.118
 </td>
 <td style="text-align:right;">
-0.06
+0.130
 </td>
 <td style="text-align:right;">
-0.16
+0.063
+</td>
+<td style="text-align:right;">
+0.158
 </td>
 </tr>
 </tbody>
@@ -4288,7 +4288,7 @@ sessioninfo::session_info()
     ##  collate  English_Netherlands.utf8
     ##  ctype    English_Netherlands.utf8
     ##  tz       Europe/Amsterdam
-    ##  date     2024-01-26
+    ##  date     2024-01-30
     ##  pandoc   3.1.1 @ C:/Program Files/RStudio/resources/app/bin/quarto/bin/tools/ (via rmarkdown)
     ## 
     ## ─ Packages ───────────────────────────────────────────────────────────────────
