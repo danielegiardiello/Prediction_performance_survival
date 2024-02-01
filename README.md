@@ -42,9 +42,9 @@ The collaboration with STRATOS topic [groups](https://www.stratos-initiative.org
 | [Daniele Giardiello](https://github.com/danielegiardiello/)  | The Netherlands Cancer Institute (NL) <br /> Leiden University Medical Center (NL) <br /> EURAC research (IT) | Author/maintainer and creator of R and Python code     |
 | [David McLernon](https://twitter.com/davemclernon?lang=en) | University of Aberdeen (UK) | Author of SAS code              |
 | [Laure Wynants](https://www.maastrichtuniversity.nl/laure.wynants) | Maastrict University (NL)  <br /> KU Leuven (BE) | Review of minimal .R/.Rmd codes |
-| [Nan van Geloven](https://www.lumc.nl/org/bds/medewerkers/1216536) | Leiden University Medical Center (NL) | Review of 02_.Rmd code |
+| [Nan van Geloven](https://www.universiteitleiden.nl/medewerkers/nan-van-geloven#tab-1) | Leiden University Medical Center (NL) | Review of 02_.Rmd code |
 | [Maarten van Smeden](https://www.umcutrecht.nl/en/research/researchers/van-smeden-maarten-m) | University Medical Centre Utrecht (NL) |Review of 03_.Rmd code     |
-| [Edouard Bonneville](https://www.lumc.nl/org/bds/medewerkers/1968807) | Leiden University Medical Center (NL) | Contributor  |
+| [Edouard Bonneville](https://www.linkedin.com/in/edbonneville/?originalSubdomain=nl) | Leiden University Medical Center (NL) | Contributor  |
 | [Terry Therneau](https://www.mayo.edu/research/faculty/therneau-terry-m-ph-d/bio-00025991) | Mayo Clinic (US)| Contributor  |
 
 
