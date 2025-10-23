@@ -44,7 +44,7 @@ The collaboration with STRATOS topic [groups](https://www.stratos-initiative.org
 | [Laure Wynants](https://www.maastrichtuniversity.nl/laure.wynants) | Maastrict University (NL)  <br /> KU Leuven (BE) | Review of minimal .R/.Rmd codes |
 | [Nan van Geloven](https://www.universiteitleiden.nl/medewerkers/nan-van-geloven#tab-1) | Leiden University Medical Center (NL) | Review of 02_.Rmd code |
 | [Maarten van Smeden](https://www.umcutrecht.nl/en/research/researchers/van-smeden-maarten-m) | University Medical Centre Utrecht (NL) |Review of 03_.Rmd code     |
-| [Edouard Bonneville](https://www.linkedin.com/in/edbonneville/?originalSubdomain=nl) | Leiden University Medical Center (NL) | Contributor  |
+| [Edouard Bonneville](https://www.linkedin.com/in/edbonneville/?originalSubdomain=nl) | Ludwig-Maximilians-Universität München (DE) | Contributor  |
 | [Terry Therneau](https://www.mayo.edu/research/faculty/therneau-terry-m-ph-d/bio-00025991) | Mayo Clinic (US)| Contributor  |
 
 
