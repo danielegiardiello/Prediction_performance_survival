@@ -1,0 +1,16 @@
+{
+  "_captured_at": "2026-07-11T06:12:00Z",
+  "_captured_run_id": "r_3e49ae1e12c34107ba6d889146dc9bc3",
+  "status": "ok",
+  "exit_code": 0,
+  "log_contains": [
+    "NOTE: Wrote rott (30 rows, 21 columns).",
+    "NOTE: Option TITLE changed to Apparent Harrells C.",
+    "NOTE: Option TITLE changed to Apparent Unos C."
+  ],
+  "log_does_not_contain": ["ERROR:", "[JENNER-ERROR"],
+  "diagnostics": {
+    "parse_warnings": [],
+    "runtime_warnings": []
+  }
+}

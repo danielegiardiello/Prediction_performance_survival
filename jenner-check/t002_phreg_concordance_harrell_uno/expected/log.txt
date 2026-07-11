@@ -1,0 +1,49 @@
+
+NOTE: Option OBS changed to 100.
+NOTE: DATA rotterdam
+
+NOTE: Processing inline DATALINES (30 lines)
+
+NOTE: Read 30 rows from DATALINES.
+NOTE: Wrote rotterdam (30 rows, 16 columns).
+NOTE: DATA elapsed:
+  wall  0.00 seconds
+  cpu   0.00 seconds
+NOTE: PROC FORMAT library=WORK
+
+NOTE: FORMAT sizef defined (3 ranges).
+NOTE: FORMAT gradef defined (2 ranges).
+NOTE: DATA r0
+
+
+NOTE: Read 30 rows from rotterdam.
+NOTE: Wrote r0 (30 rows, 21 columns).
+NOTE: DATA elapsed:
+  wall  0.00 seconds
+  cpu   0.00 seconds
+NOTE: DATA r1
+
+
+NOTE: Read 30 rows from r0.
+NOTE: Wrote r1 (30 rows, 21 columns).
+NOTE: DATA elapsed:
+  wall  0.00 seconds
+  cpu   0.00 seconds
+NOTE: DATA rott
+
+
+NOTE: Read 30 rows from r1.
+NOTE: Wrote rott (30 rows, 21 columns).
+NOTE: DATA elapsed:
+  wall  0.00 seconds
+  cpu   0.00 seconds
+NOTE: Option TITLE changed to Apparent Harrells C.
+NOTE: PROC PHREG data=rott
+
+NOTE: PROC PHREG spec written to: ./ods_output/phreg_basic.spec.json
+NOTE: PROC PHREG using Python wrapper
+NOTE: Option TITLE changed to Apparent Unos C.
+NOTE: PROC PHREG data=rott
+
+NOTE: PROC PHREG spec written to: ./ods_output/phreg_basic.spec.json
+NOTE: PROC PHREG using Python wrapper

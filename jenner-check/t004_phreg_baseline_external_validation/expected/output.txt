@@ -1,0 +1,38 @@
+                                        Fit model on Rotterdam, score onto GBSG                                         
+
+              The PHREG Procedure              
+
+Criterion                                 Value
+----------------------  -----------------------
+Number of Observations                       30
+Number of Events                             16
+-2 LOG L                                 86.258
+Ties Handling                             efron
+Convergence Status      0 Converged (penalized)
+
+                                    Analysis of Maximum Likelihood Estimates                                    
+
+Parameter         DF  Estimate  Standard Error  Chi-Square  Pr > ChiSq  Hazard Ratio  95% Lower CL  95% Upper CL
+----------  --------  --------  --------------  ----------  ----------  ------------  ------------  ------------
+SIZECAT_0          1  -0.57182         7.52118      0.0058      0.9394         0.564         0.000   1424631.050
+SIZECAT_1          1   0.12584         7.51719      0.0003      0.9866         1.134         0.000   2839877.640
+SIZECAT_2          1   0.77176         7.53137      0.0105      0.9184         2.164         0.000   5570414.059
+GRADECAT_1         1   2.05118         1.11589      3.3788      0.0660         7.777         0.873        69.289
+NODES              1   0.13066         0.06758      3.7378      0.0532         1.140         0.998         1.301
+
+
+  Obs   pid  sizecat  gradecat  nodes      survtime  status            xb
+-----  ----  -------  --------  -----  ------------  ------  ------------
+    1   383        0         0      2    2.71321013       1  0.2613170054
+    2  1009        1         1      6  1.0266940452       1  0.7839510162
+    3   777        2         0      7  1.8590006845       1  0.9146095189
+    4   131        1         0      8  0.6516084873       1  1.0452680216
+    5   757        1         0      3    0.93908282       1  0.3919755081
+    6   782        1         0      1   1.582477755       1  0.1306585027
+    7    96        1         0      7  1.9110198494       1  0.9146095189
+    8   433        1         1     10  0.8405201916       1   1.306585027
+    9   500        1         0      4  3.2388774812       1  0.5226340108
+   10  1762        1         0      7   0.681724846       1  0.9146095189
+
+... 20 more observations (showing 10 of 30)
+

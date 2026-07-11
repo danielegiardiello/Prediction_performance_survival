@@ -1,0 +1,51 @@
+
+NOTE: Option OBS changed to 100.
+NOTE: DATA rotterdam
+
+NOTE: Processing inline DATALINES (30 lines)
+
+NOTE: Read 30 rows from DATALINES.
+NOTE: Wrote rotterdam (30 rows, 16 columns).
+NOTE: DATA elapsed:
+  wall  0.00 seconds
+  cpu   0.00 seconds
+NOTE: PROC UNIVARIATE
+NOTE: PROC FORMAT library=WORK
+
+NOTE: FORMAT sizef defined (3 ranges).
+NOTE: FORMAT gradef defined (2 ranges).
+NOTE: DATA r0
+
+
+NOTE: Read 30 rows from rotterdam.
+NOTE: Wrote r0 (30 rows, 21 columns).
+NOTE: DATA elapsed:
+  wall  0.00 seconds
+  cpu   0.00 seconds
+NOTE: DATA r1
+
+
+NOTE: Read 30 rows from r0.
+NOTE: Wrote r1 (30 rows, 21 columns).
+NOTE: DATA elapsed:
+  wall  0.00 seconds
+  cpu   0.00 seconds
+NOTE: PROC FREQ
+NOTE: ODS plot written: freq_gradecat.spec.json
+NOTE: ODS plot written: freq_sizecat.spec.json
+NOTE: PROC FREQ statement used.
+NOTE: Option TITLE changed to Overall Kaplan-Meier.
+NOTE: PROC LIFETEST data=r1
+
+NOTE: Using Python lifelines version 0.30.3
+NOTE: OUTSURV dataset 'outkm' written to: /tmp/work/r_8b1311cbfd06447d86cb831858ff5636/work/3ab4c7e1-3896-47b8-b3ab-f2d7ba633c09/outkm.avro
+NOTE: PROC LIFETEST completed.
+NOTE: Option TITLE changed to Median follow-up time.
+NOTE: PROC LIFETEST data=r1
+
+NOTE: PROC LIFETEST completed.
+NOTE: Option TITLE changed to Fit Cox model with sizecat gradecat nodes.
+NOTE: PROC PHREG data=r1
+
+NOTE: PROC PHREG spec written to: ./ods_output/phreg_basic.spec.json
+NOTE: PROC PHREG using Python wrapper

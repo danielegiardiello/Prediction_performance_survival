@@ -1,0 +1,16 @@
+{
+  "_captured_at": "2026-07-11T06:04:44Z",
+  "_captured_run_id": "r_8b1311cbfd06447d86cb831858ff5636",
+  "status": "ok",
+  "exit_code": 0,
+  "log_contains": [
+    "NOTE: Wrote r1 (30 rows, 21 columns).",
+    "NOTE: PROC PHREG data=r1",
+    "NOTE: PROC LIFETEST completed."
+  ],
+  "log_does_not_contain": ["ERROR:", "[JENNER-ERROR"],
+  "diagnostics": {
+    "parse_warnings": [],
+    "runtime_warnings": []
+  }
+}
