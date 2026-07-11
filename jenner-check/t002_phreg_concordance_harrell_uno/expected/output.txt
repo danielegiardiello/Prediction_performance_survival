@@ -1,0 +1,44 @@
+                                                  Apparent Harrells C                                                   
+
+              The PHREG Procedure              
+
+Criterion                                 Value
+----------------------  -----------------------
+Number of Observations                       30
+Number of Events                             13
+-2 LOG L                                 73.119
+Ties Handling                             efron
+Convergence Status      0 Converged (penalized)
+
+                                    Analysis of Maximum Likelihood Estimates                                    
+
+Parameter         DF  Estimate  Standard Error  Chi-Square  Pr > ChiSq  Hazard Ratio  95% Lower CL  95% Upper CL
+----------  --------  --------  --------------  ----------  ----------  ------------  ------------  ------------
+SIZECAT_0          1  -0.59447         7.52403      0.0062      0.9370         0.552         0.000   1400512.686
+SIZECAT_1          1   0.29105         7.51892      0.0015      0.9691         1.338         0.000   3361388.089
+SIZECAT_2          1   0.46187         7.54319      0.0037      0.9512         1.587         0.000   4181770.127
+NODES              1   0.16971         0.06957      5.9503      0.0147         1.185         1.034         1.358
+GRADECAT_1         1   1.91050         1.20904      2.4970      0.1141         6.756         0.632        72.253
+
+                                                    Apparent Unos C                                                     
+
+              The PHREG Procedure              
+
+Criterion                                 Value
+----------------------  -----------------------
+Number of Observations                       30
+Number of Events                             13
+-2 LOG L                                 73.119
+Ties Handling                             efron
+Convergence Status      0 Converged (penalized)
+
+                                    Analysis of Maximum Likelihood Estimates                                    
+
+Parameter         DF  Estimate  Standard Error  Chi-Square  Pr > ChiSq  Hazard Ratio  95% Lower CL  95% Upper CL
+----------  --------  --------  --------------  ----------  ----------  ------------  ------------  ------------
+SIZECAT_0          1  -0.59447         7.52403      0.0062      0.9370         0.552         0.000   1400512.686
+SIZECAT_1          1   0.29105         7.51892      0.0015      0.9691         1.338         0.000   3361388.089
+SIZECAT_2          1   0.46187         7.54319      0.0037      0.9512         1.587         0.000   4181770.127
+NODES              1   0.16971         0.06957      5.9503      0.0147         1.185         1.034         1.358
+GRADECAT_1         1   1.91050         1.20904      2.4970      0.1141         6.756         0.632        72.253
+

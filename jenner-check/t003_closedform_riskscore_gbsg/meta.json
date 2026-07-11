@@ -1,0 +1,7 @@
+{
+  "bundle": "t003_closedform_riskscore_gbsg",
+  "source_file": "SAS_code/04_external_validation_when_model_estimates_and_baseline_survival_available.sas",
+  "source_blob_sha": "40c85a1633f5ad4cf4d15ce5fd9865ff8706f535",
+  "source_commit": "fa7694c517d48a250940dae38f998793cc85a32c",
+  "notes": "Lines 47-139: the external-validation-when-only-model-estimates-are-available scenario this script is named for - apply the published Cox model equation (baseline survival S0 at 5 years plus the linear predictor coefficients from the development paper) directly to the GBSG cohort, with no PHREG fitting at all. Runs against a 30-row sample (15 events/15 censored) of Data/gbsg.csv inlined as DATALINES instead of PROC IMPORT from the author's local path. Unlike t001/t002, this bundle does not touch the RCSPLINE macro or a multi-pair RENAME= dataset option, so it runs the closed-form risk formula, sizecat/gradecat/nodes1/pgr1 derivation, descriptive statistics, reverse Kaplan-Meier for median follow-up, and the 5-year administrative censoring step exactly as written in the original script - the only edits are the inlined data source and the sample size."
+}

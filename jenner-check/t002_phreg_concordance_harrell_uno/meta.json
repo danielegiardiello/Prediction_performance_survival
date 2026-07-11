@@ -1,0 +1,7 @@
+{
+  "bundle": "t002_phreg_concordance_harrell_uno",
+  "source_file": "SAS_code/01_model_development_internal_validation.sas",
+  "source_blob_sha": "1c618481cdb05acf00f6e451ed92852eaf78de90",
+  "source_commit": "fa7694c517d48a250940dae38f998793cc85a32c",
+  "notes": "Lines 48-96, 235-241, 455-469: read Rotterdam data, derive sizecat/gradecat, Winsorize nodes/pgr, administrative censoring at 5 years, then PROC PHREG with CONCORDANCE=HARRELL(SE) and CONCORDANCE=UNO(SE SEED=8754 ITER=50) TAU=5 - the two concordance (discrimination) statistics this repo's internal validation compares. Runs against a 30-row sample of Data/rotterdam.csv inlined as DATALINES. Same RENAME= split as t001 (see its meta.json) to route around Jenner's multi-pair RENAME= bug. The nodes1 spline covariate is omitted (see t001's meta.json - Jenner's %GOTO bug breaks RCSPLINE for <10 knots, filed as EastAgile/jenner-language PR #14693, merged); the model uses the linear nodes term. Both PHREG steps converge and print full parameter estimate tables (hazard ratios, CIs, chi-square tests) identical to what the original CONCORDANCE= specification would print alongside a concordance statistic - Jenner accepts the CONCORDANCE= option without erroring but does not yet emit the dedicated Concordance ODS table itself, an unsupported-feature gap rather than a wrong-output bug (noted for future coverage, not filed as a regression test)."
+}

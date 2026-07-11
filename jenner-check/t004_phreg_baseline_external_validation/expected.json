@@ -1,0 +1,16 @@
+{
+  "_captured_at": "2026-07-11T07:05:00Z",
+  "_captured_run_id": "r_e354207bdcac488a95bbaf916c895ac3",
+  "status": "ok",
+  "exit_code": 0,
+  "log_contains": [
+    "NOTE: PROC PHREG BASELINE output written to gbsg_valrd",
+    "NOTE: MERGE statement used without BY variables. Performing positional merge (row 1 with row 1, etc.).",
+    "NOTE: PROC PRINT completed: 10 observations printed, 7 variables"
+  ],
+  "log_does_not_contain": ["ERROR:", "[JENNER-ERROR"],
+  "diagnostics": {
+    "parse_warnings": [],
+    "runtime_warnings": []
+  }
+}

@@ -1,0 +1,240 @@
+                                                   The FREQ Procedure
+
+                                     Cumulative    Cumulative
+sizecat    Frequency    Percent     Frequency      Percent
+----------------------------------------------------------------
+0                  8     26.67            8        26.67
+1                 17     56.67           25        83.33
+2                  5     16.67           30       100.00
+
+                                      Cumulative    Cumulative
+gradecat    Frequency    Percent     Frequency      Percent
+-----------------------------------------------------------------
+0                  18     60.00           18        60.00
+1                  12     40.00           30       100.00
+
+                                    Cumulative    Cumulative
+status    Frequency    Percent     Frequency      Percent
+---------------------------------------------------------------
+0                15     50.00           15        50.00
+1                15     50.00           30       100.00
+                                                The UNIVARIATE Procedure
+                                                     Variable:  age
+
+                                                        Moments
+
+N                                 30    Sum Weights                       30
+Mean                       51.100000    Sum Observations         1533.000000
+Std Deviation              11.369499    Variance                  129.265517
+Skewness                   -0.528354    Kurtosis                   -0.497248
+Uncorrected SS          82085.000000    Corrected SS             3748.700000
+Coeff Variation            22.249510    Std Error Mean              2.075777
+
+          Basic Statistical Measures          
+
+Location             Variability              
+--------  ---------  -------------  ----------
+Mean      51.100000  Std Deviation   11.369499
+Median    53.000000  Variance       129.265517
+Mode      57.000000  Range           42.000000
+
+     NOTE: The mode displayed is the smallest of 2 modes with a count of 3.
+
+Quantiles (Definition 5)
+
+Quantile     Estimate
+----------  ---------
+0% Min      25.000000
+1%          25.000000
+5%          32.000000
+10%         34.000000
+25% Q1      45.000000
+50% Median  53.000000
+75% Q3      59.000000
+90%         65.000000
+95%         66.000000
+99%         67.000000
+100% Max    67.000000
+
+          Extreme Observations          
+
+Lowest               Highest            
+--------  ---------  --------  ---------
+Value     25.000000  Value     65.000000
+Value     32.000000  Value     65.000000
+Value     33.000000  Value     65.000000
+Value     35.000000  Value     66.000000
+Value     36.000000  Value     67.000000
+
+
+
+
+         Tests for Location          
+
+Test                Statistic   p Value
+------------------  ---------  --------
+Student's t         24.617286685         0
+Sign                       15  0.000000002
+Signed Rank               465  0.000001737
+
+
+                                                The UNIVARIATE Procedure
+                                                     Variable:  pgr
+
+                                                        Moments
+
+N                                 30    Sum Weights                       30
+Mean                      108.400000    Sum Observations         3252.000000
+Std Deviation             332.375006    Variance               110473.144828
+Skewness                    3.029998    Kurtosis                    8.276421
+Uncorrected SS        3556238.000000    Corrected SS          3203721.200000
+Coeff Variation           306.619010    Std Error Mean             60.683096
+
+            Basic Statistical Measures            
+
+Location              Variability                 
+--------  ----------  -------------  -------------
+Mean      108.400000  Std Deviation     332.375006
+Median      0.000000  Variance       110473.144828
+Mode        0.000000  Range            1360.000000
+
+Quantiles (Definition 5)
+
+Quantile       Estimate
+----------  -----------
+0% Min         0.000000
+1%             0.000000
+5%             0.000000
+10%            0.000000
+25% Q1         0.000000
+50% Median     0.000000
+75% Q3         2.000000
+90%          467.000000
+95%          935.000000
+99%         1360.000000
+100% Max    1360.000000
+
+          Extreme Observations           
+
+Lowest              Highest              
+--------  --------  --------  -----------
+Value     0.000000  Value       13.000000
+Value     0.000000  Value       22.000000
+Value     0.000000  Value      912.000000
+Value     0.000000  Value      935.000000
+Value     0.000000  Value     1360.000000
+
+
+
+
+         Tests for Location          
+
+Test                Statistic   p Value
+------------------  ---------  --------
+Student's t         1.78632942  0.084506167
+Sign                        6  0.000488281
+Signed Rank                78  0.002217859
+
+
+                                                The UNIVARIATE Procedure
+                                                    Variable:  nodes
+
+                                                        Moments
+
+N                                 30    Sum Weights                       30
+Mean                        4.700000    Sum Observations          141.000000
+Std Deviation               4.018492    Variance                   16.148276
+Skewness                    1.659802    Kurtosis                    4.113077
+Uncorrected SS           1131.000000    Corrected SS              468.300000
+Coeff Variation            85.499824    Std Error Mean              0.733673
+
+         Basic Statistical Measures         
+
+Location            Variability             
+--------  --------  -------------  ---------
+Mean      4.700000  Std Deviation   4.018492
+Median    3.500000  Variance       16.148276
+Mode      1.000000  Range          18.000000
+
+Quantiles (Definition 5)
+
+Quantile     Estimate
+----------  ---------
+0% Min       1.000000
+1%           1.000000
+5%           1.000000
+10%          1.000000
+25% Q1       1.000000
+50% Median   3.500000
+75% Q3       7.000000
+90%          9.500000
+95%         10.000000
+99%         19.000000
+100% Max    19.000000
+
+         Extreme Observations          
+
+Lowest              Highest            
+--------  --------  --------  ---------
+Value     1.000000  Value      8.000000
+Value     1.000000  Value      9.000000
+Value     1.000000  Value     10.000000
+Value     1.000000  Value     10.000000
+Value     1.000000  Value     19.000000
+
+
+
+
+         Tests for Location          
+
+Test                Statistic   p Value
+------------------  ---------  --------
+Student's t         6.406124952  0.000000526
+Sign                       15  0.000000002
+Signed Rank               465  0.000001737
+
+    The LIFETEST Procedure    
+
+                             N
+--------------------  --------
+Total                       30
+Event                       15
+Censored                    15
+Median Survival Time    3.9945
+
+               Product-Limit Survival Estimates                
+
+    Time  Survival  Std Error  Number at Risk  Number of Events
+--------  --------  ---------  --------------  ----------------
+  0.0465    0.9667     0.0328              30                 1
+  0.7556    0.9309     0.0472              27                 1
+  2.0068    0.8761     0.0693              17                 1
+  2.3518    0.8177     0.0858              15                 1
+  2.6475    0.7548     0.0996              13                 1
+  2.9815    0.6862     0.1117              11                 1
+  3.2225    0.6176     0.1198              10                 1
+  3.6742    0.5404     0.1273               8                 1
+  3.9945    0.4632     0.1304               7                 1
+  4.0219    0.3860     0.1295               6                 1
+  4.8077    0.3088     0.1245               5                 1
+  5.0787    0.2316     0.1149               4                 1
+  5.4127    0.1544     0.0992               3                 1
+  5.5578    0.0772     0.0737               2                 1
+  5.8261    0.0000     0.0000               1                 1
+
+
+  Obs   pid          prob         prob2      survtime  status
+-----  ----  ------------  ------------  ------------  ------
+    1   383   0.312313849  0.2908669499    2.71321013       1
+    2  1009  0.7242625442  0.7743627769  1.0266940452       1
+    3   777  0.6984470926  0.7693972096  1.8590006845       1
+    4   131  0.6293046461  0.7017157871  0.6516084873       1
+    5   757    0.47229617  0.5437320306    0.93908282       1
+    6   782   0.337962936  0.3972331913   1.582477755       1
+    7    96  0.6134876978  0.6868190482  1.9110198494       1
+    8   433  0.7830921097  0.8147309082  0.8405201916       1
+    9   500  0.5234185618  0.5971102445  3.2388774812       1
+   10  1762  0.6134876978  0.6868190482   0.681724846       1
+
+... 20 more observations (showing 10 of 30)
+

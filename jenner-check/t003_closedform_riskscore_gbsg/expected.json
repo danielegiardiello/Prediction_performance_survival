@@ -1,0 +1,16 @@
+{
+  "_captured_at": "2026-07-11T06:35:00Z",
+  "_captured_run_id": "r_f3ec5ebc4557477882d53d8c9eae6ca9",
+  "status": "ok",
+  "exit_code": 0,
+  "log_contains": [
+    "NOTE: Wrote l2gbsg_va (30 rows, 20 columns).",
+    "NOTE: Wrote l2gbsg_val (30 rows, 23 columns).",
+    "NOTE: PROC PRINT completed: 10 observations printed, 5 variables"
+  ],
+  "log_does_not_contain": ["ERROR:", "[JENNER-ERROR"],
+  "diagnostics": {
+    "parse_warnings": [],
+    "runtime_warnings": []
+  }
+}

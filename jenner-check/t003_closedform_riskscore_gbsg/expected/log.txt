@@ -1,0 +1,39 @@
+
+NOTE: Option OBS changed to 100.
+NOTE: DATA gbsg
+
+NOTE: Processing inline DATALINES (30 lines)
+
+NOTE: Read 30 rows from DATALINES.
+NOTE: Wrote gbsg (30 rows, 11 columns).
+NOTE: DATA elapsed:
+  wall  0.00 seconds
+  cpu   0.00 seconds
+NOTE: DATA l2gbsg_va
+
+
+NOTE: Read 30 rows from gbsg.
+NOTE: Wrote l2gbsg_va (30 rows, 20 columns).
+NOTE: DATA elapsed:
+  wall  0.00 seconds
+  cpu   0.00 seconds
+NOTE: PROC FREQ
+NOTE: ODS plot written: freq_sizecat.spec.json
+NOTE: ODS plot written: freq_gradecat.spec.json
+NOTE: ODS plot written: freq_status.spec.json
+NOTE: PROC FREQ statement used.
+NOTE: PROC UNIVARIATE
+NOTE: PROC LIFETEST data=l2gbsg_va
+
+NOTE: PROC LIFETEST completed.
+NOTE: DATA l2gbsg_val
+
+
+NOTE: Read 30 rows from l2gbsg_va.
+NOTE: Wrote l2gbsg_val (30 rows, 23 columns).
+NOTE: DATA elapsed:
+  wall  0.00 seconds
+  cpu   0.00 seconds
+NOTE: PROC PRINT data=l2gbsg_val
+
+NOTE: PROC PRINT completed: 10 observations printed, 5 variables

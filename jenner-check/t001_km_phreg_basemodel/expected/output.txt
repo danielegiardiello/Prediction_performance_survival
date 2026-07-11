@@ -1,0 +1,278 @@
+                                                The UNIVARIATE Procedure
+                                                     Variable:  age
+
+                                                        Moments
+
+N                                 30    Sum Weights                       30
+Mean                       56.066667    Sum Observations         1682.000000
+Std Deviation              12.553151    Variance                  157.581609
+Skewness                   -0.190057    Kurtosis                   -0.485337
+Uncorrected SS          98874.000000    Corrected SS             4569.866667
+Coeff Variation            22.389687    Std Error Mean              2.291881
+
+          Basic Statistical Measures          
+
+Location             Variability              
+--------  ---------  -------------  ----------
+Mean      56.066667  Std Deviation   12.553151
+Median    57.000000  Variance       157.581609
+Mode      45.000000  Range           50.000000
+
+Quantiles (Definition 5)
+
+Quantile     Estimate
+----------  ---------
+0% Min      29.000000
+1%          29.000000
+5%          33.000000
+10%         41.500000
+25% Q1      45.000000
+50% Median  57.000000
+75% Q3      65.000000
+90%         74.000000
+95%         75.000000
+99%         79.000000
+100% Max    79.000000
+
+          Extreme Observations          
+
+Lowest               Highest            
+--------  ---------  --------  ---------
+Value     29.000000  Value     68.000000
+Value     33.000000  Value     74.000000
+Value     40.000000  Value     74.000000
+Value     43.000000  Value     75.000000
+Value     44.000000  Value     79.000000
+
+
+
+
+         Tests for Location          
+
+Test                Statistic   p Value
+------------------  ---------  --------
+Student's t         24.463162408         0
+Sign                       15  0.000000002
+Signed Rank               465  0.000001737
+
+
+                                                The UNIVARIATE Procedure
+                                                     Variable:  pgr
+
+                                                        Moments
+
+N                                 30    Sum Weights                       30
+Mean                      109.333333    Sum Observations         3280.000000
+Std Deviation             241.435411    Variance                58291.057471
+Skewness                    3.793266    Kurtosis                   16.588100
+Uncorrected SS        2049054.000000    Corrected SS          1690440.666667
+Coeff Variation           220.825071    Std Error Mean             44.079874
+
+           Basic Statistical Measures            
+
+Location              Variability                
+--------  ----------  -------------  ------------
+Mean      109.333333  Std Deviation    241.435411
+Median      9.000000  Variance       58291.057471
+Mode        0.000000  Range           1230.000000
+
+Quantiles (Definition 5)
+
+Quantile       Estimate
+----------  -----------
+0% Min         0.000000
+1%             0.000000
+5%             0.000000
+10%            0.000000
+25% Q1         0.000000
+50% Median     9.000000
+75% Q3       101.000000
+90%          333.500000
+95%          431.000000
+99%         1230.000000
+100% Max    1230.000000
+
+          Extreme Observations           
+
+Lowest              Highest              
+--------  --------  --------  -----------
+Value     0.000000  Value      230.000000
+Value     0.000000  Value      304.000000
+Value     0.000000  Value      363.000000
+Value     0.000000  Value      431.000000
+Value     0.000000  Value     1230.000000
+
+
+
+
+         Tests for Location          
+
+Test                Statistic   p Value
+------------------  ---------  --------
+Student's t         2.480345895  0.01917517
+Sign                       11  0.000000477
+Signed Rank               253  0.000040122
+
+
+                                                The UNIVARIATE Procedure
+                                                    Variable:  nodes
+
+                                                        Moments
+
+N                                 30    Sum Weights                       30
+Mean                        2.333333    Sum Observations           70.000000
+Std Deviation               4.204541    Variance                   17.678161
+Skewness                    2.108643    Kurtosis                    3.435499
+Uncorrected SS            676.000000    Corrected SS              512.666667
+Coeff Variation           180.194593    Std Error Mean              0.767641
+
+         Basic Statistical Measures         
+
+Location            Variability             
+--------  --------  -------------  ---------
+Mean      2.333333  Std Deviation   4.204541
+Median    0.000000  Variance       17.678161
+Mode      0.000000  Range          15.000000
+
+Quantiles (Definition 5)
+
+Quantile     Estimate
+----------  ---------
+0% Min       0.000000
+1%           0.000000
+5%           0.000000
+10%          0.000000
+25% Q1       0.000000
+50% Median   0.000000
+75% Q3       2.000000
+90%         10.500000
+95%         13.000000
+99%         15.000000
+100% Max    15.000000
+
+         Extreme Observations          
+
+Lowest              Highest            
+--------  --------  --------  ---------
+Value     0.000000  Value      4.000000
+Value     0.000000  Value      9.000000
+Value     0.000000  Value     12.000000
+Value     0.000000  Value     13.000000
+Value     0.000000  Value     15.000000
+
+
+
+
+         Tests for Location          
+
+Test                Statistic   p Value
+------------------  ---------  --------
+Student's t         3.039617045  0.004980352
+Sign                        7  0.00012207
+Signed Rank               105  0.000981657
+
+                                                   The FREQ Procedure
+
+                                      Cumulative    Cumulative
+gradecat    Frequency    Percent     Frequency      Percent
+-----------------------------------------------------------------
+1-2                 6     20.00            6        20.00
+3                  24     80.00           30       100.00
+
+                                     Cumulative    Cumulative
+sizecat    Frequency    Percent     Frequency      Percent
+----------------------------------------------------------------
+<=20               9     30.00            9        30.00
+20-50             17     56.67           26        86.67
+>50                4     13.33           30       100.00
+                                                  Overall Kaplan-Meier                                                  
+
+    The LIFETEST Procedure    
+
+                             N
+--------------------  --------
+Total                       30
+Event                       16
+Censored                    14
+Median Survival Time    7.4661
+
+               Product-Limit Survival Estimates                
+
+    Time  Survival  Std Error  Number at Risk  Number of Events
+--------  --------  ---------  --------------  ----------------
+  0.3176    0.9667     0.0328              30                 1
+  0.4134    0.9333     0.0455              29                 1
+  0.8049    0.9000     0.0548              28                 1
+  0.8871    0.8667     0.0621              27                 1
+  0.9144    0.8333     0.0680              26                 1
+  1.1499    0.8000     0.0730              25                 1
+  1.3114    0.7667     0.0772              24                 1
+  1.3799    0.7333     0.0807              23                 1
+  1.4428    0.7000     0.0837              22                 1
+  2.0315    0.6667     0.0861              21                 1
+  2.7159    0.6333     0.0880              20                 1
+  3.0773    0.6000     0.0894              19                 1
+  4.0301    0.5667     0.0905              18                 1
+  5.5661    0.5312     0.0915              16                 1
+  7.4661    0.4830     0.0951              11                 1
+  9.7358    0.3622     0.1266               4                 1
+
+                                                 Median follow-up time                                                  
+
+    The LIFETEST Procedure    
+
+                             N
+--------------------  --------
+Total                       30
+Event                       14
+Censored                    16
+Median Survival Time    7.7125
+
+               Product-Limit Survival Estimates                
+
+    Time  Survival  Std Error  Number at Risk  Number of Events
+--------  --------  ---------  --------------  ----------------
+  4.7830    0.9412     0.0571              17                 1
+  6.0479    0.8784     0.0807              15                 1
+  6.8392    0.8157     0.0963              14                 1
+  6.9103    0.7529     0.1074              13                 1
+  7.4251    0.6902     0.1153              12                 1
+  7.4853    0.6212     0.1227              10                 1
+  7.6304    0.5522     0.1270               9                 1
+  7.7125    0.4831     0.1285               8                 1
+  7.9617    0.4141     0.1274               7                 1
+  8.2355    0.3451     0.1234               6                 1
+  9.4346    0.2761     0.1165               5                 1
+ 10.1547    0.1841     0.1080               3                 1
+ 10.6557    0.0920     0.0846               2                 1
+ 15.8111    0.0000     0.0000               1                 1
+
+                                       Fit Cox model with sizecat gradecat nodes                                        
+
+        The PHREG Procedure        
+
+Criterion                     Value
+----------------------  -----------
+Number of Observations           30
+Number of Events                 16
+-2 LOG L                     86.223
+Ties Handling                 efron
+Convergence Status      0 Converged
+
+      Testing Global Null Hypothesis: BETA=0      
+
+Test              Chi-Square        DF  Pr > ChiSq
+----------------  ----------  --------  ----------
+Likelihood Ratio      9.1968         4      0.0564
+Wald                  6.6875         4      0.1534
+Score (Log-Rank)      7.8972         4      0.0954
+
+                                    Analysis of Maximum Likelihood Estimates                                    
+
+Parameter         DF  Estimate  Standard Error  Chi-Square  Pr > ChiSq  Hazard Ratio  95% Lower CL  95% Upper CL
+----------  --------  --------  --------------  ----------  ----------  ------------  ------------  ------------
+SIZECAT_1          1   0.70017         0.62311      1.2627      0.2611         2.014         0.594         6.831
+SIZECAT_2          1   1.34903         0.81675      2.7281      0.0986         3.854         0.777        19.103
+GRADECAT_1         1   2.06620         1.12517      3.3722      0.0663         7.895         0.870        71.628
+NODES              1   0.13122         0.06772      3.7549      0.0527         1.140         0.998         1.302
+
